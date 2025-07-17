@@ -131,6 +131,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // Fetch practice sessions
     const fetchPracticeSessions = async () => {
+      console.log('Fetching practice sessions for user:', state.user!.uid);
       const { data, error } = await supabase
         .from('practice_sessions')
         .select('*')
@@ -140,6 +141,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (error) {
         console.error('Error fetching practice sessions:', error);
       } else {
+        console.log('Raw practice sessions data from database:', data);
         const sessions: PracticeSession[] = data.map(row => ({
           id: row.id,
           userId: row.user_id,
@@ -153,6 +155,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           recordings: row.recordings || [],
           link: row.link || '',
         }));
+        console.log('Mapped practice sessions:', sessions);
         dispatch({ type: 'SET_PRACTICE_SESSIONS', payload: sessions });
       }
     };
