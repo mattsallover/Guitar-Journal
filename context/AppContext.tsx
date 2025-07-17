@@ -146,11 +146,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           date: row.date,
           duration: row.duration,
           mood: row.mood,
-          techniques: row.techniques,
-          songs: row.songs,
+          techniques: row.techniques || [],
+          songs: row.songs || [],
           notes: row.notes,
-          tags: row.tags,
-          recordings: row.recordings,
+          tags: row.tags || [],
+          recordings: row.recordings || [],
           link: row.link || '',
         }));
         dispatch({ type: 'SET_PRACTICE_SESSIONS', payload: sessions });
