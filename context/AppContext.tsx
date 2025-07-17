@@ -45,10 +45,135 @@ const appReducer = (state: AppState, action: Action): AppState => {
   }
 };
 
-const AppContext = createContext<{ state: AppState; dispatch: React.Dispatch<Action> } | undefined>(undefined);
+const AppContext = createContext<{ state: AppState; dispatch: React.Dispatch<Action>; refreshData: () => Promise<void> } | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
+
+  // Extract data fetching functions so they can be called independently
+  const ensureUserExists = async (user: User) => {
+    try {
+      // First, try to fetch the user
+      const { data, error } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', user.uid)
+        .single();
+      
+      if (error && error.code === 'PGRST116') {
+        // User doesn't exist, create them
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert([{
+            id: user.uid,
+            name: user.name,
+            email: user.email
+          }]);
+        
+        if (insertError) {
+          console.error('Error creating user profile:', insertError);
+        }
+      } else if (error) {
+        console.error('Error checking user existence:', error);
+      }
+    } catch (err) {
+      console.error('Error ensuring user exists:', err);
+    }
+  };
+
+  const fetchPracticeSessions = async (user: User) => {
+    console.log('Fetching practice sessions for user:', user.uid);
+    const { data, error } = await supabase
+      .from('practice_sessions')
+      .select('*')
+      .eq('user_id', user.uid)
+      .order('date', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching practice sessions:', error);
+    } else {
+      console.log('Raw practice sessions data from database:', data);
+      const sessions: PracticeSession[] = data.map(row => ({
+        id: row.id,
+        userId: row.user_id,
+        date: row.date,
+        duration: row.duration,
+        mood: row.mood,
+        techniques: row.techniques || [],
+        songs: row.songs || [],
+        notes: row.notes,
+        tags: row.tags || [],
+        recordings: row.recordings || [],
+        link: row.link || '',
+      }));
+      console.log('Mapped practice sessions:', sessions);
+      dispatch({ type: 'SET_PRACTICE_SESSIONS', payload: sessions });
+    }
+  };
+
+  const fetchRepertoire = async (user: User) => {
+    const { data, error } = await supabase
+      .from('repertoire')
+      .select('*')
+      .eq('user_id', user.uid)
+      .order('title');
+    
+    if (error) {
+      console.error('Error fetching repertoire:', error);
+    } else {
+      const repertoire: RepertoireItem[] = data.map(row => ({
+        id: row.id,
+        userId: row.user_id,
+        title: row.title,
+        artist: row.artist,
+        difficulty: row.difficulty,
+        mastery: row.mastery,
+        dateAdded: row.date_added,
+        lastPracticed: row.last_practiced,
+        notes: row.notes,
+      }));
+      dispatch({ type: 'SET_REPERTOIRE', payload: repertoire });
+    }
+  };
+  
+  const fetchGoals = async (user: User) => {
+    const { data, error } = await supabase
+      .from('goals')
+      .select('*')
+      .eq('user_id', user.uid)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching goals:', error);
+    } else {
+      const goals: Goal[] = data.map(row => ({
+        id: row.id,
+        userId: row.user_id,
+        title: row.title,
+        description: row.description,
+        targetDate: row.target_date,
+        status: row.status,
+        progress: row.progress,
+        category: row.category,
+      }));
+      dispatch({ type: 'SET_GOALS', payload: goals });
+    }
+  };
+
+  // Function to refresh all data - can be called by other components
+  const refreshData = async () => {
+    if (!state.user) return;
+    
+    try {
+      await Promise.all([
+        fetchPracticeSessions(state.user),
+        fetchRepertoire(state.user),
+        fetchGoals(state.user)
+      ]);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    }
+  };
 
   useEffect(() => {
     dispatch({ type: 'SET_LOADING', payload: true });
@@ -97,138 +222,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     dispatch({ type: 'SET_LOADING', payload: true });
-    
-    // Ensure user exists in database
-    const ensureUserExists = async () => {
-      try {
-        // First, try to fetch the user
-        const { data, error } = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', state.user!.uid)
-          .single();
-        
-        if (error && error.code === 'PGRST116') {
-          // User doesn't exist, create them
-          const { error: insertError } = await supabase
-            .from('users')
-            .insert([{
-              id: state.user!.uid,
-              name: state.user!.name,
-              email: state.user!.email
-            }]);
-          
-          if (insertError) {
-            console.error('Error creating user profile:', insertError);
-          }
-        } else if (error) {
-          console.error('Error checking user existence:', error);
-        }
-      } catch (err) {
-        console.error('Error ensuring user exists:', err);
-      }
-    };
-
-    // Fetch practice sessions
-    const fetchPracticeSessions = async () => {
-      console.log('Fetching practice sessions for user:', state.user!.uid);
-      const { data, error } = await supabase
-        .from('practice_sessions')
-        .select('*')
-        .eq('user_id', state.user!.uid)
-        .order('date', { ascending: false });
-      
-      if (error) {
-        console.error('Error fetching practice sessions:', error);
-      } else {
-        console.log('Raw practice sessions data from database:', data);
-        const sessions: PracticeSession[] = data.map(row => ({
-          id: row.id,
-          userId: row.user_id,
-          date: row.date,
-          duration: row.duration,
-          mood: row.mood,
-          techniques: row.techniques || [],
-          songs: row.songs || [],
-          notes: row.notes,
-          tags: row.tags || [],
-          recordings: row.recordings || [],
-          link: row.link || '',
-        }));
-        console.log('Mapped practice sessions:', sessions);
-        dispatch({ type: 'SET_PRACTICE_SESSIONS', payload: sessions });
-      }
-    };
-
-    // Fetch repertoire
-    const fetchRepertoire = async () => {
-      const { data, error } = await supabase
-        .from('repertoire')
-        .select('*')
-        .eq('user_id', state.user!.uid)
-        .order('title');
-      
-      if (error) {
-        console.error('Error fetching repertoire:', error);
-      } else {
-        const repertoire: RepertoireItem[] = data.map(row => ({
-          id: row.id,
-          userId: row.user_id,
-          title: row.title,
-          artist: row.artist,
-          difficulty: row.difficulty,
-          mastery: row.mastery,
-          dateAdded: row.date_added,
-          lastPracticed: row.last_practiced,
-          notes: row.notes,
-        }));
-        dispatch({ type: 'SET_REPERTOIRE', payload: repertoire });
-      }
-    };
-    
-    // Fetch goals
-    const fetchGoals = async () => {
-      const { data, error } = await supabase
-        .from('goals')
-        .select('*')
-        .eq('user_id', state.user!.uid)
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error('Error fetching goals:', error);
-      } else {
-        const goals: Goal[] = data.map(row => ({
-          id: row.id,
-          userId: row.user_id,
-          title: row.title,
-          description: row.description,
-          targetDate: row.target_date,
-          status: row.status,
-          progress: row.progress,
-          category: row.category,
-        }));
-        dispatch({ type: 'SET_GOALS', payload: goals });
-      }
-      dispatch({ type: 'SET_LOADING', payload: false });
-    };
 
     // Fetch all data
     Promise.all([
-      ensureUserExists(),
-      fetchPracticeSessions(),
-      fetchRepertoire(),
-      fetchGoals()
-    ]);
+      ensureUserExists(state.user),
+      fetchPracticeSessions(state.user),
+      fetchRepertoire(state.user),
+      fetchGoals(state.user)
+    ]).then(() => {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    });
   }, [state.user]);
 
   return (
-    <AppContext.Provider value={{ state, dispatch }}>
+    <AppContext.Provider value={{ state, dispatch, refreshData }}>
       {children}
     </AppContext.Provider>
   );
 };
 
-export const useAppContext = () => {
+export const useAppContext = (): { state: AppState; dispatch: React.Dispatch<Action>; refreshData: () => Promise<void> } => {
   const context = useContext(AppContext);
   if (context === undefined) {
     throw new Error('useAppContext must be used within an AppProvider');

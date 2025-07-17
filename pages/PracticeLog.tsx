@@ -20,7 +20,7 @@ const moodIcons: Record<Mood, string> = {
 };
 
 export const PracticeLog: React.FC = () => {
-    const { state } = useAppContext();
+    const { state, refreshData } = useAppContext();
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -165,6 +165,9 @@ export const PracticeLog: React.FC = () => {
             }
             
             closeModal();
+
+            // Refresh data to show the new session immediately
+            await refreshData();
 
             if(practicedRepertoireItems.length > 0) {
                 setTimeout(() => setMasteryItemsToUpdate(practicedRepertoireItems), 300);
