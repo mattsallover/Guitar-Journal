@@ -1,0 +1,9 @@
+{
+  "name": "Guitar Practice Journal",
+  "description": "A comprehensive digital application for guitarists to track practice sessions, manage repertoire, set goals, and use interactive tools to enhance their skills.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "prompt": ""
+}
