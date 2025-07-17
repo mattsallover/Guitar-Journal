@@ -208,6 +208,9 @@ export const PracticeLog: React.FC = () => {
                     .eq('id', session.id);
                 
                 if (error) throw error;
+                
+                // Refresh data to update the UI immediately
+                await refreshData();
             } catch (error) {
                 console.error("Error deleting session:", error);
                 alert("Failed to delete session. Please try again.");
