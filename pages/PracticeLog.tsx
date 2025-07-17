@@ -132,6 +132,9 @@ export const PracticeLog: React.FC = () => {
                 recordings: [...(currentSession.recordings || []), ...uploadedRecordings],
             };
             
+            console.log('Final sessionData payload for Supabase:', sessionData);
+            console.log('Current session state:', currentSession);
+            
             if (currentSession.id) {
                 const { error } = await supabase
                     .from('practice_sessions')
