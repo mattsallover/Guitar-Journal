@@ -77,6 +77,17 @@ export const PracticeLog: React.FC = () => {
 
     const handleSave = async () => {
         if (!currentSession || !state.user) return;
+        
+        // Debug logging
+        console.log('Attempting to save session:', currentSession);
+        console.log('Current user:', state.user);
+        
+        // Validate required fields
+        if (!currentSession.date || !currentSession.duration || !currentSession.mood) {
+            alert('Please fill in all required fields (date, duration, mood)');
+            return;
+        }
+        
         setIsSaving(true);
 
         try {
@@ -165,7 +176,9 @@ export const PracticeLog: React.FC = () => {
             }
         } catch (error) {
             console.error("Error saving session:", error);
-            alert("Failed to save session. Check your internet connection or Supabase configuration.");
+            // More detailed error message
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            alert(`Failed to save session: ${errorMessage}\n\nPlease check your internet connection or Supabase configuration.`);
         } finally {
             setIsSaving(false);
         }
@@ -380,7 +393,11 @@ export const PracticeLog: React.FC = () => {
 
                         <div className="flex justify-end space-x-4">
                             <button onClick={closeModal} disabled={isSaving} className="bg-surface hover:bg-border text-text-primary font-bold py-2 px-4 rounded-md disabled:opacity-50">Cancel</button>
-                            <button onClick={handleSave} disabled={isSaving} className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
+                            <button 
+                                onClick={handleSave} 
+                                disabled={isSaving || !currentSession?.date || !currentSession?.duration || !currentSession?.mood} 
+                                className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
                                 {isSaving ? 'Saving...' : 'Save Session'}
                             </button>
                         </div>
