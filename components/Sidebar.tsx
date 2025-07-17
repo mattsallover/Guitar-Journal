@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import { auth } from '../services/firebase';
+import { supabase } from '../services/supabase';
 import { DashboardIcon } from './icons/DashboardIcon';
 import { LogIcon } from './icons/LogIcon';
 import { RepertoireIcon } from './icons/RepertoireIcon';
@@ -15,7 +15,7 @@ export const Sidebar: React.FC = () => {
     const [isToolsOpen, setIsToolsOpen] = useState(false);
 
     const handleLogout = () => {
-        auth.signOut();
+        supabase.auth.signOut();
     };
 
     const navLinkClasses = "flex items-center px-4 py-3 text-text-secondary hover:bg-surface hover:text-text-primary rounded-md transition-colors duration-200";

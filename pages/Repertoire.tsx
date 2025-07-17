@@ -5,7 +5,7 @@ import { useAppContext } from '../context/AppContext';
 import { RepertoireItem, Difficulty, GoalCategory } from '../types';
 import { Modal } from '../components/Modal';
 import { DIFFICULTY_OPTIONS } from '../constants';
-import { db } from '../services/firebase';
+import { supabase } from '../services/supabase';
 
 
 export const Repertoire: React.FC = () => {
@@ -33,25 +33,37 @@ export const Repertoire: React.FC = () => {
 
         try {
             if (currentItem.id) { // Update existing item
-                const docRef = db.collection('repertoire').doc(currentItem.id);
-                const { id, userId, ...itemData } = currentItem;
-                await docRef.update(itemData);
+                const { error } = await supabase
+                    .from('repertoire')
+                    .update({
+                        title: currentItem.title,
+                        artist: currentItem.artist || '',
+                        difficulty: currentItem.difficulty || 'Beginner',
+                        mastery: currentItem.mastery || 0,
+                        notes: currentItem.notes || '',
+                    })
+                    .eq('id', currentItem.id);
+                
+                if (error) throw error;
             } else { // Add new item
-                const newItem = {
-                    userId: state.user.uid,
-                    dateAdded: new Date().toISOString(),
-                    title: currentItem.title || '',
-                    artist: currentItem.artist || '',
-                    difficulty: currentItem.difficulty || Difficulty.Beginner,
-                    mastery: currentItem.mastery || 0,
-                    notes: currentItem.notes || '',
-                };
-                await db.collection('repertoire').add(newItem);
+                const { error } = await supabase
+                    .from('repertoire')
+                    .insert([{
+                        user_id: state.user.uid,
+                        date_added: new Date().toISOString(),
+                        title: currentItem.title,
+                        artist: currentItem.artist || '',
+                        difficulty: currentItem.difficulty || 'Beginner',
+                        mastery: currentItem.mastery || 0,
+                        notes: currentItem.notes || '',
+                    }]);
+                
+                if (error) throw error;
             }
             closeModal();
         } catch (error) {
             console.error("Error saving repertoire item:", error);
-            alert("Failed to save item. Check your internet connection or Firestore security rules.");
+            alert("Failed to save item. Check your internet connection or Supabase configuration.");
         } finally {
             setIsSaving(false);
         }
@@ -60,7 +72,12 @@ export const Repertoire: React.FC = () => {
     const handleDelete = async (id: string) => {
         if(window.confirm('Are you sure you want to delete this piece from your repertoire?')){
             try {
-                await db.collection('repertoire').doc(id).delete();
+                const { error } = await supabase
+                    .from('repertoire')
+                    .delete()
+                    .eq('id', id);
+                
+                if (error) throw error;
             } catch (error) {
                 console.error("Error deleting repertoire item:", error);
                 alert("Failed to delete item. Please try again.");

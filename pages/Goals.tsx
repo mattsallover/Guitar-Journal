@@ -5,7 +5,7 @@ import { useAppContext } from '../context/AppContext';
 import { Goal, GoalStatus, GoalCategory } from '../types';
 import { Modal } from '../components/Modal';
 import { GOAL_STATUS_OPTIONS, GOAL_CATEGORY_OPTIONS } from '../constants';
-import { db } from '../services/firebase';
+import { supabase } from '../services/supabase';
 
 
 export const Goals: React.FC = () => {
@@ -49,26 +49,34 @@ export const Goals: React.FC = () => {
         setIsSaving(true);
         
         try {
-            const goalDataToSave = {
-                userId: state.user.uid,
+            const goalData = {
+                user_id: state.user.uid,
                 title: currentGoal.title || '',
                 description: currentGoal.description || '',
-                targetDate: currentGoal.targetDate || new Date().toISOString().split('T')[0],
+                target_date: currentGoal.targetDate || new Date().toISOString().split('T')[0],
                 status: currentGoal.status || GoalStatus.Active,
                 progress: currentGoal.progress || 0,
                 category: currentGoal.category || GoalCategory.Technique,
             };
 
             if (currentGoal.id) {
-                const docRef = db.collection('goals').doc(currentGoal.id);
-                await docRef.update(goalDataToSave);
+                const { error } = await supabase
+                    .from('goals')
+                    .update(goalData)
+                    .eq('id', currentGoal.id);
+                
+                if (error) throw error;
             } else {
-                await db.collection('goals').add(goalDataToSave);
+                const { error } = await supabase
+                    .from('goals')
+                    .insert([goalData]);
+                
+                if (error) throw error;
             }
             closeModal();
         } catch (error) {
             console.error("Error saving goal:", error);
-            alert("Failed to save goal. Check your internet connection or Firestore security rules.");
+            alert("Failed to save goal. Check your internet connection or Supabase configuration.");
         } finally {
             setIsSaving(false);
         }
@@ -77,7 +85,12 @@ export const Goals: React.FC = () => {
     const handleDelete = async (id: string) => {
         if(window.confirm('Are you sure you want to delete this goal?')){
             try {
-                await db.collection('goals').doc(id).delete();
+                const { error } = await supabase
+                    .from('goals')
+                    .delete()
+                    .eq('id', id);
+                
+                if (error) throw error;
             } catch (error) {
                 console.error("Error deleting goal:", error);
                 alert("Failed to delete goal. Please try again.");

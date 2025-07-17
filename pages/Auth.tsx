@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { auth } from '../services/firebase';
+import { supabase } from '../services/supabase';
 import { useAppContext } from '../context/AppContext';
 
 export const AuthPage: React.FC = () => {
@@ -11,24 +11,28 @@ export const AuthPage: React.FC = () => {
   useEffect(() => {
     const initUser = async () => {
       try {
-        await auth.signInAnonymously();
+        const { data, error } = await supabase.auth.signInAnonymously();
+        if (error) {
+          throw error;
+        }
         // onAuthStateChanged in AppContext will handle navigating away
       } catch (err: any) {
         console.error("Anonymous sign-in failed:", err);
-        setError('Failed to initialize. Please check your internet connection and ensure your Firebase configuration in services/firebase.ts is correct.');
+        setError('Failed to initialize. Please check your internet connection and ensure your Supabase configuration is correct.');
         setMessage('Initialization Error');
       }
     };
 
-    // onAuthStateChanged will give us the user, but we need to sign in if no one is there.
+    // Auth state change listener will give us the user, but we need to sign in if no one is there.
     // The listener in AppContext handles the user state, but this page triggers the initial sign-in.
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (!user && !state.loading) {
-        initUser();
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user && !state.loading) {
+        await initUser();
       }
-    });
+    };
 
-    return () => unsubscribe();
+    checkAuth();
     
   }, [state.loading]);
 

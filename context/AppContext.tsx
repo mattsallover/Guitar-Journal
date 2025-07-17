@@ -1,7 +1,8 @@
 
 import React, { createContext, useReducer, useContext, ReactNode, useEffect } from 'react';
 import { User, PracticeSession, RepertoireItem, Goal } from '../types';
-import { auth, db } from '../services/firebase';
+import { supabase } from '../services/supabase';
+import { AuthSession } from '@supabase/supabase-js';
 
 interface AppState {
   user: User | null;
@@ -51,13 +52,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   useEffect(() => {
     dispatch({ type: 'SET_LOADING', payload: true });
-    const unsubscribeAuth = auth.onAuthStateChanged((firebaseUser) => {
-      if (firebaseUser) {
+    
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
         const appUser: User = {
-          uid: firebaseUser.uid,
-          isAnonymous: firebaseUser.isAnonymous,
-          name: firebaseUser.displayName || 'Practice Hero',
-          email: firebaseUser.email,
+          uid: session.user.id,
+          isAnonymous: session.user.is_anonymous || false,
+          name: session.user.user_metadata?.name || 'Practice Hero',
+          email: session.user.email || null,
         };
         dispatch({ type: 'SET_USER', payload: appUser });
       } else {
@@ -65,7 +68,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         dispatch({ type: 'SET_LOADING', payload: false });
       }
     });
-    return () => unsubscribeAuth();
+    
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        const appUser: User = {
+          uid: session.user.id,
+          isAnonymous: session.user.is_anonymous || false,
+          name: session.user.user_metadata?.name || 'Practice Hero',
+          email: session.user.email || null,
+        };
+        dispatch({ type: 'SET_USER', payload: appUser });
+      } else {
+        dispatch({ type: 'SET_USER', payload: null });
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    });
+    
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -78,30 +98,92 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     dispatch({ type: 'SET_LOADING', payload: true });
     
-    const unsubSessions = db.collection('practiceSessions').where("userId", "==", state.user.uid)
-        .onSnapshot((snapshot) => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PracticeSession));
-            dispatch({ type: 'SET_PRACTICE_SESSIONS', payload: data });
-        }, (error) => console.error(`Error fetching practiceSessions:`, error));
-
-    const unsubRepertoire = db.collection('repertoire').where("userId", "==", state.user.uid)
-        .onSnapshot((snapshot) => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RepertoireItem));
-            dispatch({ type: 'SET_REPERTOIRE', payload: data });
-        }, (error) => console.error(`Error fetching repertoire:`, error));
-    
-    const unsubGoals = db.collection("goals").where("userId", "==", state.user.uid).onSnapshot((snapshot) => {
-        const goals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Goal));
-        dispatch({ type: 'SET_GOALS', payload: goals });
-        dispatch({ type: 'SET_LOADING', payload: false }); // Last fetch toggles loading off
-    }, (error) => console.error("Error fetching goals:", error));
-
-
-    return () => {
-      unsubSessions();
-      unsubRepertoire();
-      unsubGoals();
+    // Fetch practice sessions
+    const fetchPracticeSessions = async () => {
+      const { data, error } = await supabase
+        .from('practice_sessions')
+        .select('*')
+        .eq('user_id', state.user!.uid)
+        .order('date', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching practice sessions:', error);
+      } else {
+        const sessions: PracticeSession[] = data.map(row => ({
+          id: row.id,
+          userId: row.user_id,
+          date: row.date,
+          duration: row.duration,
+          mood: row.mood,
+          techniques: row.techniques,
+          songs: row.songs,
+          notes: row.notes,
+          tags: row.tags,
+          recordings: row.recordings,
+          link: row.link || '',
+        }));
+        dispatch({ type: 'SET_PRACTICE_SESSIONS', payload: sessions });
+      }
     };
+
+    // Fetch repertoire
+    const fetchRepertoire = async () => {
+      const { data, error } = await supabase
+        .from('repertoire')
+        .select('*')
+        .eq('user_id', state.user!.uid)
+        .order('title');
+      
+      if (error) {
+        console.error('Error fetching repertoire:', error);
+      } else {
+        const repertoire: RepertoireItem[] = data.map(row => ({
+          id: row.id,
+          userId: row.user_id,
+          title: row.title,
+          artist: row.artist,
+          difficulty: row.difficulty,
+          mastery: row.mastery,
+          dateAdded: row.date_added,
+          lastPracticed: row.last_practiced,
+          notes: row.notes,
+        }));
+        dispatch({ type: 'SET_REPERTOIRE', payload: repertoire });
+      }
+    };
+    
+    // Fetch goals
+    const fetchGoals = async () => {
+      const { data, error } = await supabase
+        .from('goals')
+        .select('*')
+        .eq('user_id', state.user!.uid)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching goals:', error);
+      } else {
+        const goals: Goal[] = data.map(row => ({
+          id: row.id,
+          userId: row.user_id,
+          title: row.title,
+          description: row.description,
+          targetDate: row.target_date,
+          status: row.status,
+          progress: row.progress,
+          category: row.category,
+        }));
+        dispatch({ type: 'SET_GOALS', payload: goals });
+      }
+      dispatch({ type: 'SET_LOADING', payload: false });
+    };
+
+    // Fetch all data
+    Promise.all([
+      fetchPracticeSessions(),
+      fetchRepertoire(),
+      fetchGoals()
+    ]);
   }, [state.user]);
 
   return (

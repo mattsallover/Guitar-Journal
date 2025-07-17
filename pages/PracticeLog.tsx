@@ -8,7 +8,7 @@ import { MOOD_OPTIONS } from '../constants';
 import { TagInput } from '../components/TagInput';
 import { GoalUpdateModal } from '../components/GoalUpdateModal';
 import { MasteryUpdateModal } from '../components/MasteryUpdateModal';
-import { db, storage } from '../services/firebase';
+import { supabase } from '../services/supabase';
 
 
 const moodIcons: Record<Mood, string> = {
@@ -80,23 +80,36 @@ export const PracticeLog: React.FC = () => {
         setIsSaving(true);
 
         try {
+            // Upload new recordings to Supabase Storage
             const uploadedRecordings = await Promise.all(
                 newRecordings.map(async (file) => {
-                    const storageRef = storage.ref(`recordings/${state.user!.uid}/${Date.now()}-${file.name}`);
-                    const snapshot = await storageRef.put(file);
-                    const downloadURL = await snapshot.ref.getDownloadURL();
+                    const fileName = `${Date.now()}-${file.name}`;
+                    const filePath = `recordings/${state.user!.uid}/${fileName}`;
+                    
+                    const { data, error } = await supabase.storage
+                        .from('recordings')
+                        .upload(filePath, file);
+                    
+                    if (error) {
+                        throw error;
+                    }
+                    
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('recordings')
+                        .getPublicUrl(filePath);
+                    
                     const type: 'audio' | 'video' = file.type.startsWith('audio') ? 'audio' : 'video';
                     return {
-                        id: snapshot.ref.fullPath,
+                        id: filePath,
                         name: file.name,
                         type,
-                        url: downloadURL,
+                        url: publicUrl,
                     };
                 })
             );
 
             const sessionData = {
-                userId: state.user!.uid,
+                user_id: state.user!.uid,
                 date: currentSession.date!,
                 duration: currentSession.duration!,
                 mood: currentSession.mood!,
@@ -109,21 +122,33 @@ export const PracticeLog: React.FC = () => {
             };
             
             if (currentSession.id) {
-                const docRef = db.collection('practiceSessions').doc(currentSession.id);
-                await docRef.update(sessionData);
+                const { error } = await supabase
+                    .from('practice_sessions')
+                    .update(sessionData)
+                    .eq('id', currentSession.id);
+                
+                if (error) throw error;
             } else {
-                await db.collection('practiceSessions').add(sessionData);
+                const { error } = await supabase
+                    .from('practice_sessions')
+                    .insert([sessionData]);
+                
+                if (error) throw error;
             }
 
-            const today = new Date().toISOString();
+            const today = new Date().toISOString().split('T')[0];
             const practicedRepertoireItems = state.repertoire.filter(r => 
                 (sessionData.songs || []).includes(r.title)
             );
 
-            await Promise.all(practicedRepertoireItems.map(item => {
-                const itemDocRef = db.collection('repertoire').doc(item.id);
-                return itemDocRef.update({ lastPracticed: today });
-            }));
+            if (practicedRepertoireItems.length > 0) {
+                await Promise.all(practicedRepertoireItems.map(item => {
+                    return supabase
+                        .from('repertoire')
+                        .update({ last_practiced: today })
+                        .eq('id', item.id);
+                }));
+            }
             
             closeModal();
 
@@ -140,7 +165,7 @@ export const PracticeLog: React.FC = () => {
             }
         } catch (error) {
             console.error("Error saving session:", error);
-            alert("Failed to save session. Check your internet connection or Firebase security rules.");
+            alert("Failed to save session. Check your internet connection or Supabase configuration.");
         } finally {
             setIsSaving(false);
         }
@@ -149,15 +174,21 @@ export const PracticeLog: React.FC = () => {
     const handleDelete = async (session: PracticeSession) => {
         if(window.confirm('Are you sure you want to delete this session? This will also delete any associated recordings permanently.')){
             try {
-                // Delete recordings from Cloud Storage first
+                // Delete recordings from Supabase Storage first
                 if (session.recordings && session.recordings.length > 0) {
                     await Promise.all(session.recordings.map(rec => {
-                        const fileRef = storage.refFromURL(rec.url);
-                        return fileRef.delete();
+                        return supabase.storage
+                            .from('recordings')
+                            .remove([rec.id]);
                     }));
                 }
-                // Then delete the Firestore document
-                await db.collection('practiceSessions').doc(session.id).delete();
+                // Then delete the database record
+                const { error } = await supabase
+                    .from('practice_sessions')
+                    .delete()
+                    .eq('id', session.id);
+                
+                if (error) throw error;
             } catch (error) {
                 console.error("Error deleting session:", error);
                 alert("Failed to delete session. Please try again.");
@@ -174,8 +205,10 @@ export const PracticeLog: React.FC = () => {
     const handleMasteryUpdate = async (updatedItems: RepertoireItem[]) => {
         try {
             await Promise.all(updatedItems.map(item => {
-                const itemDocRef = db.collection('repertoire').doc(item.id);
-                return itemDocRef.update({ mastery: item.mastery });
+                return supabase
+                    .from('repertoire')
+                    .update({ mastery: item.mastery })
+                    .eq('id', item.id);
             }));
         } catch (error) {
             console.error("Failed to update mastery", error);
@@ -197,8 +230,12 @@ export const PracticeLog: React.FC = () => {
 
     const handleGoalUpdate = async (goal: Goal, progress: number) => {
         try {
-            const goalDocRef = db.collection('goals').doc(goal.id);
-            await goalDocRef.update({ progress });
+            const { error } = await supabase
+                .from('goals')
+                .update({ progress })
+                .eq('id', goal.id);
+            
+            if (error) throw error;
         } catch (error) {
             console.error("Failed to update goal", error);
         }
