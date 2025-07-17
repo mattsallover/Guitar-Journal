@@ -98,6 +98,37 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     dispatch({ type: 'SET_LOADING', payload: true });
     
+    // Ensure user exists in database
+    const ensureUserExists = async () => {
+      try {
+        // First, try to fetch the user
+        const { data, error } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', state.user!.uid)
+          .single();
+        
+        if (error && error.code === 'PGRST116') {
+          // User doesn't exist, create them
+          const { error: insertError } = await supabase
+            .from('users')
+            .insert([{
+              id: state.user!.uid,
+              name: state.user!.name,
+              email: state.user!.email
+            }]);
+          
+          if (insertError) {
+            console.error('Error creating user profile:', insertError);
+          }
+        } else if (error) {
+          console.error('Error checking user existence:', error);
+        }
+      } catch (err) {
+        console.error('Error ensuring user exists:', err);
+      }
+    };
+
     // Fetch practice sessions
     const fetchPracticeSessions = async () => {
       const { data, error } = await supabase
@@ -180,6 +211,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // Fetch all data
     Promise.all([
+      ensureUserExists(),
       fetchPracticeSessions(),
       fetchRepertoire(),
       fetchGoals()
