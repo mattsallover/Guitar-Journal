@@ -172,7 +172,9 @@ export const NoteFinder: React.FC = () => {
         } else {
             // For specific modes, use all notes
             notes = shuffle([...ALL_NOTES].slice(0, numQuestions)) as Note[];
-        const sequence: QuizQuestion[] = notes.map(note => {
+        }
+        
+        sequence = notes.map(note => {
             let promptType: QuizPromptType;
             
             if (mode === 'combo') {
