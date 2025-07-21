@@ -167,7 +167,6 @@ export const LiveSession: React.FC = () => {
             };
             
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            });
             setMediaStream(stream);
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
@@ -415,9 +414,6 @@ export const LiveSession: React.FC = () => {
                                     📋 Load from Playlist
                                 </button>
                             </div>
-                            <label className="block text-sm font-medium text-text-secondary mb-2">
-                                YouTube URL
-                            </label>
                             <input
                                 type="url"
                                 value={youtubeUrl}
