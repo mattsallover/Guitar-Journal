@@ -12,6 +12,8 @@ import { supabase } from '../services/supabase';
 import { compressVideo, generateVideoThumbnail, compressImage, formatFileSize } from '../utils/mediaUtils';
 import { getAccuracyLabel, getScoreColor, formatTime } from '../utils/cagedUtils';
 
+// Import CAGEDSession type
+import type { CAGEDSession } from '../types';
 
 const moodIcons: Record<Mood, string> = {
     [Mood.Excellent]: '😊',
@@ -21,7 +23,8 @@ const moodIcons: Record<Mood, string> = {
     [Mood.Frustrated]: '😠',
 };
 
-// Filter types
+// View types and filter types
+type ViewMode = 'cards' | 'compact';
 type FilterType = 'all' | 'practice' | 'caged' | 'with-videos' | Mood;
 
 interface FilterPillProps {
@@ -33,15 +36,180 @@ interface FilterPillProps {
 const FilterPill: React.FC<FilterPillProps> = ({ active, onClick, children }) => (
     <button
         onClick={onClick}
-        className={`px-3 py-1 rounded-full text-sm transition-colors ${
+        className={`px-2 py-1 rounded-full text-xs transition-all hover:scale-105 ${
             active 
-                ? 'bg-primary text-white' 
+                ? 'bg-primary text-white shadow-md' 
                 : 'bg-surface hover:bg-border text-text-secondary hover:text-text-primary'
         }`}
     >
         {children}
     </button>
 );
+
+// Compact row component
+interface CompactRowProps {
+    activity: ActivityItem;
+    isExpanded: boolean;
+    onToggleExpand: () => void;
+    onEdit?: () => void;
+    onDelete?: () => void;
+}
+
+const CompactRow: React.FC<CompactRowProps> = ({ activity, isExpanded, onToggleExpand, onEdit, onDelete }) => {
+    const isPractice = activity.type === 'practice';
+    const session = activity.data as PracticeSession;
+    const cagedSession = activity.data as CAGEDSession;
+    
+    return (
+        <div className="border-b border-border last:border-b-0 hover:bg-background/30 transition-colors">
+            {/* Main row */}
+            <div className="px-4 py-2 cursor-pointer" onClick={onToggleExpand}>
+                <div className="grid grid-cols-12 gap-3 items-center text-sm">
+                    {/* Date */}
+                    <div className="col-span-2">
+                        <div className="font-semibold text-text-primary">
+                            {new Date(activity.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </div>
+                        <div className="text-xs text-text-secondary">
+                            {new Date(activity.date).getFullYear()}
+                        </div>
+                    </div>
+                    
+                    {/* Duration & Type */}
+                    <div className="col-span-1">
+                        {isPractice ? (
+                            <span className="font-medium">{session.duration}m</span>
+                        ) : (
+                            <span className="text-xs text-primary font-medium">CAGED</span>
+                        )}
+                    </div>
+                    
+                    {/* Mood/Score */}
+                    <div className="col-span-1">
+                        {isPractice ? (
+                            <span className="text-lg" title={session.mood}>{moodIcons[session.mood]}</span>
+                        ) : (
+                            <span className={`text-xs font-bold ${getScoreColor(cagedSession.score)}`}>
+                                {cagedSession.score}
+                            </span>
+                        )}
+                    </div>
+                    
+                    {/* Content tags */}
+                    <div className="col-span-5">
+                        <div className="flex gap-1 flex-wrap">
+                            {isPractice ? (
+                                <>
+                                    {session.songs.slice(0, 2).map(s => (
+                                        <span key={s} className="bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded-full text-xs">{s}</span>
+                                    ))}
+                                    {session.techniques.slice(0, 2).map(t => (
+                                        <span key={t} className="bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded-full text-xs">{t}</span>
+                                    ))}
+                                    {((session.songs?.length || 0) + (session.techniques?.length || 0)) > 4 && (
+                                        <span className="text-text-secondary text-xs">+{((session.songs?.length || 0) + (session.techniques?.length || 0)) - 4}</span>
+                                    )}
+                                </>
+                            ) : (
+                                cagedSession.shapes.map(shape => (
+                                    <span key={shape} className="bg-primary/20 text-primary px-1.5 py-0.5 rounded-full text-xs">{shape}</span>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                    
+                    {/* Media indicators */}
+                    <div className="col-span-2 flex items-center gap-2">
+                        {isPractice && session.recordings?.length > 0 && (
+                            <div className="flex items-center gap-1">
+                                {session.recordings.some(r => r.type === 'video') && <span title="Has video">📹</span>}
+                                {session.recordings.some(r => r.type === 'audio') && <span title="Has audio">🎵</span>}
+                                <span className="text-xs text-text-secondary">{session.recordings.length}</span>
+                            </div>
+                        )}
+                        {isPractice && session.link && (
+                            <span title="Has link">🔗</span>
+                        )}
+                    </div>
+                    
+                    {/* Expand arrow */}
+                    <div className="col-span-1 text-right">
+                        <svg className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            
+            {/* Expanded details */}
+            {isExpanded && (
+                <div className="px-4 pb-3 bg-background/50">
+                    <div className="pt-2 border-t border-border/50">
+                        {isPractice ? (
+                            <div className="space-y-2">
+                                {session.notes && (
+                                    <p className="text-sm text-text-primary whitespace-pre-wrap">{session.notes}</p>
+                                )}
+                                
+                                {session.recordings && session.recordings.length > 0 && (
+                                    <div>
+                                        <h4 className="text-xs font-semibold text-text-secondary mb-2">Media</h4>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {session.recordings.map(rec => (
+                                                <div key={rec.id} className="space-y-1">
+                                                    <p className="text-xs text-text-primary truncate">{rec.name}</p>
+                                                    {rec.type === 'video' ? (
+                                                        <video controls src={rec.url} className="w-full h-16 object-cover rounded border border-border"></video>
+                                                    ) : (
+                                                        <audio controls src={rec.url} className="w-full h-8"></audio>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {session.link && (
+                                    <div>
+                                        <a href={session.link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm">
+                                            📎 View linked resource
+                                        </a>
+                                    </div>
+                                )}
+                                
+                                <div className="flex gap-2 pt-2">
+                                    {onEdit && (
+                                        <button onClick={onEdit} className="text-xs text-primary hover:underline">✏️ Edit</button>
+                                    )}
+                                    {onDelete && (
+                                        <button onClick={onDelete} className="text-xs text-red-400 hover:underline">🗑️ Delete</button>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div>
+                                <div className="grid grid-cols-3 gap-4 text-sm mb-2">
+                                    <div>
+                                        <span className="text-text-secondary">Time:</span> {formatTime(cagedSession.timeSeconds)}
+                                    </div>
+                                    <div>
+                                        <span className="text-text-secondary">Accuracy:</span> {getAccuracyLabel(cagedSession.accuracy)}
+                                    </div>
+                                    <div>
+                                        <span className="text-text-secondary">Score:</span> <span className={getScoreColor(cagedSession.score)}>{cagedSession.score}/100</span>
+                                    </div>
+                                </div>
+                                {cagedSession.notes && (
+                                    <p className="text-sm text-text-primary">{cagedSession.notes}</p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 // Combined activity type for unified display
 interface ActivityItem {
@@ -66,7 +234,7 @@ export const PracticeLog: React.FC = () => {
     const [newRecordings, setNewRecordings] = useState<File[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeFilters, setActiveFilters] = useState<FilterType[]>(['all']);
-    const [isCompactView, setIsCompactView] = useState(false);
+    const [viewMode, setViewMode] = useState<ViewMode>('compact');
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [isSaving, setIsSaving] = useState(false);
     const [goalToUpdate, setGoalToUpdate] = useState<Goal | null>(null);
@@ -81,6 +249,7 @@ export const PracticeLog: React.FC = () => {
     }[]>([]);
     const [isUploading, setIsUploading] = useState(false);
 
+    const [filtersCollapsed, setFiltersCollapsed] = useState(true);
 
     const repertoireTitles = useMemo(() => state.repertoire.map(r => r.title), [state.repertoire]);
     const allTechniques = useMemo(() => {
@@ -99,7 +268,6 @@ export const PracticeLog: React.FC = () => {
                 duration: duration || 30,
                 mood: Mood.Okay,
                 songs: isSong ? [topic] : [],
-                techniques: !isSong ? [topic] : [],
                 techniques: !isSong ? [topic] : [],
                 notes: notes || '',
                 recordings: [],
@@ -646,392 +814,274 @@ export const PracticeLog: React.FC = () => {
 
     return (
         <div className="p-8">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold">Practice Log</h1>
-                <button onClick={() => openModal()} className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md">
-                    + Log Session
-                </button>
+            {/* Header with actions */}
+            <div className="flex justify-between items-center mb-4">
+                <h1 className="text-2xl font-bold">Practice Log</h1>
+                <div className="flex items-center gap-3">
+                    <div className="flex bg-surface rounded-md p-1">
+                        <button
+                            onClick={() => setViewMode('compact')}
+                            className={`px-3 py-1 rounded text-sm transition-all ${
+                                viewMode === 'compact' ? 'bg-primary text-white' : 'hover:bg-border'
+                            }`}
+                        >
+                            📋 List
+                        </button>
+                        <button
+                            onClick={() => setViewMode('cards')}
+                            className={`px-3 py-1 rounded text-sm transition-all ${
+                                viewMode === 'cards' ? 'bg-primary text-white' : 'hover:bg-border'
+                            }`}
+                        >
+                            🃏 Cards
+                        </button>
+                    </div>
+                    <button onClick={() => openModal()} className="bg-primary hover:bg-primary-hover text-white font-semibold py-2 px-4 rounded-md transition-all hover:scale-105">
+                        + Log Session
+                    </button>
+                </div>
             </div>
             
-            {/* Summary Statistics Bar */}
-            <div className="bg-surface p-4 rounded-lg mb-6">
-                <div className="flex flex-wrap items-center gap-6">
-                    <div className="flex items-center space-x-2" title="Consecutive days with practice">
-                        <span className="text-2xl">🗓️</span>
-                        <div>
-                            <div className="font-bold text-lg">{summaryStats.streak}d</div>
-                            <div className="text-xs text-text-secondary">Streak</div>
-                        </div>
-                    </div>
-                    <div className="flex items-center space-x-2" title="Total practice time this week">
-                        <span className="text-2xl">⏱️</span>
-                        <div>
-                            <div className="font-bold text-lg">{summaryStats.thisWeekMinutes}m</div>
-                            <div className="text-xs text-text-secondary">This Week</div>
-                        </div>
-                    </div>
-                    <div className="flex items-center space-x-2" title="Average mood this week">
-                        <span className="text-2xl">⭐</span>
-                        <div>
-                            <div className="font-bold text-lg">{summaryStats.avgMoodIcon}</div>
-                            <div className="text-xs text-text-secondary">Avg Mood</div>
-                        </div>
-                    </div>
-                    {summaryStats.avgCAGEDScore && (
-                        <div className="flex items-center space-x-2" title="Average CAGED score this week">
-                            <span className="text-2xl">🎯</span>
+            {/* Compact Summary Statistics */}
+            <div className="bg-surface/50 p-3 rounded-lg mb-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-2" title="Consecutive days with practice">
+                            <span className="text-lg">🗓️</span>
                             <div>
-                                <div className="font-bold text-lg">{summaryStats.avgCAGEDScore}/100</div>
-                                <div className="text-xs text-text-secondary">CAGED Avg</div>
+                                <div className="font-bold text-sm">{summaryStats.streak}d</div>
+                                <div className="text-xs text-text-secondary">Streak</div>
                             </div>
+                        </div>
+                        <div className="flex items-center gap-2" title="Total practice time this week">
+                            <span className="text-lg">⏱️</span>
+                            <div>
+                                <div className="font-bold text-sm">{summaryStats.thisWeekMinutes}m</div>
+                                <div className="text-xs text-text-secondary">This Week</div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2" title="Average mood this week">
+                            <span className="text-lg">⭐</span>
+                            <div>
+                                <div className="font-bold text-sm">{summaryStats.avgMoodIcon}</div>
+                                <div className="text-xs text-text-secondary">Avg Mood</div>
+                            </div>
+                        </div>
+                        {summaryStats.avgCAGEDScore && (
+                            <div className="flex items-center gap-2" title="Average CAGED score this week">
+                                <span className="text-lg">🎯</span>
+                                <div>
+                                    <div className="font-bold text-sm">{summaryStats.avgCAGEDScore}/100</div>
+                                    <div className="text-xs text-text-secondary">CAGED</div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    
+                    <div className="text-right">
+                        <div className="text-sm font-semibold text-text-primary">{allActivities.length} sessions</div>
+                        <div className="text-xs text-text-secondary">Total logged</div>
+                    </div>
+                </div>
+            </div>
+            
+            {/* Sticky Search and Filters */}
+            <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-4">
+                <div className="space-y-3">
+                    <input
+                        type="text"
+                        placeholder="🔍 Search sessions..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full bg-surface p-3 rounded-md border border-border focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                    />
+                    
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <button
+                                onClick={() => setFiltersCollapsed(!filtersCollapsed)}
+                                className="text-sm text-text-secondary hover:text-text-primary transition-colors"
+                            >
+                                Filters {activeFilters.filter(f => f !== 'all').length > 0 && `(${activeFilters.filter(f => f !== 'all').length})`} {filtersCollapsed ? '▼' : '▲'}
+                            </button>
+                        </div>
+                        
+                        {!filtersCollapsed && (
+                            <div className="text-xs text-text-secondary">
+                                {allActivities.length} of {[...state.practiceSessions, ...state.cagedSessions].length} sessions
+                            </div>
+                        )}
+                    </div>
+                    
+                    {!filtersCollapsed && (
+                        <div className="flex flex-wrap items-center gap-2">
+                            <FilterPill active={activeFilters.includes('all')} onClick={() => toggleFilter('all')}>
+                                All
+                            </FilterPill>
+                            <FilterPill active={activeFilters.includes('practice')} onClick={() => toggleFilter('practice')}>
+                                📝 Practice
+                            </FilterPill>
+                            <FilterPill active={activeFilters.includes('caged')} onClick={() => toggleFilter('caged')}>
+                                🎯 CAGED
+                            </FilterPill>
+                            <FilterPill active={activeFilters.includes('with-videos')} onClick={() => toggleFilter('with-videos')}>
+                                📹 Videos
+                            </FilterPill>
+                            <div className="w-px h-4 bg-border mx-1"></div>
+                            <FilterPill active={activeFilters.includes(Mood.Excellent)} onClick={() => toggleFilter(Mood.Excellent)}>
+                                😊
+                            </FilterPill>
+                            <FilterPill active={activeFilters.includes(Mood.Good)} onClick={() => toggleFilter(Mood.Good)}>
+                                🙂
+                            </FilterPill>
+                            <FilterPill active={activeFilters.includes(Mood.Okay)} onClick={() => toggleFilter(Mood.Okay)}>
+                                😐
+                            </FilterPill>
+                            <FilterPill active={activeFilters.includes(Mood.Challenging)} onClick={() => toggleFilter(Mood.Challenging)}>
+                                😕
+                            </FilterPill>
+                            <FilterPill active={activeFilters.includes(Mood.Frustrated)} onClick={() => toggleFilter(Mood.Frustrated)}>
+                                😠
+                            </FilterPill>
                         </div>
                     )}
                 </div>
             </div>
-            
-            {/* Search and Filters */}
-            <div className="space-y-4 mb-6">
-                <input
-                    type="text"
-                    placeholder="Search sessions..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-surface p-2 rounded-md border border-border"
-                />
-                
-                <div className="flex flex-wrap items-center gap-2">
-                    <FilterPill active={activeFilters.includes('all')} onClick={() => toggleFilter('all')}>
-                        All
-                    </FilterPill>
-                    <FilterPill active={activeFilters.includes('practice')} onClick={() => toggleFilter('practice')}>
-                        Practice Sessions
-                    </FilterPill>
-                    <FilterPill active={activeFilters.includes('caged')} onClick={() => toggleFilter('caged')}>
-                        CAGED
-                    </FilterPill>
-                    <FilterPill active={activeFilters.includes('with-videos')} onClick={() => toggleFilter('with-videos')}>
-                        With Videos
-                    </FilterPill>
-                    <FilterPill active={activeFilters.includes(Mood.Excellent)} onClick={() => toggleFilter(Mood.Excellent)}>
-                        😊 Excellent
-                    </FilterPill>
-                    <FilterPill active={activeFilters.includes(Mood.Good)} onClick={() => toggleFilter(Mood.Good)}>
-                        🙂 Good
-                    </FilterPill>
-                    <FilterPill active={activeFilters.includes(Mood.Okay)} onClick={() => toggleFilter(Mood.Okay)}>
-                        😐 Okay
-                    </FilterPill>
-                    
-                    <div className="ml-auto">
-                        <button
-                            onClick={() => setIsCompactView(!isCompactView)}
-                            className="px-3 py-1 bg-surface hover:bg-border rounded-md text-sm transition-colors"
-                        >
-                            {isCompactView ? 'Detailed View' : 'Compact View'}
-                        </button>
-                    </div>
-                </div>
-            </div>
 
-            {/* Activities Display */}
-            {isCompactView ? (
+            {/* Content based on view mode */}
+            {viewMode === 'compact' ? (
                 <div className="bg-surface rounded-lg overflow-hidden">
-                    {/* Compact Table Header */}
+                    {/* Table header */}
                     <div className="bg-background px-4 py-3 border-b border-border">
-                        <div className="grid grid-cols-12 gap-4 text-sm font-medium text-text-secondary">
+                        <div className="grid grid-cols-12 gap-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                             <div className="col-span-2">Date</div>
-                            <div className="col-span-1">Dur</div>
+                            <div className="col-span-1">Duration</div>
                             <div className="col-span-1">Mood</div>
-                            <div className="col-span-4">Content</div>
-                            <div className="col-span-2">Score</div>
-                            <div className="col-span-2"></div>
+                            <div className="col-span-5">Content</div>
+                            <div className="col-span-2">Media</div>
+                            <div className="col-span-1"></div>
                         </div>
                     </div>
                     
-                    {/* Compact Rows */}
-                    <div className="max-h-96 overflow-y-auto">
-                        {allActivities.map(activity => {
-                            const isExpanded = expandedRows.has(activity.id);
-                            return (
-                                <div key={activity.id} className="border-b border-border last:border-b-0">
-                                    {/* Compact Row */}
-                                    <div className="px-4 py-3 hover:bg-background/50 transition-colors">
-                                        <div className="grid grid-cols-12 gap-4 items-center text-sm">
-                                            <div className="col-span-2 font-medium">
-                                                {new Date(activity.date).toLocaleDateString('en-CA')}
-                                            </div>
-                                            
-                                            {activity.type === 'practice' ? (
-                                                <>
-                                                    <div className="col-span-1">{(activity.data as PracticeSession).duration}m</div>
-                                                    <div className="col-span-1">{moodIcons[(activity.data as PracticeSession).mood]}</div>
-                                                    <div className="col-span-4 truncate">
-                                                        <div className="flex gap-1 flex-wrap">
-                                                            {(activity.data as PracticeSession).songs.slice(0, 2).map(s => (
-                                                                <span key={s} className="bg-blue-500/20 text-blue-300 px-1 rounded text-xs">{s}</span>
-                                                            ))}
-                                                            {(activity.data as PracticeSession).techniques.slice(0, 2).map(t => (
-                                                                <span key={t} className="bg-indigo-500/20 text-indigo-300 px-1 rounded text-xs">{t}</span>
-                                                            ))}
-                                                            {((activity.data as PracticeSession).songs.length + (activity.data as PracticeSession).techniques.length) > 4 && (
-                                                                <span className="text-text-secondary text-xs">+{((activity.data as PracticeSession).songs.length + (activity.data as PracticeSession).techniques.length) - 4} more</span>
-                                                            )}
-                                                        </div>
+                    {/* Compact rows */}
+                    <div className="max-h-[70vh] overflow-y-auto">
+                        {allActivities.map(activity => (
+                            <CompactRow
+                                key={activity.id}
+                                activity={activity}
+                                isExpanded={expandedRows.has(activity.id)}
+                                onToggleExpand={() => toggleRowExpansion(activity.id)}
+                                onEdit={activity.type === 'practice' ? () => openModal(activity.data as PracticeSession) : undefined}
+                                onDelete={activity.type === 'practice' ? () => handleDelete(activity.data as PracticeSession) : undefined}
+                            />
+                        ))}
+                    </div>
+                </div>
+            ) : (
+                /* Cards View - Improved */
+                <div className="space-y-6">
+                    {groupedActivities.map(group => (
+                        <div key={group.month}>
+                            <div className="sticky top-20 bg-background/90 backdrop-blur-sm border-b border-border px-2 py-2 mb-4 z-10">
+                                <h2 className="text-lg font-bold text-text-primary">{group.month}</h2>
+                            </div>
+                            
+                            {/* Fixed-height card grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {group.items.map(activity => (
+                                    <div key={activity.id} className="bg-surface rounded-lg p-4 group relative h-48 flex flex-col">
+                                        {activity.type === 'practice' ? (
+                                            <>
+                                                {/* Card Header */}
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div className="flex-1">
+                                                        <p className="font-semibold text-text-primary">
+                                                            {new Date(activity.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • {(activity.data as PracticeSession).duration}m
+                                                        </p>
+                                                        <p className="text-sm text-text-secondary flex items-center gap-1">
+                                                            {moodIcons[(activity.data as PracticeSession).mood]} {(activity.data as PracticeSession).mood}
+                                                        </p>
                                                     </div>
-                                                    <div className="col-span-2">
-                                                        {(activity.data as PracticeSession).recordings.length > 0 && (
-                                                            <span className="text-xs text-text-secondary">📹 {(activity.data as PracticeSession).recordings.length} files</span>
-                                                        )}
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <div className="col-span-1">{formatTime((activity.data as CAGEDSession).timeSeconds)}</div>
-                                                    <div className="col-span-1">🎯</div>
-                                                    <div className="col-span-4">
-                                                        <div className="flex gap-1">
-                                                            {(activity.data as CAGEDSession).shapes.map(shape => (
-                                                                <span key={shape} className="bg-primary/20 text-primary px-1 rounded text-xs">{shape}</span>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                    <div className="col-span-2">
-                                                        <span className={`font-bold ${getScoreColor((activity.data as CAGEDSession).score)}`}>
-                                                            CAGED {(activity.data as CAGEDSession).score}/100
-                                                        </span>
-                                                    </div>
-                                                </>
-                                            )}
-                                            
-                                            <div className="col-span-2 flex items-center justify-end space-x-2">
-                                                <button
-                                                    onClick={() => toggleRowExpansion(activity.id)}
-                                                    className="p-1 hover:bg-border rounded transition-colors"
-                                                    title={isExpanded ? 'Collapse' : 'Expand'}
-                                                >
-                                                    <svg className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
-                                                    </svg>
-                                                </button>
-                                                
-                                                {activity.type === 'practice' && (
-                                                    <div className="opacity-0 group-hover:opacity-100 flex space-x-1 transition-opacity">
+                                                    
+                                                    {/* Hover Actions */}
+                                                    <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
                                                         <button
                                                             onClick={() => openModal(activity.data as PracticeSession)}
-                                                            className="p-1 hover:bg-border rounded transition-colors"
+                                                            className="p-1 hover:bg-border rounded text-sm"
                                                             title="Edit"
                                                         >
                                                             ✏️
                                                         </button>
                                                         <button
                                                             onClick={() => handleDelete(activity.data as PracticeSession)}
-                                                            className="p-1 hover:bg-border rounded transition-colors"
+                                                            className="p-1 hover:bg-border rounded text-sm"
                                                             title="Delete"
                                                         >
                                                             🗑️
                                                         </button>
                                                     </div>
+                                                </div>
+                                                
+                                                {/* Content Tags */}
+                                                <div className="flex-1">
+                                                    <div className="flex flex-wrap gap-1 mb-2">
+                                                        {(activity.data as PracticeSession).songs.slice(0, 3).map(s => (
+                                                            <span key={s} className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full text-xs">{s}</span>
+                                                        ))}
+                                                        {(activity.data as PracticeSession).techniques.slice(0, 2).map(t => (
+                                                            <span key={t} className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded-full text-xs">{t}</span>
+                                                        ))}
+                                                    </div>
+                                                    
+                                                    {(activity.data as PracticeSession).notes && (
+                                                        <p className="text-xs text-text-secondary line-clamp-2">
+                                                            {(activity.data as PracticeSession).notes}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                
+                                                {/* Media Strip */}
+                                                {(activity.data as PracticeSession).recordings && (activity.data as PracticeSession).recordings.length > 0 && (
+                                                    <div className="mt-auto">
+                                                        <div className="h-12 bg-background rounded border border-border/50 flex items-center justify-center gap-2">
+                                                            {(activity.data as PracticeSession).recordings.some(r => r.type === 'video') && (
+                                                                <span className="text-lg" title="Has video recordings">📹</span>
+                                                            )}
+                                                            {(activity.data as PracticeSession).recordings.some(r => r.type === 'audio') && (
+                                                                <span className="text-lg" title="Has audio recordings">🎵</span>
+                                                            )}
+                                                            <span className="text-xs text-text-secondary">
+                                                                {(activity.data as PracticeSession).recordings.length} files
+                                                            </span>
+                                                        </div>
+                                                    </div>
                                                 )}
-                                                <Link to={`/progression?focus=${encodeURIComponent(session.songs[0] || session.techniques[0] || 'session')}`} className="text-secondary hover:text-indigo-300" title="View progression">📊</Link>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    {/* Expanded Details */}
-                                    {isExpanded && (
-                                        <div className="px-4 py-3 bg-background/30 border-t border-border">
-                                            {activity.type === 'practice' ? (
-                                                <div className="space-y-3">
-                                                    {(activity.data as PracticeSession).notes && (
-                                                        <p className="text-text-primary whitespace-pre-wrap">{(activity.data as PracticeSession).notes}</p>
-                                                    )}
-                                                    
-                                                    {(activity.data as PracticeSession).recordings.length > 0 && (
-                                                        <div>
-                                                            <h4 className="font-semibold text-text-secondary text-sm mb-2">Recordings:</h4>
-                                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                                                {(activity.data as PracticeSession).recordings.map(rec => (
-                                                                    <div key={rec.id} className="space-y-2">
-                                                                        <p className="text-xs text-text-primary truncate">{rec.name}</p>
-                                                                        {rec.type === 'video' && rec.thumbnailUrl ? (
-                                                                            <img 
-                                                                                src={rec.thumbnailUrl} 
-                                                                                alt={`${rec.name} thumbnail`}
-                                                                                className="w-full h-16 object-cover rounded border border-border cursor-pointer hover:opacity-80"
-                                                                                onClick={() => {
-                                                                                    const video = document.createElement('video');
-                                                                                    video.src = rec.url;
-                                                                                    video.controls = true;
-                                                                                    video.className = 'max-w-full max-h-96';
-                                                                                    
-                                                                                    const modal = document.createElement('div');
-                                                                                    modal.className = 'fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4';
-                                                                                    modal.onclick = () => modal.remove();
-                                                                                    modal.appendChild(video);
-                                                                                    document.body.appendChild(modal);
-                                                                                }}
-                                                                            />
-                                                                        ) : (
-                                                                            <div className="w-full h-16 bg-surface rounded border border-border flex items-center justify-center">
-                                                                                {rec.type === 'audio' ? '🎵' : '📹'}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <div>
-                                                    {(activity.data as CAGEDSession).notes && (
-                                                        <p className="text-text-primary text-sm">{(activity.data as CAGEDSession).notes}</p>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            ) : (
-                /* Detailed View with Monthly Groups */
-                <div className="space-y-8">
-                    {groupedActivities.map(group => (
-                        <div key={group.month}>
-                            {/* Sticky Month Header */}
-                            <div className="sticky top-0 bg-background border-b border-border px-4 py-2 mb-4 z-10">
-                                <h2 className="text-xl font-bold text-text-primary">{group.month}</h2>
-                            </div>
-                            
-                            {/* Grid Layout for Older Entries */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {group.items.map(activity => (
-                                    <div key={activity.id} className="bg-surface p-4 rounded-lg group relative">
-                                        {activity.type === 'practice' ? (
-                                            <>
-                                                {/* Hover Actions */}
-                                                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 flex space-x-2 transition-opacity">
-                                                    <button
-                                                        onClick={() => openModal(activity.data as PracticeSession)}
-                                                        className="p-2 hover:bg-border rounded transition-colors"
-                                                        title="Edit"
-                                                    >
-                                                        ✏️
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDelete(activity.data as PracticeSession)}
-                                                        className="p-2 hover:bg-border rounded transition-colors"
-                                                        title="Delete"
-                                                    >
-                                                        🗑️
-                                                    </button>
-                                                </div>
-                                                
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <div>
-                                                        <p className="text-lg font-semibold">{new Date(activity.date).toLocaleDateString('en-CA')} - {(activity.data as PracticeSession).duration} min</p>
-                                                        <p className="text-text-secondary">{moodIcons[(activity.data as PracticeSession).mood]} {(activity.data as PracticeSession).mood}</p>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div className="space-y-3">
-                                                    {(activity.data as PracticeSession).notes && (
-                                                        <p className="text-text-primary whitespace-pre-wrap">{(activity.data as PracticeSession).notes}</p>
-                                                    )}
-                                                    
-                                                    <div className="flex flex-wrap gap-2 text-sm">
-                                                        {(activity.data as PracticeSession).songs.map(s => (
-                                                            <Link to={`/progression?focus=${encodeURIComponent(s)}`} key={s} className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full hover:bg-blue-500/40 transition-colors">{s}</Link>
-                                                        ))}
-                                                        {(activity.data as PracticeSession).techniques.map(t => (
-                                                            <Link to={`/progression?focus=${encodeURIComponent(t)}`} key={t} className="bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-full hover:bg-indigo-500/40 transition-colors">{t}</Link>
-                                                        ))}
-                                                        {(activity.data as PracticeSession).tags.map(t => (
-                                                            <span key={t} className="bg-gray-500/20 text-gray-300 px-2 py-1 rounded-full">{t}</span>
-                                                        ))}
-                                                    </div>
-                                                    
-                                                    {(activity.data as PracticeSession).recordings.length > 0 && (
-                                                        <div>
-                                                            <h4 className="font-semibold text-text-secondary text-sm mb-2">Recordings:</h4>
-                                                            <div className="grid grid-cols-2 gap-2">
-                                                                {(activity.data as PracticeSession).recordings.map(rec => (
-                                                                    <div key={rec.id} className="space-y-1">
-                                                                        <p className="text-xs text-text-primary truncate">{rec.name}</p>
-                                                                        
-                                                                        {rec.type === 'video' && rec.thumbnailUrl ? (
-                                                                            <img 
-                                                                                src={rec.thumbnailUrl} 
-                                                                                alt={`${rec.name} thumbnail`}
-                                                                                className="w-full h-20 object-cover rounded border border-border cursor-pointer hover:opacity-80"
-                                                                                onClick={() => {
-                                                                                    const video = document.createElement('video');
-                                                                                    video.src = rec.url;
-                                                                                    video.controls = true;
-                                                                                    video.className = 'max-w-full max-h-96';
-                                                                                    
-                                                                                    const modal = document.createElement('div');
-                                                                                    modal.className = 'fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4';
-                                                                                    modal.onclick = () => modal.remove();
-                                                                                    modal.appendChild(video);
-                                                                                    document.body.appendChild(modal);
-                                                                                }}
-                                                                            />
-                                                                        ) : rec.type === 'audio' ? (
-                                                                            <audio controls src={rec.url} className="w-full h-8"></audio>
-                                                                        ) : (
-                                                                            <video controls src={rec.url} className="w-full max-h-32 rounded-md border border-border"></video>
-                                                                        )}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
                                             </>
                                         ) : (
                                             <>
-                                                {/* Hover Actions for CAGED */}
-                                                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 flex space-x-2 transition-opacity">
-                                                    <Link to="/tools/caged" className="p-2 hover:bg-border rounded transition-colors" title="View in Explorer">
-                                                        📊
-                                                    </Link>
+                                                {/* CAGED Card */}
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div>
+                                                        <h3 className="font-semibold text-text-primary">
+                                                            {new Date(activity.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • CAGED
+                                                        </h3>
+                                                        <div className={`text-lg font-bold ${getScoreColor((activity.data as CAGEDSession).score)}`}>
+                                                            {(activity.data as CAGEDSession).score}/100
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center space-x-3 mb-2">
-                                                            <h3 className="text-lg font-semibold">
-                                                                {new Date(activity.date).toLocaleDateString('en-CA')} - CAGED Session
-                                                            </h3>
-                                                            <div className={`text-lg font-bold ${getScoreColor((activity.data as CAGEDSession).score)}`}>
-                                                                {(activity.data as CAGEDSession).score}/100
-                                                            </div>
-                                                            <div className="text-text-secondary">
-                                                                {formatTime((activity.data as CAGEDSession).timeSeconds)}
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        <div className="flex items-center space-x-4 mb-2">
-                                                            <div className="flex space-x-1">
-                                                                <span className="text-sm text-text-secondary">Shapes:</span>
-                                                                {(activity.data as CAGEDSession).shapes.map(shape => (
-                                                                    <span key={shape} className="bg-primary/20 text-primary px-2 py-1 rounded text-sm">
-                                                                        {shape}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                            <div className="text-sm text-text-secondary">
-                                                                {getAccuracyLabel((activity.data as CAGEDSession).accuracy)}
-                                                            </div>
-                                                        </div>
-
-                                                        {(activity.data as CAGEDSession).notes && (
-                                                            <p className="text-text-primary text-sm">{(activity.data as CAGEDSession).notes}</p>
-                                                        )}
+                                                <div className="flex-1">
+                                                    <div className="flex gap-1 mb-2">
+                                                        {(activity.data as CAGEDSession).shapes.map(shape => (
+                                                            <span key={shape} className="bg-primary/20 text-primary px-2 py-1 rounded text-xs">
+                                                                {shape}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                    
+                                                    <div className="text-xs text-text-secondary">
+                                                        {formatTime((activity.data as CAGEDSession).timeSeconds)} • {getAccuracyLabel((activity.data as CAGEDSession).accuracy)}
                                                     </div>
                                                 </div>
                                             </>
@@ -1043,20 +1093,28 @@ export const PracticeLog: React.FC = () => {
                     ))}
                 </div>
             )}
-
+            
+            {/* Empty states */}
             {allActivities.length === 0 && searchTerm && (
-                <div className="text-center p-8 bg-surface rounded-lg">
-                    <p className="text-text-secondary">No sessions found matching "{searchTerm}"</p>
+                <div className="text-center p-12 bg-surface rounded-lg">
+                    <div className="text-4xl mb-4">🔍</div>
+                    <h3 className="text-lg font-semibold mb-2">No matches found</h3>
+                    <p className="text-text-secondary">No sessions found for "{searchTerm}"</p>
                 </div>
             )}
 
-            {allActivities.length === 0 && !searchTerm && (
-                <div className="text-center p-8 bg-surface rounded-lg">
-                    <h2 className="text-xl font-bold mb-2">No Practice Sessions Yet</h2>
-                    <p className="text-text-secondary">Start logging your practice to see your progress!</p>
+            {allActivities.length === 0 && !searchTerm && !activeFilters.some(f => f !== 'all') && (
+                <div className="text-center p-12 bg-surface rounded-lg">
+                    <div className="text-4xl mb-4">📝</div>
+                    <h3 className="text-xl font-semibold mb-2">Start Your Practice Journey</h3>
+                    <p className="text-text-secondary mb-4">Log your first practice session to begin tracking your progress!</p>
+                    <button onClick={() => openModal()} className="bg-primary hover:bg-primary-hover text-white font-semibold py-2 px-6 rounded-md transition-all hover:scale-105">
+                        + Log Your First Session
+                    </button>
                 </div>
             )}
 
+            {/* Session Modal */}
             {isModalOpen && currentSession && (
                 <Modal isOpen={isModalOpen} onClose={closeModal} title={currentSession.id ? "Edit Session" : "Log New Session"}>
                     <div className="space-y-4">
@@ -1096,27 +1154,42 @@ export const PracticeLog: React.FC = () => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-text-secondary">Notes</label>
-                            <textarea value={currentSession.notes} onChange={e => setCurrentSession({ ...currentSession, notes: e.target.value })} className="w-full bg-background p-2 rounded-md border border-border h-24"></textarea>
+                            <textarea 
+                                value={currentSession.notes} 
+                                onChange={e => setCurrentSession({ ...currentSession, notes: e.target.value })} 
+                                placeholder="What did you work on? Any breakthroughs or challenges?"
+                                className="w-full bg-background p-3 rounded-md border border-border h-24 focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                            />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-text-secondary">Hyperlink (e.g., Google Sheet)</label>
+                            <label className="block text-sm font-medium text-text-secondary">Resource Link</label>
                             <input
                                 type="url"
-                                placeholder="https://..."
+                                placeholder="Link to lesson, sheet music, etc..."
                                 value={currentSession.link || ''}
                                 onChange={e => setCurrentSession({ ...currentSession, link: e.target.value })}
-                                className="w-full bg-background p-2 rounded-md border border-border"
+                                className="w-full bg-background p-3 rounded-md border border-border focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                             />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-text-secondary">Media Attachments (Audio/Video)</label>
-                            <input type="file" multiple accept="audio/*,video/*" onChange={handleFileChange} className="w-full bg-background p-2 rounded-md border border-border" />
+                            <input 
+                                type="file" 
+                                multiple 
+                                accept="audio/*,video/*" 
+                                onChange={handleFileChange} 
+                                className="w-full bg-background p-3 rounded-md border border-border focus:ring-2 focus:ring-primary focus:border-transparent transition-all file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-primary file:text-white hover:file:bg-primary-hover file:transition-colors"
+                            />
                             {newRecordings.length > 0 && (
-                                <div className="mt-2 space-y-1">
+                                <div className="mt-3 space-y-2">
+                                    <p className="text-xs font-medium text-text-secondary">Selected files:</p>
                                     {newRecordings.map((file, index) => (
-                                        <div key={index} className="text-sm text-text-secondary flex justify-between items-center">
-                                            <span>{file.name}</span>
-                                            <span className="text-xs">{formatFileSize(file.size)}</span>
+                                        <div key={index} className="flex justify-between items-center bg-background p-2 rounded border border-border/50">
+                                            <span className="text-sm font-medium flex items-center gap-2">
+                                                {file.type.startsWith('video') ? '📹' : '🎵'}
+                                                {file.name}
+                                            </span>
+                                            <span className="text-xs text-text-secondary">{formatFileSize(file.size)}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -1124,11 +1197,11 @@ export const PracticeLog: React.FC = () => {
                         </div>
 
                         <div className="flex justify-end space-x-4">
-                            <button onClick={closeModal} disabled={isSaving} className="bg-surface hover:bg-border text-text-primary font-bold py-2 px-4 rounded-md disabled:opacity-50">Cancel</button>
+                            <button onClick={closeModal} disabled={isSaving} className="bg-surface hover:bg-border text-text-primary font-semibold py-2 px-6 rounded-md disabled:opacity-50 transition-all">Cancel</button>
                             <button 
                                 onClick={handleSave} 
                                 disabled={isSaving || !currentSession?.date || !currentSession?.duration || !currentSession?.mood} 
-                                className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="bg-primary hover:bg-primary-hover text-white font-semibold py-2 px-6 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-105"
                             >
                                 {isSaving ? 'Saving...' : 'Save Session'}
                             </button>
