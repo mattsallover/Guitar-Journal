@@ -97,11 +97,17 @@ export const PracticeLog: React.FC = () => {
                     const fileName = `${Date.now()}-${file.name}`;
                     const filePath = `recordings/${state.user!.uid}/${fileName}`;
                     
+                    // Debug: Log the exact bucket and path we're trying to use
+                    console.log('Attempting upload to bucket: recordings');
+                    console.log('File path:', filePath);
+                    console.log('User ID:', state.user!.uid);
+                    
                     const { data, error } = await supabase.storage
                         .from('recordings')
                         .upload(filePath, file);
                     
                     if (error) {
+                        console.error('Storage upload error:', error);
                         throw error;
                     }
                     
