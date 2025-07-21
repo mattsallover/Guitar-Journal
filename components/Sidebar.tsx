@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { supabase } from '../services/supabase';
 import { DashboardIcon } from './icons/DashboardIcon';
