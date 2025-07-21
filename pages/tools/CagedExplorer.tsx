@@ -28,14 +28,15 @@ export const CagedExplorer: React.FC = () => {
     const { state } = useAppContext();
     const [rootNote, setRootNote] = useState<Note>('C');
     const [cagedShape, setCagedShape] = useState<CagedShape>('C');
-    const [mode, setMode] = useState<'explore' | 'quiz-question' | 'quiz-answer' | 'practice-timer'>('explore');
-    const [quizQuestion, setQuizQuestion] = useState<{ root: Note; shape: CagedShape } | null>(null);
+    const [mode, setMode] = useState<'explore' | 'quiz-session' | 'quiz-question' | 'quiz-answer'>('explore');
     
-    // Practice Timer State
-    const [practiceShapes, setPracticeShapes] = useState<string[]>([]);
-    const [practiceTime, setPracticeTime] = useState(0);
-    const [isTimerRunning, setIsTimerRunning] = useState(false);
-    const [timerInterval, setTimerInterval] = useState<number | null>(null);
+    // Quiz Session State
+    const [quizTimer, setQuizTimer] = useState(0);
+    const [quizInterval, setQuizInterval] = useState<number | null>(null);
+    const [quizQuestions, setQuizQuestions] = useState<{ root: Note; shape: CagedShape }[]>([]);
+    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+    const [correctAnswers, setCorrectAnswers] = useState(0);
+    const [completedShapes, setCompletedShapes] = useState<string[]>([]);
     
     // Session Logging State
     const [sessions, setSessions] = useState<CAGEDSession[]>([]);
@@ -45,15 +46,6 @@ export const CagedExplorer: React.FC = () => {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const SHAPE_OPTIONS = ['C', 'A', 'G', 'E', 'D'];
-    const ACCURACY_OPTIONS = [
-        { value: 1, label: 'Poor - Many mistakes' },
-        { value: 2, label: 'Fair - Some mistakes' },
-        { value: 3, label: 'Good - Few mistakes' },
-        { value: 4, label: 'Very Good - Rare mistakes' },
-        { value: 5, label: 'Perfect - No mistakes' }
-    ];
-
     useEffect(() => {
         if (state.user) {
             fetchSessions();
@@ -62,11 +54,11 @@ export const CagedExplorer: React.FC = () => {
 
     useEffect(() => {
         return () => {
-            if (timerInterval) {
-                clearInterval(timerInterval);
+            if (quizInterval) {
+                clearInterval(quizInterval);
             }
         };
-    }, [timerInterval]);
+    }, [quizInterval]);
 
     const fetchSessions = async () => {
         if (!state.user) return;
@@ -77,7 +69,7 @@ export const CagedExplorer: React.FC = () => {
                 .select('*')
                 .eq('user_id', state.user.uid)
                 .order('session_date', { ascending: false })
-                .limit(5); // Show last 5 sessions
+                .limit(5);
 
             if (error) throw error;
 
@@ -127,12 +119,14 @@ export const CagedExplorer: React.FC = () => {
         });
     }, [rootNote, cagedShape]);
     
+    const currentQuestion = quizQuestions[currentQuestionIndex];
+    
     const quizAnswerNotes = useMemo(() => {
-        if (!quizQuestion) return [];
-        const shapeInfo = CAGED_SHAPES[quizQuestion.shape];
+        if (!currentQuestion) return [];
+        const shapeInfo = CAGED_SHAPES[currentQuestion.shape];
         const rootInterval = shapeInfo.intervals.find(i => i.type === 'R')!;
 
-        let rootFret = getNotePosition(quizQuestion.root, rootInterval.string);
+        let rootFret = getNotePosition(currentQuestion.root, rootInterval.string);
         while(rootFret < rootInterval.fret) {
             rootFret += 12;
         }
@@ -151,58 +145,83 @@ export const CagedExplorer: React.FC = () => {
                 label: noteName
             };
         });
-    }, [quizQuestion]);
+    }, [currentQuestion]);
 
-    const startQuiz = () => {
-        const randomRoot = ALL_NOTES[Math.floor(Math.random() * ALL_NOTES.length)];
-        const randomShapeKey = Object.keys(CAGED_SHAPES)[Math.floor(Math.random() * 5)] as CagedShape;
-        setQuizQuestion({ root: randomRoot, shape: randomShapeKey });
-        setMode('quiz-question');
-    };
-
-    const handleReveal = () => {
-        setMode('quiz-answer');
-    };
-
-    const startPracticeTimer = () => {
-        if (practiceShapes.length === 0) {
-            alert('Please select at least one CAGED shape to practice');
-            return;
-        }
-        setMode('practice-timer');
-        setPracticeTime(0);
-        setIsTimerRunning(true);
+    const startQuizSession = () => {
+        // Generate 5 random questions (one for each CAGED shape)
+        const shapes: CagedShape[] = ['C', 'A', 'G', 'E', 'D'];
+        const questions = shapes.map(shape => ({
+            root: ALL_NOTES[Math.floor(Math.random() * ALL_NOTES.length)],
+            shape
+        }));
         
+        setQuizQuestions(questions);
+        setCurrentQuestionIndex(0);
+        setCorrectAnswers(0);
+        setCompletedShapes([]);
+        setQuizTimer(0);
+        setMode('quiz-session');
+        
+        // Start timer
         const interval = window.setInterval(() => {
-            setPracticeTime(time => time + 1);
+            setQuizTimer(time => time + 1);
         }, 1000);
-        setTimerInterval(interval);
+        setQuizInterval(interval);
     };
 
-    const stopPracticeTimer = () => {
-        setIsTimerRunning(false);
-        if (timerInterval) {
-            clearInterval(timerInterval);
-            setTimerInterval(null);
-        }
+    const handleCorrectAnswer = () => {
+        const shape = currentQuestion.shape;
+        setCorrectAnswers(prev => prev + 1);
+        setCompletedShapes(prev => [...prev, shape]);
         
-        // Open session logging modal with pre-filled data
+        if (currentQuestionIndex < quizQuestions.length - 1) {
+            setCurrentQuestionIndex(prev => prev + 1);
+            setMode('quiz-session');
+        } else {
+            // Quiz complete - stop timer and show results
+            if (quizInterval) {
+                clearInterval(quizInterval);
+                setQuizInterval(null);
+            }
+            showQuizResults();
+        }
+    };
+
+    const handleIncorrectAnswer = () => {
+        if (currentQuestionIndex < quizQuestions.length - 1) {
+            setCurrentQuestionIndex(prev => prev + 1);
+            setMode('quiz-session');
+        } else {
+            // Quiz complete - stop timer and show results
+            if (quizInterval) {
+                clearInterval(quizInterval);
+                setQuizInterval(null);
+            }
+            showQuizResults();
+        }
+    };
+
+    const showQuizResults = () => {
+        const accuracy = Math.round((correctAnswers / quizQuestions.length) * 4) + 1; // Convert to 1-5 scale
+        const score = computeCAGEDScore({
+            shapes: completedShapes,
+            accuracy,
+            time_seconds: quizTimer
+        });
+
         setCurrentSession({
             sessionDate: new Date().toISOString().split('T')[0],
-            shapes: practiceShapes,
-            accuracy: 3,
-            timeSeconds: practiceTime,
-            notes: `Practiced ${practiceShapes.join(', ')} shapes`
+            shapes: completedShapes,
+            accuracy,
+            timeSeconds: quizTimer,
+            score,
+            notes: `Quiz session: ${correctAnswers}/${quizQuestions.length} correct answers`
         });
         setIsSessionModalOpen(true);
     };
 
-    const togglePracticeShape = (shape: string) => {
-        setPracticeShapes(prev => 
-            prev.includes(shape) 
-                ? prev.filter(s => s !== shape)
-                : [...prev, shape]
-        );
+    const handleReveal = () => {
+        setMode('quiz-answer');
     };
 
     const openSessionModal = (session: Partial<CAGEDSession> | null = null) => {
@@ -221,18 +240,12 @@ export const CagedExplorer: React.FC = () => {
         setIsSessionModalOpen(false);
         setCurrentSession(null);
         setSelectedFile(null);
-        
-        // If we came from timer, reset timer state
-        if (mode === 'practice-timer') {
-            setMode('explore');
-            setPracticeTime(0);
-            setPracticeShapes([]);
-        }
+        setMode('explore');
     };
 
     const handleSaveSession = async () => {
-        if (!currentSession || !state.user || !currentSession.shapes || currentSession.shapes.length === 0) {
-            alert('Please select at least one CAGED shape');
+        if (!currentSession || !state.user) {
+            alert('Please complete the session details');
             return;
         }
 
@@ -275,9 +288,9 @@ export const CagedExplorer: React.FC = () => {
                 recordingPath = filePath;
             }
 
-            // Calculate score
+            // Calculate final score
             const score = computeCAGEDScore({
-                shapes: currentSession.shapes,
+                shapes: currentSession.shapes || [],
                 accuracy: currentSession.accuracy || 3,
                 time_seconds: currentSession.timeSeconds || 0
             });
@@ -285,7 +298,7 @@ export const CagedExplorer: React.FC = () => {
             const sessionData = {
                 user_id: state.user.uid,
                 session_date: currentSession.sessionDate,
-                shapes: currentSession.shapes,
+                shapes: currentSession.shapes || [],
                 accuracy: currentSession.accuracy || 3,
                 time_seconds: currentSession.timeSeconds || 0,
                 score,
@@ -320,7 +333,6 @@ export const CagedExplorer: React.FC = () => {
         if (!window.confirm('Are you sure you want to delete this CAGED session?')) return;
 
         try {
-            // Delete recording if exists
             if (session.recording) {
                 await supabase.storage
                     .from('recordings')
@@ -338,17 +350,6 @@ export const CagedExplorer: React.FC = () => {
             console.error('Error deleting session:', error);
             alert('Failed to delete session. Please try again.');
         }
-    };
-
-    const toggleSessionShape = (shape: string) => {
-        if (!currentSession) return;
-        
-        const currentShapes = currentSession.shapes || [];
-        const newShapes = currentShapes.includes(shape)
-            ? currentShapes.filter(s => s !== shape)
-            : [...currentShapes, shape];
-        
-        setCurrentSession({ ...currentSession, shapes: newShapes });
     };
     
     const notesToDisplay = mode === 'explore' ? highlightedNotes : mode === 'quiz-answer' ? quizAnswerNotes : [];
@@ -423,118 +424,63 @@ export const CagedExplorer: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Practice Timer Section */}
-                            <div className="mt-8 border-t border-border pt-6">
-                                <h3 className="text-lg font-semibold mb-4">Timed Practice</h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-text-secondary mb-2">Select Shapes to Practice</label>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {SHAPE_OPTIONS.map(shape => (
-                                                <button
-                                                    key={shape}
-                                                    type="button"
-                                                    onClick={() => togglePracticeShape(shape)}
-                                                    className={`px-3 py-2 rounded-md font-semibold text-sm transition-colors ${
-                                                        practiceShapes.includes(shape)
-                                                            ? 'bg-primary text-white'
-                                                            : 'bg-surface hover:bg-border text-text-secondary'
-                                                    }`}
-                                                >
-                                                    {shape}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    
-                                    <button 
-                                        onClick={startPracticeTimer} 
-                                        disabled={practiceShapes.length === 0}
-                                        className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-md"
-                                    >
-                                        Start Timer
-                                    </button>
-                                </div>
-                            </div>
-
                             <div className="mt-6 space-y-2">
-                                <button onClick={startQuiz} className="w-full bg-secondary hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">
-                                    Quiz Mode
+                                <button onClick={startQuizSession} className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 px-4 rounded-md">
+                                    🎯 Start Timed Quiz Session
                                 </button>
-                                <button onClick={() => openSessionModal()} className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md">
-                                    Log Session
+                                <button onClick={() => openSessionModal()} className="w-full bg-secondary hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">
+                                    📝 Log Manual Session
                                 </button>
                             </div>
                         </>
                     )}
                     
-                    {mode === 'practice-timer' && (
-                        <>
-                            <h2 className="text-xl font-semibold mb-4">Practice Timer</h2>
+                    {mode === 'quiz-session' && currentQuestion && (
+                         <>
+                            <h2 className="text-xl font-semibold mb-4">Quiz Session</h2>
                             <div className="text-center">
-                                <div className="text-4xl font-mono font-bold text-primary mb-4">
-                                    {formatTime(practiceTime)}
+                                <div className="text-2xl font-mono font-bold text-primary mb-4">
+                                    {formatTime(quizTimer)}
                                 </div>
                                 <div className="mb-4">
-                                    <p className="text-text-secondary mb-2">Practicing:</p>
-                                    <div className="flex flex-wrap gap-1 justify-center">
-                                        {practiceShapes.map(shape => (
-                                            <span key={shape} className="bg-primary/20 text-primary px-2 py-1 rounded text-sm">
-                                                {shape}
-                                            </span>
-                                        ))}
-                                    </div>
+                                    <p className="text-sm text-text-secondary">Question {currentQuestionIndex + 1} of {quizQuestions.length}</p>
+                                    <p className="text-sm text-text-secondary">Correct: {correctAnswers}/{currentQuestionIndex}</p>
                                 </div>
-                                <button 
-                                    onClick={stopPracticeTimer}
-                                    className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md"
-                                >
-                                    Stop & Log Session
+                            </div>
+                            
+                            <div className="text-center bg-surface p-4 rounded-md">
+                                <p className="text-text-secondary">Find on your guitar:</p>
+                                <p className="text-2xl font-bold text-primary my-2">{currentQuestion.root} Major</p>
+                                <p className="text-text-secondary">using the</p>
+                                <p className="text-2xl font-bold text-primary my-2">{currentQuestion.shape} shape</p>
+                            </div>
+                            
+                            <div className="mt-6 space-y-2">
+                                <button onClick={handleReveal} className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-md">
+                                    Show Answer
                                 </button>
                             </div>
                         </>
                     )}
                     
-                    {mode === 'quiz-question' && quizQuestion && (
-                         <>
-                            <h2 className="text-xl font-semibold mb-4">Quiz Mode</h2>
-                            <div className="text-center bg-surface p-4 rounded-md">
-                                <p className="text-text-secondary">On your guitar, find:</p>
-                                <p className="text-2xl font-bold text-primary my-2">{quizQuestion.root} Major</p>
-                                <p className="text-text-secondary">using the</p>
-                                <p className="text-2xl font-bold text-primary my-2">{quizQuestion.shape} shape</p>
-                            </div>
-                            <button onClick={handleReveal} className="w-full mt-6 bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md">
-                                Reveal Answer
-                            </button>
-                            <button onClick={() => { setMode('explore'); }} className="w-full mt-4 bg-surface hover:bg-border text-text-primary font-bold py-2 px-4 rounded-md">
-                                Back to Explore
-                            </button>
-                        </>
-                    )}
-                    
-                    {mode === 'quiz-answer' && quizQuestion && (
+                    {mode === 'quiz-answer' && currentQuestion && (
                         <>
                             <h2 className="text-xl font-semibold mb-4">Answer</h2>
                             <div className="text-center bg-surface p-4 rounded-md">
-                                <p className="text-text-primary font-semibold">This is {quizQuestion.root} Major ({quizQuestion.shape} shape)</p>
+                                <p className="text-text-primary font-semibold">This is {currentQuestion.root} Major ({currentQuestion.shape} shape)</p>
                             </div>
                             
                             <div className="mt-6 text-center">
                                 <p className="text-text-secondary mb-3">Did you get it right?</p>
                                 <div className="flex space-x-2">
-                                    <button onClick={startQuiz} className="flex-1 bg-green-600/20 hover:bg-green-600/40 text-green-300 font-bold py-2 px-2 rounded-md transition-colors text-sm">
-                                        ✅ Yes!
+                                    <button onClick={handleCorrectAnswer} className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-2 rounded-md transition-colors text-sm">
+                                        ✅ Correct
                                     </button>
-                                    <button onClick={startQuiz} className="flex-1 bg-red-600/20 hover:bg-red-600/40 text-red-300 font-bold py-2 px-2 rounded-md transition-colors text-sm">
-                                        ❌ No
+                                    <button onClick={handleIncorrectAnswer} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-2 rounded-md transition-colors text-sm">
+                                        ❌ Wrong
                                     </button>
                                 </div>
                             </div>
-
-                            <button onClick={() => { setMode('explore'); }} className="w-full mt-6 bg-surface hover:bg-border text-text-primary font-bold py-2 px-4 rounded-md">
-                                Exit Quiz
-                            </button>
                         </>
                     )}
                 </div>
@@ -570,6 +516,9 @@ export const CagedExplorer: React.FC = () => {
                                                     </span>
                                                 ))}
                                             </div>
+                                            <div className="text-sm text-text-secondary">
+                                                Accuracy: {getAccuracyLabel(session.accuracy)}
+                                            </div>
                                         </div>
 
                                         {session.notes && (
@@ -603,73 +552,38 @@ export const CagedExplorer: React.FC = () => {
                 <Modal 
                     isOpen={isSessionModalOpen} 
                     onClose={closeSessionModal} 
-                    title={currentSession.id ? "Edit CAGED Session" : "Log CAGED Session"}
+                    title={currentSession.id ? "Edit CAGED Session" : "Save CAGED Session"}
                 >
                     <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-text-secondary mb-2">Session Date</label>
-                            <input 
-                                type="date" 
-                                value={currentSession.sessionDate} 
-                                onChange={e => setCurrentSession({ ...currentSession, sessionDate: e.target.value })}
-                                className="w-full bg-background p-2 rounded-md border border-border"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-text-secondary mb-2">
-                                CAGED Shapes Practiced
-                            </label>
-                            <div className="grid grid-cols-5 gap-2">
-                                {SHAPE_OPTIONS.map(shape => (
-                                    <button
-                                        key={shape}
-                                        type="button"
-                                        onClick={() => toggleSessionShape(shape)}
-                                        className={`px-3 py-2 rounded-md font-semibold transition-colors ${
-                                            (currentSession.shapes || []).includes(shape)
-                                                ? 'bg-primary text-white'
-                                                : 'bg-surface hover:bg-border text-text-secondary'
-                                        }`}
-                                    >
-                                        {shape}
-                                    </button>
-                                ))}
+                        {/* Show quiz results if coming from quiz */}
+                        {currentSession.score && (
+                            <div className="bg-background p-4 rounded-md">
+                                <h3 className="text-lg font-bold mb-2">Quiz Results</h3>
+                                <div className="grid grid-cols-3 gap-4 text-center">
+                                    <div>
+                                        <div className={`text-2xl font-bold ${getScoreColor(currentSession.score)}`}>
+                                            {currentSession.score}/100
+                                        </div>
+                                        <div className="text-sm text-text-secondary">Score</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-xl font-bold text-primary">
+                                            {formatTime(currentSession.timeSeconds || 0)}
+                                        </div>
+                                        <div className="text-sm text-text-secondary">Time</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-xl font-bold text-primary">
+                                            {currentSession.shapes?.length || 0}/5
+                                        </div>
+                                        <div className="text-sm text-text-secondary">Shapes</div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         <div>
-                            <label className="block text-sm font-medium text-text-secondary mb-2">
-                                Time to Complete (seconds)
-                            </label>
-                            <input 
-                                type="number" 
-                                min="0"
-                                value={currentSession.timeSeconds || 0} 
-                                onChange={e => setCurrentSession({ ...currentSession, timeSeconds: parseInt(e.target.value) || 0 })}
-                                className="w-full bg-background p-2 rounded-md border border-border"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-text-secondary mb-2">
-                                Accuracy ({currentSession.accuracy || 3}/5)
-                            </label>
-                            <select 
-                                value={currentSession.accuracy || 3} 
-                                onChange={e => setCurrentSession({ ...currentSession, accuracy: parseInt(e.target.value) })}
-                                className="w-full bg-background p-2 rounded-md border border-border"
-                            >
-                                {ACCURACY_OPTIONS.map(option => (
-                                    <option key={option.value} value={option.value}>
-                                        {option.value} - {option.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-text-secondary mb-2">Notes</label>
+                            <label className="block text-sm font-medium text-text-secondary mb-2">Notes (optional)</label>
                             <textarea 
                                 value={currentSession.notes || ''} 
                                 onChange={e => setCurrentSession({ ...currentSession, notes: e.target.value })}
@@ -693,24 +607,6 @@ export const CagedExplorer: React.FC = () => {
                             )}
                         </div>
 
-                        {/* Score Preview */}
-                        {currentSession.shapes && currentSession.shapes.length > 0 && (
-                            <div className="bg-background p-3 rounded-md">
-                                <p className="text-sm text-text-secondary">Estimated Score:</p>
-                                <p className={`text-xl font-bold ${getScoreColor(computeCAGEDScore({
-                                    shapes: currentSession.shapes,
-                                    accuracy: currentSession.accuracy || 3,
-                                    time_seconds: currentSession.timeSeconds || 0
-                                }))}`}>
-                                    {computeCAGEDScore({
-                                        shapes: currentSession.shapes,
-                                        accuracy: currentSession.accuracy || 3,
-                                        time_seconds: currentSession.timeSeconds || 0
-                                    })}/100
-                                </p>
-                            </div>
-                        )}
-
                         <div className="flex justify-end space-x-4 pt-4">
                             <button 
                                 onClick={closeSessionModal} 
@@ -721,7 +617,7 @@ export const CagedExplorer: React.FC = () => {
                             </button>
                             <button 
                                 onClick={handleSaveSession} 
-                                disabled={isSaving || !currentSession.shapes?.length}
+                                disabled={isSaving}
                                 className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md disabled:opacity-50"
                             >
                                 {isSaving ? 'Saving...' : 'Save Session'}
