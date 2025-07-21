@@ -94,14 +94,13 @@ export const PracticeLog: React.FC = () => {
             const { topic, duration, notes, link, recordings } = liveSessionData;
             
             const isSong = repertoireTitles.includes(topic);
-
             const newSession: Partial<PracticeSession> = {
                 date: new Date().toISOString().split('T')[0],
                 duration: duration || 30,
                 mood: Mood.Okay,
                 songs: isSong ? [topic] : [],
                 techniques: !isSong ? [topic] : [],
-                tags: [],
+                techniques: !isSong ? [topic] : [],
                 notes: notes || '',
                 recordings: recordings || [],
                 link: link || ''

@@ -81,12 +81,12 @@ export const LiveSession: React.FC = () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: { 
-                    width: { ideal: 1920, min: 1280 },
-                    height: { ideal: 1080, min: 720 },
-                    frameRate: { ideal: 30 }
+                    width: { ideal: 1920, min: 1920 },
+                    height: { ideal: 1080, min: 1080 },
+                    frameRate: { ideal: 60, min: 30 }
                 },
                 audio: {
-                    sampleRate: 48000,
+                    sampleRate: 96000,
                     channelCount: 2,
                     echoCancellation: false,
                     noiseSuppression: false,
@@ -111,8 +111,8 @@ export const LiveSession: React.FC = () => {
         try {
             const recorder = new MediaRecorder(mediaStream, {
                 mimeType: 'video/webm;codecs=vp9,opus',
-                videoBitsPerSecond: 5000000, // 5 Mbps for high quality video
-                audioBitsPerSecond: 320000   // 320 kbps for high quality audio
+                videoBitsPerSecond: 20000000, // 20 Mbps for ultra high quality
+                audioBitsPerSecond: 1500000   // 1.5 Mbps for audiophile quality
             });
             
             const chunks: Blob[] = [];
@@ -155,30 +155,9 @@ export const LiveSession: React.FC = () => {
             setIsUploading(true);
             setUploadProgress([{
                 name: 'practice-video.webm',
-                progress: 10,
-                status: 'compressing',
-                originalSize: recording.blob.size
-            }]);
-
-            // Create a File from the Blob for compression
-            const videoFile = new File([recording.blob], 'practice-video.webm', {
-                type: 'video/webm'
-            });
-
-            // Compress video
-            const compressedVideo = await compressVideo(videoFile, {
-                maxWidth: 1280,
-                maxHeight: 720,
-                quality: 0.7,
-                maxSizeMB: 50
-            });
-
-            setUploadProgress([{
-                name: 'practice-video.webm',
-                progress: 50,
+                progress: 25,
                 status: 'uploading',
-                originalSize: recording.blob.size,
-                compressedSize: compressedVideo.size
+                originalSize: recording.blob.size
             }]);
 
             // Generate filename
@@ -186,10 +165,10 @@ export const LiveSession: React.FC = () => {
             const fileName = `practice-session-${timestamp}.webm`;
             const filePath = `${state.user.uid}/${fileName}`;
 
-            // Upload to Supabase Storage
+            // Upload FULL QUALITY - NO COMPRESSION
             const { error: uploadError } = await supabase.storage
                 .from('recordings')
-                .upload(filePath, compressedVideo);
+                .upload(filePath, recording.blob);
 
             if (uploadError) throw uploadError;
 
@@ -202,8 +181,7 @@ export const LiveSession: React.FC = () => {
                 name: 'practice-video.webm',
                 progress: 100,
                 status: 'completed',
-                originalSize: recording.blob.size,
-                compressedSize: compressedVideo.size
+                originalSize: recording.blob.size
             }]);
 
             setTimeout(() => {
@@ -290,26 +268,29 @@ export const LiveSession: React.FC = () => {
                 </div>
                 
                 {/* Video Recording Suite */}
-                <div className="mt-8 bg-background p-4 rounded-lg border border-border">
-                    <h3 className="text-lg font-semibold mb-4 flex items-center">
-                        <span className="mr-2">🎥</span>
-                        Video Recording Suite
+                <div className="mt-8 bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-xl border border-gray-700 shadow-2xl">
+                    <h3 className="text-xl font-bold mb-6 flex items-center text-white">
+                        <span className="mr-3 text-2xl">🎬</span>
+                        Professional Recording Studio
+                        <div className="ml-auto text-sm bg-green-500/20 text-green-400 px-3 py-1 rounded-full border border-green-500/30">
+                            Ultra HD • 96kHz Audio
+                        </div>
                     </h3>
                     
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* Camera Preview */}
                         <div className="space-y-4">
-                            <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
+                            <div className="relative bg-black rounded-xl overflow-hidden aspect-video shadow-xl border border-gray-600">
                                 {cameraError ? (
                                     <div className="absolute inset-0 flex items-center justify-center bg-gray-800 text-white">
                                         <div className="text-center">
-                                            <div className="text-2xl mb-2">📷</div>
-                                            <p className="text-sm">{cameraError}</p>
+                                            <div className="text-4xl mb-3">📷</div>
+                                            <p className="text-sm text-gray-300">{cameraError}</p>
                                             <button 
                                                 onClick={initializeCamera}
-                                                className="mt-2 bg-primary hover:bg-primary-hover text-white px-3 py-1 rounded text-sm"
+                                                className="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
                                             >
-                                                Try Again
+                                                🔄 Retry Camera Access
                                             </button>
                                         </div>
                                     </div>
@@ -328,39 +309,44 @@ export const LiveSession: React.FC = () => {
                                 ) : (
                                     <div className="absolute inset-0 flex items-center justify-center bg-gray-800 text-white">
                                         <div className="text-center">
-                                            <div className="animate-spin text-2xl mb-2">🎥</div>
-                                            <p className="text-sm">Initializing camera...</p>
+                                            <div className="animate-spin text-4xl mb-3">🎥</div>
+                                            <p className="text-sm text-gray-300">Initializing professional camera...</p>
                                         </div>
                                     </div>
                                 )}
                                 
                                 {/* Recording indicator */}
                                 {isRecording && (
-                                    <div className="absolute top-2 right-2 flex items-center space-x-2 bg-red-600 text-white px-3 py-1 rounded-full">
-                                        <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                                        <span className="text-sm font-bold">REC</span>
+                                    <div className="absolute top-4 right-4 flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-full shadow-lg border border-red-400">
+                                        <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+                                        <span className="text-sm font-bold tracking-wide">● RECORDING</span>
                                     </div>
                                 )}
+                                
+                                {/* Quality indicator */}
+                                <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 rounded-lg text-xs font-semibold">
+                                    1920×1080 • 60fps
+                                </div>
                             </div>
                             
                             {/* Recording Controls */}
-                            <div className="flex justify-center space-x-3">
+                            <div className="flex justify-center space-x-4">
                                 {!isRecording ? (
                                     <button
                                         onClick={startVideoRecording}
                                         disabled={!mediaStream || cameraError !== null}
-                                        className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white font-bold py-2 px-6 rounded-md flex items-center space-x-2"
+                                        className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white font-bold py-3 px-8 rounded-lg flex items-center space-x-3 shadow-lg transition-all hover:scale-105 disabled:hover:scale-100"
                                     >
-                                        <div className="w-3 h-3 bg-white rounded-full"></div>
-                                        <span>Start Recording</span>
+                                        <div className="w-4 h-4 bg-white rounded-full"></div>
+                                        <span className="text-lg">Start Recording</span>
                                     </button>
                                 ) : (
                                     <button
                                         onClick={stopVideoRecording}
-                                        className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-md flex items-center space-x-2"
+                                        className="bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 px-8 rounded-lg flex items-center space-x-3 shadow-lg transition-all hover:scale-105"
                                     >
-                                        <div className="w-3 h-3 bg-white"></div>
-                                        <span>Stop Recording</span>
+                                        <div className="w-4 h-4 bg-white"></div>
+                                        <span className="text-lg">Stop Recording</span>
                                     </button>
                                 )}
                             </div>
@@ -368,7 +354,7 @@ export const LiveSession: React.FC = () => {
                         
                         {/* Recording Preview/Playback */}
                         <div className="space-y-4">
-                            <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
+                            <div className="relative bg-black rounded-xl overflow-hidden aspect-video shadow-xl border border-gray-600">
                                 {videoRecording ? (
                                     <video
                                         src={videoRecording.url}
@@ -378,7 +364,7 @@ export const LiveSession: React.FC = () => {
                                 ) : (
                                     <div className="absolute inset-0 flex items-center justify-center bg-gray-800 text-white">
                                         <div className="text-center">
-                                            <div className="text-3xl mb-2">🎬</div>
+                                            <div className="text-4xl mb-3">🎬</div>
                                             <p className="text-sm">Recording will appear here</p>
                                         </div>
                                     </div>
@@ -386,12 +372,12 @@ export const LiveSession: React.FC = () => {
                             </div>
                             
                             {videoRecording && (
-                                <div className="text-center">
-                                    <p className="text-sm text-text-secondary">
-                                        Recording size: {formatFileSize(videoRecording.blob.size)}
+                                <div className="text-center bg-blue-900/20 border border-blue-500/30 rounded-lg p-3">
+                                    <p className="text-sm text-blue-300 font-semibold">
+                                        🎯 Ultra HD Recording: {formatFileSize(videoRecording.blob.size)}
                                     </p>
-                                    <p className="text-xs text-text-secondary mt-1">
-                                        Video will be compressed and uploaded when you finish the session
+                                    <p className="text-xs text-blue-200 mt-1">
+                                        Full quality preserved • No compression • Professional grade
                                     </p>
                                 </div>
                             )}
