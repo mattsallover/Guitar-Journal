@@ -70,6 +70,14 @@ export const NoteFinder: React.FC = () => {
         fretNum: number;
     }[]>([]);
     
+    // Feedback State
+    const [showFeedback, setShowFeedback] = useState(false);
+    const [lastClickFeedback, setLastClickFeedback] = useState<{
+        clickedNote: Note;
+        correct: boolean;
+        expectedNote: Note;
+    } | null>(null);
+    
     // Statistics State
     const [noteStats, setNoteStats] = useState<NoteStats[]>([]);
     const [recentAttempts, setRecentAttempts] = useState<NoteFinderAttempt[]>([]);
@@ -217,6 +225,14 @@ export const NoteFinder: React.FC = () => {
             }
         }
         
+        // Show feedback
+        setLastClickFeedback({
+            clickedNote,
+            correct,
+            expectedNote: targetNote
+        });
+        setShowFeedback(true);
+        
         // Convert stringIndex (0-5, high to low E) to stringNum (1-6, high to low E)
         const stringNum = stringIndex + 1;
 
@@ -245,16 +261,21 @@ export const NoteFinder: React.FC = () => {
             fretNum: fret
         }]);
 
-        // Move to next question or finish
-        if (shouldAdvance && currentIndex < quizSequence.length - 1) {
-            setCurrentIndex(prev => prev + 1);
-            setFoundPositions(new Set()); // Reset for next question
-            startTimeRef.current = Date.now();
-        } else if (shouldAdvance) {
-            setMode('results');
-            // Refresh data to show updated stats
-            setTimeout(fetchNoteFinderData, 500);
-        }
+        // Wait 1.5 seconds to show feedback, then advance
+        setTimeout(() => {
+            setShowFeedback(false);
+            setLastClickFeedback(null);
+            
+            if (shouldAdvance && currentIndex < quizSequence.length - 1) {
+                setCurrentIndex(prev => prev + 1);
+                setFoundPositions(new Set()); // Reset for next question
+                startTimeRef.current = Date.now();
+            } else if (shouldAdvance) {
+                setMode('results');
+                // Refresh data to show updated stats
+                setTimeout(fetchNoteFinderData, 500);
+            }
+        }, 1500);
     };
 
     const resetQuiz = () => {
@@ -392,23 +413,46 @@ export const NoteFinder: React.FC = () => {
 
             {mode === 'quiz' && currentQuestion && (
                 <div className="space-y-6">
-                    <div className="text-center bg-surface p-6 rounded-lg">
-                        <p className="text-text-secondary mb-2">Question {currentIndex + 1} of {quizSequence.length}</p>
-                        <div className="text-4xl font-bold mb-4">
-                            {currentQuestion.promptType === 'find-any' && (
-                                <span className="text-primary">Find any <span className="text-white">{currentQuestion.note}</span></span>
-                            )}
-                            {currentQuestion.promptType === 'find-all' && (
-                                <span className="text-yellow-400">Find all the <span className="text-white">{currentQuestion.note}</span></span>
-                            )}
-                            {currentQuestion.promptType === 'find-on-string' && (
-                                <span className="text-blue-400">Find <span className="text-white">{currentQuestion.note}</span> on string {(currentQuestion.targetString! + 1)}</span>
-                            )}
-                        </div>
-                        <div className="text-sm text-text-secondary">
-                            {currentQuestion.promptType === 'find-any' && "Click one occurrence for speed"}
-                            {currentQuestion.promptType === 'find-all' && `Found: ${foundPositions.size} / ${findAllNotePositions(currentQuestion.note).length}`}
-                            {currentQuestion.promptType === 'find-on-string' && "Click the specific string location"}
+                    <div className="text-center bg-surface p-6 rounded-lg relative">
+                        {!showFeedback ? (
+                            <>
+                                <p className="text-text-secondary mb-2">Question {currentIndex + 1} of {quizSequence.length}</p>
+                                <div className="text-4xl font-bold mb-4">
+                                    {currentQuestion.promptType === 'find-any' && (
+                                        <span className="text-primary">Find any <span className="text-white">{currentQuestion.note}</span></span>
+                                    )}
+                                    {currentQuestion.promptType === 'find-all' && (
+                                        <span className="text-yellow-400">Find all the <span className="text-white">{currentQuestion.note}</span></span>
+                                    )}
+                                    {currentQuestion.promptType === 'find-on-string' && (
+                                        <span className="text-blue-400">Find <span className="text-white">{currentQuestion.note}</span> on string {(currentQuestion.targetString! + 1)}</span>
+                                    )}
+                                </div>
+                                <div className="text-sm text-text-secondary">
+                                    {currentQuestion.promptType === 'find-any' && "Click one occurrence for speed"}
+                                    {currentQuestion.promptType === 'find-all' && `Found: ${foundPositions.size} / ${findAllNotePositions(currentQuestion.note).length}`}
+                                    {currentQuestion.promptType === 'find-on-string' && "Click the specific string location"}
+                                </div>
+                            </>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="text-2xl font-bold">
+                                    You clicked: <span className="text-white">{lastClickFeedback?.clickedNote}</span>
+                                </div>
+                                {lastClickFeedback?.correct ? (
+                                    <div className="text-3xl text-green-400">
+                                        ✅ Correct!
+                                    </div>
+                                ) : (
+                                    <div className="text-3xl text-red-400">
+                                        ❌ Wrong! 
+                                        <div className="text-lg mt-2">
+                                            Expected: <span className="text-white">{lastClickFeedback?.expectedNote}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         </div>
                     </div>
                     
