@@ -83,7 +83,14 @@ export const Repertoire: React.FC = () => {
     const [potentialDuplicates, setPotentialDuplicates] = useState<RepertoireItem[]>([]);
 
     const openModal = (item: Partial<RepertoireItem> | null = null) => {
-        setCurrentItem(item ? { ...item } : { title: '', artist: '', difficulty: Difficulty.Beginner, mastery: 0, notes: '' });
+        // Smart defaults: pre-fill with sensible values
+        setCurrentItem(item ? { ...item } : { 
+            title: '', 
+            artist: '', 
+            difficulty: Difficulty.Intermediate, // Most users are intermediate
+            mastery: 25, // Realistic starting mastery
+            notes: '' 
+        });
         setIsModalOpen(true);
     };
 
@@ -218,9 +225,17 @@ export const Repertoire: React.FC = () => {
     return (
         <div className="p-8">
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold">Repertoire</h1>
-                <button onClick={() => openModal()} className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md">
-                    + Add Piece
+                <div>
+                    <h1 className="text-4xl font-bold text-text-primary">Your Repertoire</h1>
+                    <p className="text-text-secondary mt-1">Songs you're learning and mastering</p>
+                </div>
+                <button 
+                    onClick={() => openModal()} 
+                    className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-lg flex items-center space-x-2"
+                    title="Add a new song to your repertoire"
+                >
+                    <span>+</span>
+                    <span>Add Song</span>
                 </button>
             </div>
             
@@ -246,63 +261,141 @@ export const Repertoire: React.FC = () => {
 
             <div className="space-y-1">
                 {sortedRepertoire.map(item => (
-                    <div key={item.id} className="bg-surface rounded-lg transition-all hover:ring-2 hover:ring-primary">
+                    <div key={item.id} className="bg-surface rounded-lg transition-all duration-300 hover:shadow-lg hover:scale-[1.01] group">
                         <div className="flex flex-col sm:flex-row justify-between items-start gap-4 p-4">
-                             <Link to={`/repertoire/${item.id}`} className="flex-1 mb-4 sm:mb-0 cursor-pointer group">
-                                <h3 className="text-xl font-semibold text-primary group-hover:underline">{item.title}</h3>
+                             <Link to={`/repertoire/${item.id}`} className="flex-1 mb-4 sm:mb-0 cursor-pointer">
+                                <h3 className="text-xl font-semibold text-primary hover:underline transition-colors duration-200">{item.title}</h3>
                                 <p className="text-text-secondary text-base">by {item.artist}</p>
-                                <p className="text-sm text-text-secondary mt-1">{item.difficulty} | Last Practiced: {item.lastPracticed ? new Date(item.lastPracticed).toLocaleDateString() : 'Never'}</p>
+                                <p className="text-sm text-text-secondary mt-1">
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/20 text-primary mr-2">
+                                        {item.difficulty}
+                                    </span>
+                                    Last practiced: {item.lastPracticed ? new Date(item.lastPracticed).toLocaleDateString() : 'Never'}
+                                </p>
                                <div className="mt-2 w-full sm:w-48">
                                    <div className="w-full bg-background rounded-full h-2.5">
-                                       <div className={`${masteryColor(item.mastery)} h-2.5 rounded-full`} style={{width: `${item.mastery}%`}}></div>
+                                       <div className={`${masteryColor(item.mastery)} h-2.5 rounded-full transition-all duration-500`} style={{width: `${item.mastery}%`}}></div>
                                    </div>
                                     <p className="text-xs text-left mt-1">{item.mastery}% Mastery</p>
                                </div>
                             </Link>
-                            <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto justify-end">
-                               <button onClick={() => handleSetAsGoal(item)} className="bg-secondary/20 hover:bg-secondary/40 text-secondary-300 font-bold py-2 px-3 rounded-md text-sm whitespace-nowrap">Set as Goal</button>
-                               <button onClick={() => openModal(item)} className="text-sm text-primary hover:underline">Edit</button>
-                               <button onClick={() => handleDelete(item.id)} className="text-sm text-red-400 hover:underline">Delete</button>
+                            <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                               <button 
+                                  onClick={() => handleSetAsGoal(item)} 
+                                  className="bg-secondary/20 hover:bg-secondary/40 text-secondary-300 font-bold py-2 px-3 rounded-md text-sm whitespace-nowrap transition-all duration-200 hover:scale-105"
+                                  title="Create a goal for this song"
+                               >
+                                  🎯 Set Goal
+                               </button>
+                               <button 
+                                  onClick={() => openModal(item)} 
+                                  className="text-sm text-primary hover:underline transition-colors duration-200"
+                                  title="Edit this song"
+                               >
+                                  ✏️ Edit
+                               </button>
+                               <button 
+                                  onClick={() => handleDelete(item.id)} 
+                                  className="text-sm text-red-400 hover:underline transition-colors duration-200"
+                                  title="Remove this song"
+                               >
+                                  🗑️ Remove
+                               </button>
                             </div>
                         </div>
                     </div>
                 ))}
+                
+                {sortedRepertoire.length === 0 && (
+                    <div className="bg-surface p-12 rounded-lg text-center border-2 border-dashed border-border">
+                        <div className="text-6xl mb-6">🎵</div>
+                        <h2 className="text-2xl font-bold text-text-primary mb-3">Build Your Repertoire</h2>
+                        <p className="text-text-secondary text-lg mb-6 max-w-md mx-auto">
+                            Start by adding the songs you're currently learning or want to master.
+                        </p>
+                        <button 
+                            onClick={() => openModal()} 
+                            className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105"
+                        >
+                            Add Your First Song
+                        </button>
+                    </div>
+                )}
             </div>
 
             {isModalOpen && currentItem && (
-                <Modal isOpen={isModalOpen} onClose={closeModal} title={currentItem.id ? "Edit Piece" : "Add New Piece"}>
+                <Modal isOpen={isModalOpen} onClose={closeModal} title={currentItem.id ? "Edit Song" : "Add New Song"}>
                     <div className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-text-secondary">Title</label>
-                                <input type="text" value={currentItem.title} onChange={e => setCurrentItem({ ...currentItem, title: e.target.value })} className="w-full bg-background p-2 rounded-md border border-border" />
+                                <input 
+                                    type="text" 
+                                    value={currentItem.title} 
+                                    onChange={e => setCurrentItem({ ...currentItem, title: e.target.value })} 
+                                    className="w-full bg-background p-3 rounded-md border border-border transition-all duration-200 focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                    placeholder="Enter song title"
+                                    autoFocus
+                                />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-text-secondary">Artist</label>
-                                <input type="text" value={currentItem.artist} onChange={e => setCurrentItem({ ...currentItem, artist: e.target.value })} className="w-full bg-background p-2 rounded-md border border-border" />
+                                <input 
+                                    type="text" 
+                                    value={currentItem.artist} 
+                                    onChange={e => setCurrentItem({ ...currentItem, artist: e.target.value })} 
+                                    className="w-full bg-background p-3 rounded-md border border-border transition-all duration-200 focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                    placeholder="Enter artist name"
+                                />
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-text-secondary">Difficulty</label>
-                                <select value={currentItem.difficulty} onChange={e => setCurrentItem({ ...currentItem, difficulty: e.target.value as Difficulty })} className="w-full bg-background p-2 rounded-md border border-border">
+                                <select 
+                                    value={currentItem.difficulty} 
+                                    onChange={e => setCurrentItem({ ...currentItem, difficulty: e.target.value as Difficulty })} 
+                                    className="w-full bg-background p-3 rounded-md border border-border transition-all duration-200 focus:ring-2 focus:ring-primary focus:border-transparent"
+                                >
                                     {DIFFICULTY_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
                                 </select>
                             </div>
                              <div>
                                 <label className="block text-sm font-medium text-text-secondary">Mastery ({currentItem.mastery || 0}%)</label>
-                                <input type="range" min="0" max="100" value={currentItem.mastery} onChange={e => setCurrentItem({ ...currentItem, mastery: parseInt(e.target.value) })} className="w-full" />
+                                <input 
+                                    type="range" 
+                                    min="0" 
+                                    max="100" 
+                                    value={currentItem.mastery} 
+                                    onChange={e => setCurrentItem({ ...currentItem, mastery: parseInt(e.target.value) })} 
+                                    className="w-full mt-2 accent-primary"
+                                />
                             </div>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-text-secondary">Notes</label>
-                            <textarea value={currentItem.notes} onChange={e => setCurrentItem({ ...currentItem, notes: e.target.value })} className="w-full bg-background p-2 rounded-md border border-border h-24"></textarea>
+                            <textarea 
+                                value={currentItem.notes} 
+                                onChange={e => setCurrentItem({ ...currentItem, notes: e.target.value })} 
+                                className="w-full bg-background p-3 rounded-md border border-border h-24 transition-all duration-200 focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                placeholder="Add any notes about this song..."
+                            ></textarea>
                         </div>
 
                         <div className="flex justify-end space-x-4">
-                            <button onClick={closeModal} disabled={isSaving} className="bg-surface hover:bg-border text-text-primary font-bold py-2 px-4 rounded-md disabled:opacity-50">Cancel</button>
-                            <button onClick={handleSave} disabled={isSaving} className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
-                                {isSaving ? 'Saving...' : 'Save Piece'}
+                            <button 
+                                onClick={closeModal} 
+                                disabled={isSaving} 
+                                className="bg-surface hover:bg-border text-text-primary font-bold py-3 px-6 rounded-md disabled:opacity-50 transition-all duration-200"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleSave} 
+                                disabled={isSaving} 
+                                className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
+                            >
+                                {isSaving ? 'Saving...' : 'Save Song'}
                             </button>
                         </div>
                     </div>

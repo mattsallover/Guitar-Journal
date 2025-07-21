@@ -19,16 +19,16 @@ export const Sidebar: React.FC = () => {
         supabase.auth.signOut();
     };
 
-    const navLinkClasses = "flex items-center px-4 py-3 text-text-secondary hover:bg-surface hover:text-text-primary rounded-md transition-colors duration-200";
-    const subNavLinkClasses = "flex items-center pl-12 pr-4 py-2 text-text-secondary hover:bg-surface hover:text-text-primary rounded-md transition-colors duration-200";
+    const navLinkClasses = "flex items-center px-4 py-3 text-text-secondary hover:bg-surface hover:text-text-primary rounded-md transition-all duration-300 hover:scale-[1.02]";
+    const subNavLinkClasses = "flex items-center pl-12 pr-4 py-2 text-text-secondary hover:bg-surface hover:text-text-primary rounded-md transition-all duration-300 hover:translate-x-1";
     const activeLinkClasses = "bg-primary text-white";
-    const groupButtonClasses = "flex items-center w-full px-4 py-3 text-text-secondary hover:bg-surface hover:text-text-primary rounded-md transition-colors duration-200 text-left";
+    const groupButtonClasses = "flex items-center w-full px-4 py-3 text-text-secondary hover:bg-surface hover:text-text-primary rounded-md transition-all duration-300 text-left";
 
     const journalItems = [
-        { to: "/log", icon: LogIcon, label: "Practice Log", exact: false },
+        { to: "/log", icon: LogIcon, label: "Log Sessions", exact: false },
         { to: "/repertoire", icon: RepertoireIcon, label: "Repertoire", exact: false },
-        { to: "/goals", icon: GoalsIcon, label: "Goals", exact: false },
-        { to: "/progression", icon: ProgressionIcon, label: "Progression", exact: false }
+        { to: "/goals", icon: GoalsIcon, label: "Track Goals", exact: false },
+        { to: "/progression", icon: ProgressionIcon, label: "View Progress", exact: false }
     ];
 
     const toolItems = [
@@ -52,62 +52,72 @@ export const Sidebar: React.FC = () => {
 
                 {/* Journal Section */}
                 <div>
-                    <button onClick={() => setIsJournalOpen(!isJournalOpen)} className={groupButtonClasses}>
+                    <button 
+                        onClick={() => setIsJournalOpen(!isJournalOpen)} 
+                        className={`${groupButtonClasses} group`}
+                        title="Your practice journal and progress tracking"
+                    >
                         <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v11.494m-5.247-8.242l10.494 4.99m-10.494 0l10.494-4.99m-10.494-2.508l10.494 9.994" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 21h6a2 2 0 002-2V5a2 2 0 00-2-2H9a2 2 0 00-2 2v14a2 2 0 002 2z" />
                         </svg>
                         <span className="flex-1">Journal</span>
-                        <svg className={`w-4 h-4 transition-transform duration-200 ${isJournalOpen ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className={`w-4 h-4 transition-transform duration-300 group-hover:scale-110 ${isJournalOpen ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
                         </svg>
                     </button>
-                    {isJournalOpen && (
-                        <div className="mt-1 space-y-1">
+                    <div className={`overflow-hidden transition-all duration-300 ${isJournalOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                        <div className="mt-1 space-y-1 pb-1">
                             {journalItems.map(item => (
                                 <NavLink 
                                     key={item.to} 
                                     to={item.to} 
                                     end={item.exact} 
-                                    className={({isActive}) => isActive ? `${subNavLinkClasses} ${activeLinkClasses}` : subNavLinkClasses}
+                                    className={({isActive}) => `${subNavLinkClasses} ${isActive ? activeLinkClasses : ''} group`}
+                                    title={`Go to ${item.label}`}
                                 >
-                                    <item.icon className="w-5 h-5 mr-3" />
+                                    <item.icon className="w-5 h-5 mr-3 transition-transform duration-200 group-hover:scale-110" />
                                     <span>{item.label}</span>
                                 </NavLink>
                             ))}
                         </div>
-                    )}
+                    </div>
                 </div>
 
                 {/* Practice Tools Section */}
                 <div>
-                    <button onClick={() => setIsToolsOpen(!isToolsOpen)} className={groupButtonClasses}>
+                    <button 
+                        onClick={() => setIsToolsOpen(!isToolsOpen)} 
+                        className={`${groupButtonClasses} group`}
+                        title="Interactive tools for focused practice"
+                    >
                         <ToolsIcon className="w-6 h-6 mr-3" />
                         <span className="flex-1">Practice Tools</span>
-                        <svg className={`w-4 h-4 ml-auto transition-transform ${isToolsOpen ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
+                        <svg className={`w-4 h-4 ml-auto transition-transform duration-300 group-hover:scale-110 ${isToolsOpen ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
                     </button>
-                    {isToolsOpen && (
-                        <div className="mt-1 space-y-1">
+                    <div className={`overflow-hidden transition-all duration-300 ${isToolsOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                        <div className="mt-1 space-y-1 pb-1">
                             {toolItems.map(item => (
                                 <NavLink 
                                     key={item.to} 
                                     to={item.to} 
                                     end={item.exact} 
-                                    className={({isActive}) => isActive ? `${subNavLinkClasses} ${activeLinkClasses}` : subNavLinkClasses}
+                                    className={({isActive}) => `${subNavLinkClasses} ${isActive ? activeLinkClasses : ''} group`}
+                                    title={getToolDescription(item.label)}
                                 >
                                     <div className="w-5 h-5 mr-3 flex items-center justify-center">
                                         {item.label === 'CAGED Explorer' && (
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                             </svg>
                                         )}
                                         {item.label === 'Note Finder' && (
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                             </svg>
                                         )}
                                         {item.label === 'Scale Practice' && (
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-13c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                                             </svg>
                                         )}
@@ -116,19 +126,36 @@ export const Sidebar: React.FC = () => {
                                 </NavLink>
                             ))}
                         </div>
-                    )}
+                    </div>
                 </div>
             </nav>
 
             <div className="mt-auto">
-                <div className="p-4 bg-surface rounded-lg">
+                <div className="p-4 bg-surface rounded-lg transition-all duration-300 hover:bg-surface/80">
                     <p className="font-semibold text-text-primary">{state.user?.name}</p>
                     <p className="text-sm text-text-secondary">{state.user?.email || 'Anonymous User'}</p>
-                    <button onClick={handleLogout} className="w-full mt-4 text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-md">
+                    <button 
+                        onClick={handleLogout} 
+                        className="w-full mt-4 text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-md transition-all duration-200 hover:translate-x-1"
+                        title="Sign out of your account"
+                    >
                         Sign Out
                     </button>
                 </div>
             </div>
         </div>
     );
+};
+
+const getToolDescription = (toolName: string): string => {
+    switch (toolName) {
+        case 'CAGED Explorer':
+            return 'Learn chord shapes with interactive quizzes';
+        case 'Note Finder':
+            return 'Master fretboard note locations';
+        case 'Scale Practice':
+            return 'Coming soon - scale pattern practice';
+        default:
+            return '';
+    }
 };

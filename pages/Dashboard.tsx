@@ -26,9 +26,9 @@ const FocusCard: React.FC<FocusCardProps> = ({ type, title, description, onStart
             </div>
             <button
                 onClick={onStart}
-                className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md self-center whitespace-nowrap"
+                className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md self-center whitespace-nowrap transition-all duration-200 hover:scale-105 hover:shadow-lg"
             >
-                Start Practice
+                Start Session
             </button>
         </div>
     );
@@ -91,35 +91,67 @@ export const Dashboard: React.FC = () => {
     return (
         <div className="p-8 space-y-8">
             <div>
-                <h1 className="text-3xl font-bold text-text-primary">Today's Focus</h1>
-                <p className="text-text-secondary mt-1">Here are some suggestions to guide your practice session.</p>
+                <h1 className="text-4xl font-bold text-text-primary mb-2">Today's Focus</h1>
+                <p className="text-lg text-text-secondary">Smart suggestions to guide your practice session</p>
             </div>
             
             <div className="space-y-4">
                 {focusSuggestions.length > 0 ? (
                     focusSuggestions.map((suggestion, index) => <FocusCard key={index} {...suggestion} />)
                 ) : (
-                    <div className="bg-surface p-8 rounded-lg text-center">
-                        <h2 className="text-xl font-bold">Welcome!</h2>
-                        <p className="text-text-secondary mt-2">Log a session, add a goal, or build your repertoire to get personalized practice suggestions.</p>
+                    <div className="bg-surface p-12 rounded-lg text-center border-2 border-dashed border-border">
+                        <div className="text-6xl mb-6">🎸</div>
+                        <h2 className="text-2xl font-bold text-text-primary mb-3">Welcome to Your Guitar Journey!</h2>
+                        <p className="text-text-secondary text-lg mb-6 max-w-md mx-auto">
+                            Start by logging a practice session or adding your first song to get personalized recommendations.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                            <button 
+                                onClick={() => navigate('/log')} 
+                                className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105"
+                            >
+                                Log Your First Session
+                            </button>
+                            <button 
+                                onClick={() => navigate('/repertoire')} 
+                                className="bg-secondary hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105"
+                            >
+                                Add Your First Song
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
             
             <div className="border-t border-border pt-8">
-                 <h2 className="text-2xl font-bold text-text-primary mb-4">Quick Actions</h2>
+                 <h2 className="text-2xl font-bold text-text-primary mb-6">Quick Actions</h2>
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                     <button onClick={() => navigate('/log')} className="bg-surface hover:bg-border p-4 rounded-lg text-center transition-colors">
-                        <span className="text-2xl">📓</span>
-                        <p className="font-semibold mt-2">Log a Past Session</p>
+                     <button 
+                        onClick={() => navigate('/log')} 
+                        className="bg-surface hover:bg-border p-6 rounded-lg text-center transition-all duration-300 hover:scale-105 hover:shadow-md group"
+                        title="Record details from a previous practice session"
+                     >
+                        <span className="text-3xl mb-3 block group-hover:scale-110 transition-transform duration-200">📓</span>
+                        <p className="font-semibold text-lg">Log Past Session</p>
+                        <p className="text-sm text-text-secondary mt-1">Record what you practiced</p>
                     </button>
-                    <button onClick={() => navigate('/repertoire')} className="bg-surface hover:bg-border p-4 rounded-lg text-center transition-colors">
-                        <span className="text-2xl">🎵</span>
-                        <p className="font-semibold mt-2">Manage Repertoire</p>
+                    <button 
+                        onClick={() => navigate('/repertoire')} 
+                        className="bg-surface hover:bg-border p-6 rounded-lg text-center transition-all duration-300 hover:scale-105 hover:shadow-md group"
+                        title="Add songs you're learning or update your progress"
+                    >
+                        <span className="text-3xl mb-3 block group-hover:scale-110 transition-transform duration-200">🎵</span>
+                        <p className="font-semibold text-lg">Manage Songs</p>
+                        <p className="text-sm text-text-secondary mt-1">Build your repertoire</p>
                     </button>
-                     <button onClick={() => navigate('/goals')} className="bg-surface hover:bg-border p-4 rounded-lg text-center transition-colors">
-                        <span className="text-2xl">🎯</span>
-                        <p className="font-semibold mt-2">Review Goals</p>
+                     <button 
+                        onClick={() => navigate('/goals')} 
+                        className="bg-surface hover:bg-border p-6 rounded-lg text-center transition-all duration-300 hover:scale-105 hover:shadow-md group"
+                        title="Set new goals or track your progress"
+                     >
+                        <span className="text-3xl mb-3 block group-hover:scale-110 transition-transform duration-200">🎯</span>
+                        <p className="font-semibold text-lg">Track Goals</p>
+                        <p className="text-sm text-text-secondary mt-1">Set and achieve targets</p>
                     </button>
                  </div>
             </div>

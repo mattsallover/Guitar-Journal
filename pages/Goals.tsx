@@ -114,45 +114,127 @@ export const Goals: React.FC = () => {
     return (
         <div className="p-8">
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold">Goals</h1>
-                <button onClick={() => openModal()} className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md">
-                    + Set New Goal
+                <div>
+                    <h1 className="text-4xl font-bold text-text-primary">Your Goals</h1>
+                    <p className="text-text-secondary mt-1">Track your musical aspirations and progress</p>
+                </div>
+                <button 
+                    onClick={() => openModal()} 
+                    className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-lg flex items-center space-x-2"
+                    title="Set a new practice goal"
+                >
+                    <span>+</span>
+                    <span>Set New Goal</span>
                 </button>
             </div>
             
             <div className="mb-4">
-                <span className="mr-4">Filter by status:</span>
-                <button onClick={() => setFilterStatus('all')} className={`px-3 py-1 rounded-full text-sm ${filterStatus === 'all' ? 'bg-primary text-white' : 'bg-surface'}`}>All</button>
-                <button onClick={() => setFilterStatus(GoalStatus.Active)} className={`ml-2 px-3 py-1 rounded-full text-sm ${filterStatus === GoalStatus.Active ? 'bg-primary text-white' : 'bg-surface'}`}>Active</button>
-                <button onClick={() => setFilterStatus(GoalStatus.Completed)} className={`ml-2 px-3 py-1 rounded-full text-sm ${filterStatus === GoalStatus.Completed ? 'bg-primary text-white' : 'bg-surface'}`}>Completed</button>
+                <span className="mr-4 text-text-secondary">Filter:</span>
+                <div className="inline-flex space-x-2">
+                    <button 
+                        onClick={() => setFilterStatus('all')} 
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${filterStatus === 'all' ? 'bg-primary text-white' : 'bg-surface hover:bg-border'}`}
+                    >
+                        All ({state.goals.length})
+                    </button>
+                    <button 
+                        onClick={() => setFilterStatus(GoalStatus.Active)} 
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${filterStatus === GoalStatus.Active ? 'bg-primary text-white' : 'bg-surface hover:bg-border'}`}
+                    >
+                        Active ({state.goals.filter(g => g.status === GoalStatus.Active).length})
+                    </button>
+                    <button 
+                        onClick={() => setFilterStatus(GoalStatus.Completed)} 
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${filterStatus === GoalStatus.Completed ? 'bg-primary text-white' : 'bg-surface hover:bg-border'}`}
+                    >
+                        Completed ({state.goals.filter(g => g.status === GoalStatus.Completed).length})
+                    </button>
+                </div>
             </div>
 
             <div className="space-y-4">
                 {filteredGoals.map(goal => (
-                    <div key={goal.id} className="bg-surface p-4 rounded-lg">
+                    <div key={goal.id} className="bg-surface p-6 rounded-lg transition-all duration-300 hover:shadow-lg hover:scale-[1.01] group">
                         <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                             <div className="flex-1 mb-4 sm:mb-0">
-                                <h3 className="text-xl font-semibold">{goal.title} {goal.status === GoalStatus.Completed && '✅'}</h3>
-                                <p className="text-sm text-text-secondary">{goal.category} | Target: {new Date(goal.targetDate).toLocaleDateString()}</p>
+                                <div className="flex items-center space-x-2 mb-2">
+                                    <h3 className="text-xl font-semibold text-text-primary">{goal.title}</h3>
+                                    {goal.status === GoalStatus.Completed && <span className="text-2xl">✅</span>}
+                                </div>
+                                <div className="flex items-center space-x-4 mb-2">
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-secondary/20 text-secondary-300">
+                                        {goal.category}
+                                    </span>
+                                    <span className="text-sm text-text-secondary">
+                                        Target: {new Date(goal.targetDate).toLocaleDateString()}
+                                    </span>
+                                </div>
                                 <p className="mt-2 text-text-primary">{goal.description}</p>
                                 <div className="mt-2 w-full sm:w-48">
                                    <p className="text-xs text-left mb-1">{goal.progress}% Complete</p>
                                    <div className="w-full bg-background rounded-full h-2.5">
-                                       <div className={`${progressColor(goal.progress)} h-2.5 rounded-full`} style={{width: `${goal.progress}%`}}></div>
+                                       <div className={`${progressColor(goal.progress)} h-2.5 rounded-full transition-all duration-500`} style={{width: `${goal.progress}%`}}></div>
                                    </div>
                                </div>
                             </div>
-                             <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto justify-end flex-wrap">
+                             <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto justify-end flex-wrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                {goal.status === GoalStatus.Active && (
-                                   <button onClick={() => handleStartPractice(goal.title)} className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-3 rounded-md text-sm whitespace-nowrap">Start Practice</button>
+                                   <button 
+                                      onClick={() => handleStartPractice(goal.title)} 
+                                      className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-3 rounded-md text-sm whitespace-nowrap transition-all duration-200 hover:scale-105"
+                                      title="Start practicing this goal"
+                                   >
+                                      🚀 Practice
+                                   </button>
                                )}
-                               <Link to={`/progression?focus=${encodeURIComponent(goal.title)}`} className="text-sm text-secondary hover:underline whitespace-nowrap">Progression</Link>
-                                <button onClick={() => openModal(goal)} className="text-sm text-primary hover:underline">Edit</button>
-                                <button onClick={() => handleDelete(goal.id)} className="text-sm text-red-400 hover:underline">Delete</button>
+                               <Link 
+                                  to={`/progression?focus=${encodeURIComponent(goal.title)}`} 
+                                  className="text-sm text-secondary hover:underline whitespace-nowrap transition-colors duration-200"
+                                  title="View your progress on this goal"
+                               >
+                                  📈 Progress
+                               </Link>
+                                <button 
+                                   onClick={() => openModal(goal)} 
+                                   className="text-sm text-primary hover:underline transition-colors duration-200"
+                                   title="Edit this goal"
+                                >
+                                   ✏️ Edit
+                                </button>
+                                <button 
+                                   onClick={() => handleDelete(goal.id)} 
+                                   className="text-sm text-red-400 hover:underline transition-colors duration-200"
+                                   title="Delete this goal"
+                                >
+                                   🗑️ Delete
+                                </button>
                             </div>
                         </div>
                     </div>
                 ))}
+                
+                {filteredGoals.length === 0 && (
+                    <div className="bg-surface p-12 rounded-lg text-center border-2 border-dashed border-border">
+                        <div className="text-6xl mb-6">🎯</div>
+                        <h2 className="text-2xl font-bold text-text-primary mb-3">
+                            {filterStatus === 'all' ? 'Set Your First Goal' : `No ${filterStatus} Goals`}
+                        </h2>
+                        <p className="text-text-secondary text-lg mb-6 max-w-md mx-auto">
+                            {filterStatus === 'all' 
+                                ? 'Goals help you stay focused and track your musical progress over time.' 
+                                : `You don't have any ${filterStatus.toLowerCase()} goals right now.`
+                            }
+                        </p>
+                        {filterStatus === 'all' && (
+                            <button 
+                                onClick={() => openModal()} 
+                                className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105"
+                            >
+                                Set Your First Goal
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             {isModalOpen && currentGoal && (
