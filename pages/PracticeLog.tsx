@@ -71,6 +71,7 @@ export const PracticeLog: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [goalToUpdate, setGoalToUpdate] = useState<Goal | null>(null);
     const [masteryItemsToUpdate, setMasteryItemsToUpdate] = useState<RepertoireItem[]>([]);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [uploadProgress, setUploadProgress] = useState<{
         name: string;
         progress: number;
@@ -80,6 +81,26 @@ export const PracticeLog: React.FC = () => {
         compressedSize?: number;
     }[]>([]);
     const [isUploading, setIsUploading] = useState(false);
+
+    useEffect(() => {
+        const navState = location.state;
+        if (navState) {
+            setCurrentSession({
+                date: new Date().toISOString().split('T')[0],
+                duration: navState.duration || 30,
+                mood: Mood.Good,
+                techniques: [],
+                songs: [],
+                notes: navState.notes || '',
+                tags: [],
+                recordings: [],
+                link: navState.link || '',
+                youtubeId: navState.youtubeId || '',
+                cameraRecordingPath: navState.recordingPath || ''
+            });
+            navigate(location.pathname, { replace: true });
+        }
+    }, [location.state, navigate]);
 
 
     const repertoireTitles = useMemo(() => state.repertoire.map(r => r.title), [state.repertoire]);
@@ -321,8 +342,10 @@ export const PracticeLog: React.FC = () => {
                 songs: currentSession.songs || [],
                 notes: currentSession.notes || '',
                 tags: currentSession.tags || [],
-                link: currentSession.link || '',
                 recordings: [...(currentSession.recordings || []), ...uploadedRecordings],
+                link: currentSession.link || '',
+                youtubeId: currentSession.youtubeId || '',
+                cameraRecordingPath: currentSession.cameraRecordingPath || '',
             };
             
             console.log('Final sessionData payload for Supabase:', sessionData);
