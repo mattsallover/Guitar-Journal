@@ -11,12 +11,19 @@ interface ChatRequest {
   userId: string;
 }
 
+interface ConversationHistory {
+  message: string;
+  response: string;
+  created_at: string;
+}
+
 interface UserData {
   practiceSessions: any[];
   repertoire: any[];
   goals: any[];
   cagedSessions: any[];
   noteFinderAttempts: any[];
+  recentConversations: ConversationHistory[];
 }
 
 serve(async (req: Request) => {
@@ -58,13 +65,16 @@ serve(async (req: Request) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Fetch user's practice data (last 10 sessions + all other data)
+    // Fetch user's practice data + recent conversations
     const userData = await fetchUserData(supabase, userId)
 
-    // Create system prompt with user context
+    // Create system prompt with user context + conversation history
     const systemPrompt = createSystemPrompt(userData)
+    
+    // Build conversation messages including recent history
+    const messages = buildConversationMessages(systemPrompt, userData.recentConversations, message)
 
-    // Call OpenAI API
+    // Call OpenAI API with conversation context
     const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -73,16 +83,7 @@ serve(async (req: Request) => {
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt,
-          },
-          {
-            role: "user",
-            content: message,
-          },
-        ],
+        messages,
         max_tokens: 1000,
         temperature: 0.7,
       }),
@@ -101,6 +102,9 @@ serve(async (req: Request) => {
 
     const aiData = await openaiResponse.json()
     const aiMessage = aiData.choices[0]?.message?.content || "Sorry, I couldn't generate a response."
+
+    // Store this conversation for future context
+    await storeConversation(supabase, userId, message, aiMessage, userData)
 
     return new Response(
       JSON.stringify({ message: aiMessage }),
@@ -159,6 +163,14 @@ async function fetchUserData(supabase: any, userId: string): Promise<UserData> {
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(20)
+    
+    // Fetch recent conversations (last 8 for context)
+    const { data: recentConversations } = await supabase
+      .from("coach_conversations")
+      .select("message, response, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(8)
 
     return {
       practiceSessions: practiceSessions || [],
@@ -166,6 +178,7 @@ async function fetchUserData(supabase: any, userId: string): Promise<UserData> {
       goals: goals || [],
       cagedSessions: cagedSessions || [],
       noteFinderAttempts: noteFinderAttempts || [],
+      recentConversations: recentConversations || [],
     }
   } catch (error) {
     console.error("Error fetching user data:", error)
@@ -175,6 +188,7 @@ async function fetchUserData(supabase: any, userId: string): Promise<UserData> {
       goals: [],
       cagedSessions: [],
       noteFinderAttempts: [],
+      recentConversations: [],
     }
   }
 }
@@ -276,6 +290,78 @@ TEACHING APPROACH:
 10. Always end with encouragement and clear next steps
 
 You are their personal musical mentor - someone who truly believes in their potential and makes even the most challenging aspects of guitar feel achievable and fun. Use their actual practice data to provide deeply personalized guidance that shows you really know and care about their musical journey.`
+}
+
+function buildConversationMessages(systemPrompt: string, conversations: ConversationHistory[], newMessage: string) {
+  const messages = [
+    {
+      role: "system",
+      content: systemPrompt
+    }
+  ];
+
+  // Add recent conversation context (last 6 exchanges to keep context manageable)
+  if (conversations.length > 0) {
+    const recentConversations = conversations.slice(0, 6).reverse(); // Most recent first, then reverse for chronological order
+    
+    // Add a context separator
+    messages.push({
+      role: "system", 
+      content: `RECENT CONVERSATION CONTEXT (for reference only - don't acknowledge this directly):
+${recentConversations.map(conv => `Student: ${conv.message}\nYou: ${conv.response}`).join("\n\n")}
+
+Now respond to their current question with full context of our ongoing conversation.`
+    });
+  }
+
+  // Add the current message
+  messages.push({
+    role: "user",
+    content: newMessage
+  });
+
+  return messages;
+}
+
+async function storeConversation(supabase: any, userId: string, message: string, response: string, userData: UserData) {
+  try {
+    // Create a lightweight session context snapshot (only key stats)
+    const sessionContext = {
+      totalSessions: userData.practiceSessions.length,
+      avgMastery: userData.repertoire.length > 0 
+        ? Math.round(userData.repertoire.reduce((sum, item) => sum + item.mastery, 0) / userData.repertoire.length)
+        : 0,
+      activeGoals: userData.goals.filter(g => g.status === "Active").length,
+      lastPracticeDate: userData.practiceSessions[0]?.date || null
+    };
+
+    await supabase
+      .from("coach_conversations")
+      .insert({
+        user_id: userId,
+        message: message,
+        response: response,
+        session_context: sessionContext
+      });
+
+    // Keep only last 20 conversations per user to manage storage
+    const { data: allConversations } = await supabase
+      .from("coach_conversations")
+      .select("id")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (allConversations && allConversations.length > 20) {
+      const idsToDelete = allConversations.slice(20).map(conv => conv.id);
+      await supabase
+        .from("coach_conversations")
+        .delete()
+        .in("id", idsToDelete);
+    }
+  } catch (error) {
+    console.error("Error storing conversation:", error);
+    // Don't fail the main request if conversation storage fails
+  }
 }
 
 // Import createClient function
