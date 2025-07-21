@@ -26,6 +26,9 @@ const shuffle = <T,>(array: T[]): T[] => {
 // Quiz prompt types
 type QuizPromptType = 'find-all' | 'find-any' | 'find-on-string';
 
+// Quiz mode types
+type QuizModeType = 'find-any' | 'find-all' | 'find-on-string' | 'combo';
+
 interface QuizQuestion {
     note: Note;
     promptType: QuizPromptType;
@@ -77,6 +80,9 @@ export const NoteFinder: React.FC = () => {
         correct: boolean;
         expectedNote: Note;
     } | null>(null);
+    
+    // Per-note scoring state
+    const [quizNoteStats, setQuizNoteStats] = useState<Record<Note, { correct: number; incorrect: number }>>({});
     
     // Statistics State
     const [noteStats, setNoteStats] = useState<NoteStats[]>([]);
@@ -156,12 +162,27 @@ export const NoteFinder: React.FC = () => {
         setNoteStats(stats);
     };
 
-    const startQuiz = (numQuestions: number = 12) => {
-        // Create varied quiz questions
-        const notes = shuffle([...ALL_NOTES].slice(0, numQuestions)) as Note[];
+    const startQuiz = (mode: QuizModeType, numQuestions: number = 12) => {
+        let notes: Note[] = [];
+        let sequence: QuizQuestion[] = [];
+        
+        if (mode === 'combo') {
+            // Create varied quiz questions with mixed modes
+            notes = shuffle([...ALL_NOTES].slice(0, numQuestions)) as Note[];
+        } else {
+            // For specific modes, use all notes
+            notes = shuffle([...ALL_NOTES].slice(0, numQuestions)) as Note[];
+        }
+        
         const sequence: QuizQuestion[] = notes.map(note => {
-            const promptTypes: QuizPromptType[] = ['find-all', 'find-any', 'find-on-string'];
-            const promptType = promptTypes[Math.floor(Math.random() * promptTypes.length)];
+            let promptType: QuizPromptType;
+            
+            if (mode === 'combo') {
+                const promptTypes: QuizPromptType[] = ['find-all', 'find-any', 'find-on-string'];
+                promptType = promptTypes[Math.floor(Math.random() * promptTypes.length)];
+            } else {
+                promptType = mode as QuizPromptType;
+            }
             
             const question: QuizQuestion = { note, promptType };
             
@@ -186,6 +207,7 @@ export const NoteFinder: React.FC = () => {
         setCurrentIndex(0);
         setQuizResults([]);
         setFoundPositions(new Set());
+        setQuizNoteStats({});
         setMode('quiz');
         setStartTime(Date.now());
         startTimeRef.current = Date.now();
@@ -233,6 +255,18 @@ export const NoteFinder: React.FC = () => {
         });
         setShowFeedback(true);
         
+        // Update per-note statistics for this quiz
+        setQuizNoteStats(prev => {
+            const current = prev[targetNote] || { correct: 0, incorrect: 0 };
+            return {
+                ...prev,
+                [targetNote]: {
+                    correct: current.correct + (correct ? 1 : 0),
+                    incorrect: current.incorrect + (correct ? 0 : 1)
+                }
+            };
+        });
+        
         // Convert stringIndex (0-5, high to low E) to stringNum (1-6, high to low E)
         const stringNum = stringIndex + 1;
 
@@ -273,7 +307,11 @@ export const NoteFinder: React.FC = () => {
             } else if (shouldAdvance) {
                 setMode('results');
                 // Refresh data to show updated stats
-                setTimeout(fetchNoteFinderData, 500);
+                setTimeout(() => {
+                    fetchNoteFinderData();
+                    // Force recalculation of note stats with new data
+                    calculateNoteStats([...recentAttempts]);
+                }, 500);
             }
         }, 1500);
     };
@@ -284,6 +322,7 @@ export const NoteFinder: React.FC = () => {
         setCurrentIndex(0);
         setQuizResults([]);
         setFoundPositions(new Set());
+        setQuizNoteStats({});
     };
 
     const getAccuracyColor = (accuracy: number) => {
@@ -377,19 +416,35 @@ export const NoteFinder: React.FC = () => {
             {mode === 'menu' && (
                 <div className="space-y-6">
                     <div className="bg-surface p-6 rounded-lg">
-                        <h2 className="text-xl font-bold mb-4">Practice Options</h2>
-                        <div className="space-y-4">
+                        <h2 className="text-xl font-bold mb-4">Quiz Modes</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <button 
-                                onClick={() => startQuiz(12)}
-                                className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 px-4 rounded-md"
+                                onClick={() => startQuiz('find-any', 12)}
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md"
                             >
-                                🎯 Full Quiz (All 12 Notes)
+                                🚀 Find Any Mode
+                                <div className="text-sm mt-1 opacity-80">Click one occurrence (speed mode)</div>
                             </button>
                             <button 
-                                onClick={() => startQuiz(6)}
-                                className="w-full bg-secondary hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-md"
+                                onClick={() => startQuiz('find-all', 12)}
+                                className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded-md"
                             >
-                                ⚡ Quick Quiz (6 Random Notes)
+                                🔍 Find All Mode
+                                <div className="text-sm mt-1 opacity-80">Find every occurrence on fretboard</div>
+                            </button>
+                            <button 
+                                onClick={() => startQuiz('find-on-string', 12)}
+                                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-md"
+                            >
+                                🎯 Find on String Mode
+                                <div className="text-sm mt-1 opacity-80">Find note on specific string</div>
+                            </button>
+                            <button 
+                                onClick={() => startQuiz('combo', 12)}
+                                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-md"
+                            >
+                                🎲 Combo Mode
+                                <div className="text-sm mt-1 opacity-80">Random mix of all three modes</div>
                             </button>
                         </div>
                     </div>
@@ -499,6 +554,8 @@ export const NoteFinder: React.FC = () => {
                 <div className="space-y-6">
                     <div className="bg-surface p-6 rounded-lg text-center">
                         <h2 className="text-2xl font-bold mb-4">Quiz Complete!</h2>
+                        
+                        {/* Overall Results */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                             <div>
                                 <div className="text-3xl font-bold text-primary">
@@ -520,12 +577,34 @@ export const NoteFinder: React.FC = () => {
                             </div>
                         </div>
                         
+                        {/* Per-Note Breakdown */}
+                        {Object.keys(quizNoteStats).length > 0 && (
+                            <div className="mb-6">
+                                <h3 className="text-lg font-bold mb-3">Performance by Note</h3>
+                                <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
+                                    {Object.entries(quizNoteStats).map(([note, stats]) => {
+                                        const accuracy = Math.round((stats.correct / (stats.correct + stats.incorrect)) * 100);
+                                        const color = accuracy >= 80 ? 'bg-green-500' : 
+                                                     accuracy >= 60 ? 'bg-yellow-500' : 
+                                                     accuracy >= 40 ? 'bg-orange-500' : 'bg-red-500';
+                                        return (
+                                            <div key={note} className={`${color} p-2 rounded text-white text-center`}>
+                                                <div className="font-bold">{note}</div>
+                                                <div className="text-xs">{accuracy}%</div>
+                                                <div className="text-xs">{stats.correct}/{stats.correct + stats.incorrect}</div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                        
                         <div className="space-y-2">
                             <button 
-                                onClick={() => startQuiz(quizSequence.length)}
+                                onClick={resetQuiz}
                                 className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md"
                             >
-                                Take Another Quiz
+                                Choose Another Quiz Mode
                             </button>
                             <button 
                                 onClick={resetQuiz}
