@@ -7,6 +7,62 @@ import { Modal } from '../components/Modal';
 import { DIFFICULTY_OPTIONS } from '../constants';
 import { supabase } from '../services/supabase';
 
+// Levenshtein distance function for fuzzy matching
+const levenshteinDistance = (str1: string, str2: string): number => {
+    const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+    
+    for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+    for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+    
+    for (let j = 1; j <= str2.length; j++) {
+        for (let i = 1; i <= str1.length; i++) {
+            const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+            matrix[j][i] = Math.min(
+                matrix[j][i - 1] + 1,
+                matrix[j - 1][i] + 1,
+                matrix[j - 1][i - 1] + cost
+            );
+        }
+    }
+    
+    return matrix[str2.length][str1.length];
+};
+
+// Normalize string for comparison
+const normalizeString = (str: string): string => {
+    return str.trim().toLowerCase();
+};
+
+// Find potential duplicates in repertoire
+const findPotentialDuplicates = (
+    title: string, 
+    artist: string, 
+    repertoire: RepertoireItem[],
+    excludeId?: string
+): RepertoireItem[] => {
+    const normalizedTitle = normalizeString(title);
+    const normalizedArtist = normalizeString(artist);
+    
+    return repertoire.filter(item => {
+        if (excludeId && item.id === excludeId) return false;
+        
+        const itemTitle = normalizeString(item.title);
+        const itemArtist = normalizeString(item.artist);
+        
+        // Exact match on normalized title + artist
+        if (itemTitle === normalizedTitle && itemArtist === normalizedArtist) {
+            return true;
+        }
+        
+        // Fuzzy match with Levenshtein distance ≤ 2
+        if (levenshteinDistance(itemTitle, normalizedTitle) <= 2 ||
+            levenshteinDistance(itemArtist, normalizedArtist) <= 2) {
+            return true;
+        }
+        
+        return false;
+    });
+};</parameter>
 
 export const Repertoire: React.FC = () => {
     const { state, refreshData } = useAppContext();
