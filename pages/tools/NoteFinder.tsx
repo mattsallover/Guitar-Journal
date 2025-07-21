@@ -221,7 +221,7 @@ export const NoteFinder: React.FC = () => {
                     newFoundPositions.has(`${pos.stringIndex}-${pos.fret}`)
                 );
             } else {
-                shouldAdvance = true; // Wrong click ends the question
+                shouldAdvance = false; // Let them keep trying until they find all
             }
         }
         
@@ -421,6 +421,26 @@ export const NoteFinder: React.FC = () => {
                                     {currentQuestion.promptType === 'find-all' && `Found: ${foundPositions.size} / ${findAllNotePositions(currentQuestion.note).length}`}
                                     {currentQuestion.promptType === 'find-on-string' && "Click the specific string location"}
                                 </div>
+                                
+                                {/* Add "Give Up" button for find-all mode */}
+                                {currentQuestion.promptType === 'find-all' && foundPositions.size < findAllNotePositions(currentQuestion.note).length && (
+                                    <button 
+                                        onClick={() => {
+                                            // Force advance to next question
+                                            if (currentIndex < quizSequence.length - 1) {
+                                                setCurrentIndex(prev => prev + 1);
+                                                setFoundPositions(new Set());
+                                                startTimeRef.current = Date.now();
+                                            } else {
+                                                setMode('results');
+                                                setTimeout(fetchNoteFinderData, 500);
+                                            }
+                                        }}
+                                        className="mt-3 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-md text-sm"
+                                    >
+                                        Give Up & Skip to Next Note
+                                    </button>
+                                )}
                             </>
                         ) : (
                             <div className="space-y-4">
