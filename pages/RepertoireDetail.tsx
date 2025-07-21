@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import { Mood } from '../types';
+import { GoalStatus, Mood } from '../types';
 
 const moodIcons: Record<Mood, string> = {
     [Mood.Excellent]: '😊',
@@ -26,6 +26,9 @@ export const RepertoireDetail: React.FC = () => {
         .filter(session => (session.songs || []).includes(item.title))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+    const relatedGoals = state.goals.filter(goal => 
+        goal.category === 'Song' && goal.title.toLowerCase() === item.title.toLowerCase()
+    );
 
     const totalTime = relatedSessions.reduce((sum, s) => sum + s.duration, 0);
 
@@ -56,7 +59,8 @@ export const RepertoireDetail: React.FC = () => {
             </div>
 
             {/* Stats and Goals */}
-            <div className="bg-surface p-6 rounded-lg mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-surface p-6 rounded-lg col-span-1 md:col-span-2">
                     <h2 className="text-xl font-bold mb-4">Mastery & Details</h2>
                     <div className="space-y-4">
                         <div>
@@ -74,6 +78,22 @@ export const RepertoireDetail: React.FC = () => {
                             <p className="p-3 bg-background rounded-md mt-1 whitespace-pre-wrap">{item.notes || 'No notes yet.'}</p>
                         </div>
                     </div>
+                </div>
+                <div className="bg-surface p-6 rounded-lg">
+                    <h2 className="text-xl font-bold mb-4">Related Goals</h2>
+                    {relatedGoals.length > 0 ? (
+                        <ul className="space-y-3">
+                            {relatedGoals.map(goal => (
+                                <li key={goal.id} className="text-sm">
+                                    <Link to="/goals" className="font-semibold text-primary hover:underline">{goal.title}</Link>
+                                    <p className={`text-xs ${goal.status === GoalStatus.Completed ? 'text-green-400' : 'text-yellow-400'}`}>{goal.status} - {goal.progress}%</p>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-text-secondary text-sm">No specific goals set for this piece yet.</p>
+                    )}
+                </div>
             </div>
             
             {/* Practice History */}
