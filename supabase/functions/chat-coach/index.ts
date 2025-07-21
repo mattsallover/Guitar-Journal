@@ -164,13 +164,15 @@ async function fetchUserData(supabase: any, userId: string): Promise<UserData> {
       .order("created_at", { ascending: false })
       .limit(20)
     
-    // Fetch recent conversations (last 8 for context)
+    // Fetch conversations from last 2 weeks
+    const twoWeeksAgo = new Date()
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
     const { data: recentConversations } = await supabase
       .from("coach_conversations")
       .select("message, response, created_at")
       .eq("user_id", userId)
+      .gte("created_at", twoWeeksAgo.toISOString())
       .order("created_at", { ascending: false })
-      .limit(8)
 
     return {
       practiceSessions: practiceSessions || [],
@@ -300,14 +302,14 @@ function buildConversationMessages(systemPrompt: string, conversations: Conversa
     }
   ];
 
-  // Add recent conversation context (last 6 exchanges to keep context manageable)
+  // Add recent conversation context (last 2 weeks, but limit to 12 most recent to manage context window)
   if (conversations.length > 0) {
-    const recentConversations = conversations.slice(0, 6).reverse(); // Most recent first, then reverse for chronological order
+    const recentConversations = conversations.slice(0, 12).reverse(); // Most recent first, then reverse for chronological order
     
     // Add a context separator
     messages.push({
       role: "system", 
-      content: `RECENT CONVERSATION CONTEXT (for reference only - don't acknowledge this directly):
+      content: `CONVERSATION HISTORY FROM LAST 2 WEEKS (for reference only - don't acknowledge this directly):
 ${recentConversations.map(conv => `Student: ${conv.message}\nYou: ${conv.response}`).join("\n\n")}
 
 Now respond to their current question with full context of our ongoing conversation.`
@@ -344,15 +346,17 @@ async function storeConversation(supabase: any, userId: string, message: string,
         session_context: sessionContext
       });
 
-    // Keep only last 20 conversations per user to manage storage
+    // Keep only conversations from last 2 weeks (cleanup older ones)
+    const twoWeeksAgo = new Date()
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
     const { data: allConversations } = await supabase
       .from("coach_conversations")
       .select("id")
       .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+      .lt("created_at", twoWeeksAgo.toISOString());
 
-    if (allConversations && allConversations.length > 20) {
-      const idsToDelete = allConversations.slice(20).map(conv => conv.id);
+    if (allConversations && allConversations.length > 0) {
+      const idsToDelete = allConversations.map(conv => conv.id);
       await supabase
         .from("coach_conversations")
         .delete()
