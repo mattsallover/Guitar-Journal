@@ -6,6 +6,7 @@ import { Sidebar } from './components/Sidebar';
 import { AuthPage } from './pages/Auth';
 import { Dashboard } from './pages/Dashboard';
 import { PracticeLog } from './pages/PracticeLog';
+import { Goals } from './pages/Goals';
 import { Repertoire } from './pages/Repertoire';
 import { RepertoireDetail } from './pages/RepertoireDetail';
 import { CagedExplorer } from './pages/tools/CagedExplorer';
@@ -29,6 +30,7 @@ const AppContent: React.FC = () => {
                     <Route path="/log" element={<PracticeLog />} />
                     <Route path="/repertoire" element={<Repertoire />} />
                     <Route path="/repertoire/:id" element={<RepertoireDetail />} />
+                    <Route path="/goals" element={<Goals />} />
                     <Route path="/session/live" element={<LiveSession />} />
                     <Route path="/tools/caged" element={<CagedExplorer />} />
                     <Route path="/tools/note-finder" element={<NoteFinder />} />
