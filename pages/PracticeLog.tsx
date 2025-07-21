@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import { PracticeSession, Mood, Recording, Goal, GoalStatus, RepertoireItem } from '../types';
+import { PracticeSession, Mood, Recording, Goal, GoalStatus, RepertoireItem, CAGEDSession } from '../types';
 import { Modal } from '../components/Modal';
 import { MOOD_OPTIONS } from '../constants';
 import { TagInput } from '../components/TagInput';
@@ -10,6 +10,7 @@ import { MasteryUpdateModal } from '../components/MasteryUpdateModal';
 import { UploadProgress } from '../components/UploadProgress';
 import { supabase } from '../services/supabase';
 import { compressVideo, generateVideoThumbnail, compressImage, formatFileSize } from '../utils/mediaUtils';
+import { getAccuracyLabel, getScoreColor, formatTime } from '../utils/cagedUtils';
 
 
 const moodIcons: Record<Mood, string> = {
@@ -19,6 +20,14 @@ const moodIcons: Record<Mood, string> = {
     [Mood.Challenging]: '😕',
     [Mood.Frustrated]: '😠',
 };
+
+// Combined activity type for unified display
+interface ActivityItem {
+    id: string;
+    type: 'practice' | 'caged';
+    date: string;
+    data: PracticeSession | CAGEDSession;
+}
 
 export const PracticeLog: React.FC = () => {
     const { state, refreshData } = useAppContext();
@@ -435,13 +444,36 @@ export const PracticeLog: React.FC = () => {
         setGoalToUpdate(null);
     };
 
-    const filteredSessions = state.practiceSessions
-        .filter(session => 
-            session.notes.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            session.songs.some(s => s.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            session.techniques.some(t => t.toLowerCase().includes(searchTerm.toLowerCase()))
-        )
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Combine and filter all activities
+    const allActivities = useMemo((): ActivityItem[] => {
+        const practiceActivities: ActivityItem[] = state.practiceSessions
+            .filter(session => 
+                session.notes.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                session.songs.some(s => s.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                session.techniques.some(t => t.toLowerCase().includes(searchTerm.toLowerCase()))
+            )
+            .map(session => ({
+                id: session.id,
+                type: 'practice' as const,
+                date: session.date,
+                data: session
+            }));
+
+        const cagedActivities: ActivityItem[] = state.cagedSessions
+            .filter(session =>
+                session.notes.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                session.shapes.some(shape => shape.toLowerCase().includes(searchTerm.toLowerCase()))
+            )
+            .map(session => ({
+                id: session.id,
+                type: 'caged' as const,
+                date: session.sessionDate,
+                data: session
+            }));
+
+        return [...practiceActivities, ...cagedActivities]
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [state.practiceSessions, state.cagedSessions, searchTerm]);
 
     return (
         <div className="p-8">
@@ -461,96 +493,157 @@ export const PracticeLog: React.FC = () => {
             />
 
             <div className="space-y-4">
-                {filteredSessions.map(session => (
-                    <div key={session.id} className="bg-surface p-4 rounded-lg">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="text-xl font-semibold">{new Date(session.date).toLocaleDateString('en-CA')} - {session.duration} min</p>
-                                <p className="text-text-secondary">{moodIcons[session.mood]} {session.mood}</p>
-                            </div>
-                            <div className="flex space-x-2">
-                                <button onClick={() => openModal(session)} className="text-sm text-primary hover:underline">Edit</button>
-                                <button onClick={() => handleDelete(session)} className="text-sm text-red-400 hover:underline">Delete</button>
-                            </div>
-                        </div>
-                        <p className="mt-2 text-text-primary whitespace-pre-wrap">{session.notes}</p>
-                        {session.link && (
-                            <div className="mt-2">
-                                <a 
-                                    href={session.link} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer" 
-                                    className="inline-flex items-center text-sm text-secondary hover:underline break-all"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-                                    </svg>
-                                    View Linked Resource
-                                </a>
-                            </div>
-                        )}
-                        <div className="mt-2 flex flex-wrap gap-2 text-sm">
-                            {session.songs.map(s => <Link to={`/progression?focus=${encodeURIComponent(s)}`} key={s} className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full hover:bg-blue-500/40 transition-colors">{s}</Link>)}
-                            {session.techniques.map(t => <Link to={`/progression?focus=${encodeURIComponent(t)}`} key={t} className="bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-full hover:bg-indigo-500/40 transition-colors">{t}</Link>)}
-                            {session.tags.map(t => <span key={t} className="bg-gray-500/20 text-gray-300 px-2 py-1 rounded-full">{t}</span>)}
-                        </div>
-                        {session.recordings.length > 0 && (
-                             <div className="mt-3 border-t border-border pt-3">
-                                <h4 className="font-semibold text-text-secondary text-sm mb-2">Recordings:</h4>
-                                <div className="space-y-3">
-                                {session.recordings.map(rec => (
-                                    <div key={rec.id} className="space-y-2">
-                                        <p className="text-sm text-text-primary mb-1">{rec.name}</p>
+                {allActivities.map(activity => (
+                    <div key={`${activity.type}-${activity.id}`} className="bg-surface p-4 rounded-lg">
+                        {activity.type === 'practice' ? (
+                            // Regular Practice Session
+                            <>
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="text-xl font-semibold">{new Date(activity.date).toLocaleDateString('en-CA')} - {(activity.data as PracticeSession).duration} min</p>
+                                        <p className="text-text-secondary">{moodIcons[(activity.data as PracticeSession).mood]} {(activity.data as PracticeSession).mood}</p>
+                                    </div>
+                                    <div className="flex space-x-2">
+                                        <button onClick={() => openModal(activity.data as PracticeSession)} className="text-sm text-primary hover:underline">Edit</button>
+                                        <button onClick={() => handleDelete(activity.data as PracticeSession)} className="text-sm text-red-400 hover:underline">Delete</button>
+                                    </div>
+                                </div>
+                                <p className="mt-2 text-text-primary whitespace-pre-wrap">{(activity.data as PracticeSession).notes}</p>
+                                {(activity.data as PracticeSession).link && (
+                                    <div className="mt-2">
+                                        <a 
+                                            href={(activity.data as PracticeSession).link} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer" 
+                                            className="inline-flex items-center text-sm text-secondary hover:underline break-all"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                                            </svg>
+                                            View Linked Resource
+                                        </a>
+                                    </div>
+                                )}
+                                <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                                    {(activity.data as PracticeSession).songs.map(s => <Link to={`/progression?focus=${encodeURIComponent(s)}`} key={s} className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full hover:bg-blue-500/40 transition-colors">{s}</Link>)}
+                                    {(activity.data as PracticeSession).techniques.map(t => <Link to={`/progression?focus=${encodeURIComponent(t)}`} key={t} className="bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-full hover:bg-indigo-500/40 transition-colors">{t}</Link>)}
+                                    {(activity.data as PracticeSession).tags.map(t => <span key={t} className="bg-gray-500/20 text-gray-300 px-2 py-1 rounded-full">{t}</span>)}
+                                </div>
+                                {(activity.data as PracticeSession).recordings.length > 0 && (
+                                     <div className="mt-3 border-t border-border pt-3">
+                                        <h4 className="font-semibold text-text-secondary text-sm mb-2">Recordings:</h4>
+                                        <div className="space-y-3">
+                                        {(activity.data as PracticeSession).recordings.map(rec => (
+                                            <div key={rec.id} className="space-y-2">
+                                                <p className="text-sm text-text-primary mb-1">{rec.name}</p>
+                                                
+                                                {/* Show thumbnail for videos */}
+                                                {rec.type === 'video' && rec.thumbnailUrl && (
+                                                    <img 
+                                                        src={rec.thumbnailUrl} 
+                                                        alt={`${rec.name} thumbnail`}
+                                                        className="w-32 h-20 object-cover rounded border border-border cursor-pointer hover:opacity-80"
+                                                        onClick={() => {
+                                                            const video = document.createElement('video');
+                                                            video.src = rec.url;
+                                                            video.controls = true;
+                                                            video.className = 'max-w-full max-h-96';
+                                                            
+                                                            const modal = document.createElement('div');
+                                                            modal.className = 'fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4';
+                                                            modal.onclick = () => modal.remove();
+                                                            modal.appendChild(video);
+                                                            document.body.appendChild(modal);
+                                                        }}
+                                                    />
+                                                )}
+                                                
+                                                {/* Original media players */}
+                                                {rec.type === 'audio' ? (
+                                                    <audio controls src={rec.url} className="h-10 w-full"></audio>
+                                                ) : (
+                                                    <video controls src={rec.url} className="max-w-xs rounded-md border border-border">
+                                                        <source src={rec.url} type="video/webm" />
+                                                        <source src={rec.url} type="video/mp4" />
+                                                        Your browser does not support the video tag.
+                                                    </video>
+                                                )}
+                                                
+                                                {/* File size info if available */}
+                                                {rec.originalSize && rec.compressedSize && (
+                                                    <p className="text-xs text-text-secondary">
+                                                        Compressed: {formatFileSize(rec.originalSize)} → {formatFileSize(rec.compressedSize)}
+                                                        <span className="text-green-400 ml-1">
+                                                            ({Math.round((1 - rec.compressedSize / rec.originalSize) * 100)}% smaller)
+                                                        </span>
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            // CAGED Session
+                            <>
+                                <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                        <div className="flex items-center space-x-3 mb-2">
+                                            <h3 className="text-xl font-semibold">
+                                                {new Date(activity.date).toLocaleDateString('en-CA')} - CAGED Session
+                                            </h3>
+                                            <div className={`text-lg font-bold ${getScoreColor((activity.data as CAGEDSession).score)}`}>
+                                                {(activity.data as CAGEDSession).score}/100
+                                            </div>
+                                            <div className="text-text-secondary">
+                                                {formatTime((activity.data as CAGEDSession).timeSeconds)}
+                                            </div>
+                                        </div>
                                         
-                                        {/* Show thumbnail for videos */}
-                                        {rec.type === 'video' && rec.thumbnailUrl && (
-                                            <img 
-                                                src={rec.thumbnailUrl} 
-                                                alt={`${rec.name} thumbnail`}
-                                                className="w-32 h-20 object-cover rounded border border-border cursor-pointer hover:opacity-80"
-                                                onClick={() => {
-                                                    const video = document.createElement('video');
-                                                    video.src = rec.url;
-                                                    video.controls = true;
-                                                    video.className = 'max-w-full max-h-96';
-                                                    
-                                                    const modal = document.createElement('div');
-                                                    modal.className = 'fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4';
-                                                    modal.onclick = () => modal.remove();
-                                                    modal.appendChild(video);
-                                                    document.body.appendChild(modal);
-                                                }}
-                                            />
-                                        )}
-                                        
-                                        {/* Original media players */}
-                                        {rec.type === 'audio' ? (
-                                            <audio controls src={rec.url} className="h-10 w-full"></audio>
-                                        ) : (
-                                            <video controls src={rec.url} className="max-w-xs rounded-md border border-border">
-                                                <source src={rec.url} type="video/webm" />
-                                                <source src={rec.url} type="video/mp4" />
-                                                Your browser does not support the video tag.
-                                            </video>
-                                        )}
-                                        
-                                        {/* File size info if available */}
-                                        {rec.originalSize && rec.compressedSize && (
-                                            <p className="text-xs text-text-secondary">
-                                                Compressed: {formatFileSize(rec.originalSize)} → {formatFileSize(rec.compressedSize)}
-                                                <span className="text-green-400 ml-1">
-                                                    ({Math.round((1 - rec.compressedSize / rec.originalSize) * 100)}% smaller)
-                                                </span>
-                                            </p>
+                                        <div className="flex items-center space-x-4 mb-2">
+                                            <div className="flex space-x-1">
+                                                <span className="text-sm text-text-secondary">Shapes:</span>
+                                                {(activity.data as CAGEDSession).shapes.map(shape => (
+                                                    <span key={shape} className="bg-primary/20 text-primary px-2 py-1 rounded text-sm">
+                                                        {shape}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            <div className="text-sm text-text-secondary">
+                                                {getAccuracyLabel((activity.data as CAGEDSession).accuracy)}
+                                            </div>
+                                        </div>
+
+                                        {(activity.data as CAGEDSession).notes && (
+                                            <p className="text-text-primary text-sm mt-2">{(activity.data as CAGEDSession).notes}</p>
                                         )}
                                     </div>
-                                ))}
+                                    
+                                    <div className="flex space-x-2 ml-4">
+                                        <Link to="/tools/caged" className="text-sm text-primary hover:underline">
+                                            View in Explorer
+                                        </Link>
+                                    </div>
                                 </div>
-                            </div>
+                            </>
                         )}
                     </div>
                 ))}
             </div>
+
+            {allActivities.length === 0 && searchTerm && (
+                <div className="text-center p-8 bg-surface rounded-lg">
+                    <p className="text-text-secondary">No sessions found matching "{searchTerm}"</p>
+                </div>
+            )}
+
+            {allActivities.length === 0 && !searchTerm && (
+                <div className="text-center p-8 bg-surface rounded-lg">
+                    <h2 className="text-xl font-bold mb-2">No Practice Sessions Yet</h2>
+                    <p className="text-text-secondary">Start logging your practice to see your progress!</p>
+                </div>
+            )}
 
             {isModalOpen && currentSession && (
                 <Modal isOpen={isModalOpen} onClose={closeModal} title={currentSession.id ? "Edit Session" : "Log New Session"}>

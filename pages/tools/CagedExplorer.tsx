@@ -358,7 +358,7 @@ export const CagedExplorer: React.FC = () => {
                 .eq('id', session.id);
 
             if (error) throw error;
-            await fetchSessions();
+            await refreshData(); // This will now refresh CAGED sessions too
         } catch (error) {
             console.error('Error deleting session:', error);
             alert('Failed to delete session. Please try again.');
