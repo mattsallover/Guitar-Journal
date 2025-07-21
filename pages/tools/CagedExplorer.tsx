@@ -201,8 +201,21 @@ export const CagedExplorer: React.FC = () => {
         }
     };
 
+    const handleCompleteSession = () => {
+        // Stop timer
+        if (quizInterval) {
+            clearInterval(quizInterval);
+            setQuizInterval(null);
+        }
+        showQuizResults();
+    };
+
     const showQuizResults = () => {
-        const accuracy = Math.round((correctAnswers / quizQuestions.length) * 4) + 1; // Convert to 1-5 scale
+        // Calculate accuracy based on questions actually answered
+        const questionsAnswered = Math.max(currentQuestionIndex + 1, 1); // At least 1 to avoid division by zero
+        const accuracyRatio = correctAnswers / questionsAnswered;
+        const accuracy = Math.round(accuracyRatio * 4) + 1; // Convert to 1-5 scale
+        
         const score = computeCAGEDScore({
             shapes: completedShapes,
             accuracy,
@@ -215,7 +228,7 @@ export const CagedExplorer: React.FC = () => {
             accuracy,
             timeSeconds: quizTimer,
             score,
-            notes: `Quiz session: ${correctAnswers}/${quizQuestions.length} correct answers`
+            notes: `Quiz session: ${correctAnswers}/${questionsAnswered} correct answers (${questionsAnswered}/${quizQuestions.length} questions completed)`
         });
         setIsSessionModalOpen(true);
     };
@@ -444,7 +457,7 @@ export const CagedExplorer: React.FC = () => {
                                 </div>
                                 <div className="mb-4">
                                     <p className="text-sm text-text-secondary">Question {currentQuestionIndex + 1} of {quizQuestions.length}</p>
-                                    <p className="text-sm text-text-secondary">Correct: {correctAnswers}/{currentQuestionIndex}</p>
+                                    <p className="text-sm text-text-secondary">Correct: {correctAnswers}/{Math.max(currentQuestionIndex, 1)}</p>
                                 </div>
                             </div>
                             
@@ -458,6 +471,9 @@ export const CagedExplorer: React.FC = () => {
                             <div className="mt-6 space-y-2">
                                 <button onClick={handleReveal} className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-md">
                                     Show Answer
+                                </button>
+                                <button onClick={handleCompleteSession} className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-md">
+                                    Complete Session Early
                                 </button>
                             </div>
                         </>
@@ -480,6 +496,12 @@ export const CagedExplorer: React.FC = () => {
                                         ❌ Wrong
                                     </button>
                                 </div>
+                            </div>
+                            
+                            <div className="mt-4">
+                                <button onClick={handleCompleteSession} className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-md">
+                                    Complete Session Early
+                                </button>
                             </div>
                         </>
                     )}
