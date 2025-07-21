@@ -18,7 +18,8 @@ type Action =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_PRACTICE_SESSIONS'; payload: PracticeSession[] }
   | { type: 'SET_REPERTOIRE'; payload: RepertoireItem[] }
-  | { type: 'SET_GOALS'; payload: Goal[] };
+  | { type: 'SET_GOALS'; payload: Goal[] }
+  | { type: 'SET_CAGED_SESSIONS'; payload: CAGEDSession[] };
 
 
 const initialState: AppState = {
@@ -26,6 +27,7 @@ const initialState: AppState = {
   practiceSessions: [],
   repertoire: [],
   goals: [],
+  cagedSessions: [],
   loading: true,
 };
 
@@ -41,6 +43,8 @@ const appReducer = (state: AppState, action: Action): AppState => {
       return { ...state, repertoire: action.payload };
     case 'SET_GOALS':
       return { ...state, goals: action.payload };
+    case 'SET_CAGED_SESSIONS':
+      return { ...state, cagedSessions: action.payload };
     default:
       return state;
   }
@@ -137,6 +141,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
   
+  const fetchCAGEDSessions = async (user: User) => {
+    const { data, error } = await supabase
+      .from('caged_sessions')
+      .select('*')
+      .eq('user_id', user.uid)
+      .order('session_date', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching CAGED sessions:', error);
+    } else {
+      const sessions: CAGEDSession[] = data.map(row => ({
+        id: row.id,
+        userId: row.user_id,
+        sessionDate: row.session_date,
+        shapes: row.shapes,
+        accuracy: row.accuracy,
+        timeSeconds: row.time_seconds,
+        score: row.score,
+        notes: row.notes || '',
+        recording: row.recording || '',
+        createdAt: row.created_at,
+      }));
+      dispatch({ type: 'SET_CAGED_SESSIONS', payload: sessions });
+    }
+  };
+
   const fetchGoals = async (user: User) => {
     const { data, error } = await supabase
       .from('goals')
@@ -169,7 +199,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       await Promise.all([
         fetchPracticeSessions(state.user),
         fetchRepertoire(state.user),
-        fetchGoals(state.user)
+        fetchGoals(state.user),
+        fetchCAGEDSessions(state.user)
       ]);
     } catch (error) {
       console.error('Error refreshing data:', error);
@@ -219,6 +250,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       dispatch({ type: 'SET_PRACTICE_SESSIONS', payload: [] });
       dispatch({ type: 'SET_REPERTOIRE', payload: [] });
       dispatch({ type: 'SET_GOALS', payload: [] });
+      dispatch({ type: 'SET_CAGED_SESSIONS', payload: [] });
       return;
     }
 
@@ -229,7 +261,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ensureUserExists(state.user),
       fetchPracticeSessions(state.user),
       fetchRepertoire(state.user),
-      fetchGoals(state.user)
+      fetchGoals(state.user),
+      fetchCAGEDSessions(state.user)
     ]).then(() => {
       dispatch({ type: 'SET_LOADING', payload: false });
     });
