@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import { PracticeSession, Mood, Recording, Goal, GoalStatus, RepertoireItem, CAGEDSession } from '../types';
+import { PracticeSession, Mood, Recording, Goal, RepertoireItem, GoalStatus } from '../types';
 import { Modal } from '../components/Modal';
 import { MOOD_OPTIONS } from '../constants';
 import { TagInput } from '../components/TagInput';

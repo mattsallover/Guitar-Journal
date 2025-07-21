@@ -27,8 +27,7 @@ export const Sidebar: React.FC = () => {
     const journalItems = [
         { to: "/log", icon: LogIcon, label: "Log Sessions", exact: false },
         { to: "/repertoire", icon: RepertoireIcon, label: "Repertoire", exact: false },
-        { to: "/goals", icon: GoalsIcon, label: "Track Goals", exact: false },
-        { to: "/progression", icon: ProgressionIcon, label: "View Progress", exact: false }
+        { to: "/goals", icon: GoalsIcon, label: "Track Goals", exact: false }
     ];
 
     const toolItems = [
