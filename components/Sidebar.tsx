@@ -25,9 +25,8 @@ export const Sidebar: React.FC = () => {
     const groupButtonClasses = "flex items-center w-full px-4 py-3 text-text-secondary hover:bg-surface hover:text-text-primary rounded-md transition-all duration-300 text-left";
 
     const journalItems = [
-        { to: "/log", icon: LogIcon, label: "Log Sessions", exact: false },
+        { to: "/log", icon: LogIcon, label: "Practice Log", exact: false },
         { to: "/repertoire", icon: RepertoireIcon, label: "Repertoire", exact: false },
-        { to: "/goals", icon: GoalsIcon, label: "Track Goals", exact: false }
     ];
 
     const toolItems = [
