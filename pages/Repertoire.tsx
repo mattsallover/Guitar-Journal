@@ -280,6 +280,13 @@ export const Repertoire: React.FC = () => {
                                </div>
                             </Link>
                             <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                               <Link 
+                                  to={`/progression?focus=${encodeURIComponent(item.title)}`} 
+                                  className="text-sm text-secondary hover:underline transition-colors duration-200"
+                                  title="View practice progression for this song"
+                               >
+                                  📊 Progress
+                               </Link>
                                <button 
                                   onClick={() => handleSetAsGoal(item)} 
                                   className="bg-secondary/20 hover:bg-secondary/40 text-secondary-300 font-bold py-2 px-3 rounded-md text-sm whitespace-nowrap transition-all duration-200 hover:scale-105"
