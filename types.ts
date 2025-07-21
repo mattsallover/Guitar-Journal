@@ -37,8 +37,6 @@ export interface PracticeSession {
   tags: string[];
   recordings: Recording[];
   link?: string;
-  youtubeId?: string;
-  cameraRecordingPath?: string;
 }
 
 export enum Difficulty {
