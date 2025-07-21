@@ -15,6 +15,7 @@ import { NoteFinder } from './pages/tools/NoteFinder';
 import { ScalePractice } from './pages/tools/ScalePractice';
 import { Coach } from './pages/Coach';
 import { LiveSession } from './pages/LiveSession';
+import { FloatingCoach } from './components/FloatingCoach';
 
 const AppContent: React.FC = () => {
     const { state } = useAppContext();
@@ -42,6 +43,7 @@ const AppContent: React.FC = () => {
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </main>
+            <FloatingCoach />
         </div>
     );
 }

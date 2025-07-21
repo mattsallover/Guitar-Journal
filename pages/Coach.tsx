@@ -8,8 +8,13 @@ export const Coach: React.FC = () => {
         <div className="mb-6">
           <h1 className="text-4xl font-bold text-text-primary mb-2">AI Guitar Coach</h1>
           <p className="text-text-secondary text-lg">
-            Get personalized advice based on your practice history, goals, and current skill level.
+            Your personal guitar mentor who makes complex concepts simple and inspires your musical journey.
           </p>
+          <div className="mt-4 p-4 bg-blue-900/20 border border-blue-500 rounded-lg">
+            <p className="text-blue-300 text-sm">
+              💡 <strong>Pro tip:</strong> You can now chat with your coach from any page using the floating chat button in the bottom right corner!
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -21,7 +26,7 @@ export const Coach: React.FC = () => {
           {/* Info Panel */}
           <div className="space-y-6">
             <div className="bg-surface p-6 rounded-lg">
-              <h3 className="text-lg font-bold mb-4 text-text-primary">What I Know About You</h3>
+              <h3 className="text-lg font-bold mb-4 text-text-primary">🎯 What I Know About You</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center space-x-2">
                   <span className="text-primary">📊</span>
@@ -47,15 +52,15 @@ export const Coach: React.FC = () => {
             </div>
 
             <div className="bg-surface p-6 rounded-lg">
-              <h3 className="text-lg font-bold mb-4 text-text-primary">How I Can Help</h3>
+              <h3 className="text-lg font-bold mb-4 text-text-primary">🌟 How I Can Help</h3>
               <div className="space-y-3 text-sm text-text-secondary">
-                <p>• Analyze your practice patterns</p>
-                <p>• Suggest next steps for improvement</p>
-                <p>• Help with technique questions</p>
-                <p>• Recommend songs for your level</p>
-                <p>• Create personalized practice plans</p>
-                <p>• Motivate and track your progress</p>
-                <p>• Answer any guitar-related questions</p>
+                <p>• 🎸 Break down complex techniques into simple steps</p>
+                <p>• 🎵 Suggest perfect songs for your current level</p>
+                <p>• 📈 Create personalized practice routines</p>
+                <p>• 💡 Explain theory in relatable, fun ways</p>
+                <p>• 🎯 Help overcome specific challenges</p>
+                <p>• 🌟 Keep you motivated and inspired</p>
+                <p>• ❓ Answer any guitar question with patience</p>
               </div>
             </div>
 
@@ -65,6 +70,14 @@ export const Coach: React.FC = () => {
                 To use the AI Coach, you need to add your OpenAI API key as an environment variable 
                 called <code className="bg-black/30 px-1 rounded">OPENAI_API_KEY</code> in your 
                 Supabase dashboard under Project Settings → Edge Functions.
+              </p>
+            </div>
+            
+            <div className="bg-green-900/20 border border-green-600/30 p-4 rounded-lg">
+              <h4 className="text-sm font-bold text-green-400 mb-2">💬 Always Available</h4>
+              <p className="text-xs text-green-300">
+                Look for the floating guitar icon on any page! Your coach is always ready to help, 
+                whether you're logging practice, learning CAGED, or just need motivation.
               </p>
             </div>
           </div>
