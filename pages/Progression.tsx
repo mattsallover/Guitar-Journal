@@ -160,6 +160,22 @@ export const Progression: React.FC = () => {
                                         <p className="text-text-primary whitespace-pre-wrap mb-3">{session.notes}</p>
                                         {session.recordings.length > 0 && (
                                             <div className="mt-3 border-t border-border pt-3">
+                                    {session.link && (
+                                        <div className="mb-3 p-3 bg-background rounded-md border border-border">
+                                            <div className="flex items-center space-x-2">
+                                                <span className="text-sm text-text-secondary">📎 Instructor Resource:</span>
+                                                <a 
+                                                    href={session.link} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary hover:text-primary-hover text-sm underline break-all"
+                                                    title="Open linked resource"
+                                                >
+                                                    {session.link.length > 50 ? `${session.link.substring(0, 47)}...` : session.link}
+                                                </a>
+                                            </div>
+                                        </div>
+                                    )}
                                                 <h4 className="font-semibold text-text-secondary text-sm mb-2">Recordings:</h4>
                                                 <div className="space-y-3">
                                                 {session.recordings.map(rec => (

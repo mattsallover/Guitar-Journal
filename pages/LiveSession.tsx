@@ -16,6 +16,7 @@ export const LiveSession: React.FC = () => {
     const [topic, setTopic] = useState<string | null>(null);
     const [time, setTime] = useState(0);
     const [notes, setNotes] = useState('');
+    const [sessionLink, setSessionLink] = useState('');
     const [isPaused, setIsPaused] = useState(false);
     
     useEffect(() => {
@@ -42,7 +43,8 @@ export const LiveSession: React.FC = () => {
             state: { 
                 topic: topic, 
                 duration: Math.max(1, Math.round(time / 60)), // ensure duration is at least 1 minute
-                notes: notes 
+                notes: notes,
+                link: sessionLink
             } 
         });
     };
@@ -80,7 +82,7 @@ export const LiveSession: React.FC = () => {
                 
                 <Metronome />
 
-                <div className="mt-8 text-left">
+                <div className="mt-8 text-left space-y-4">
                     <label className="block text-sm font-medium text-text-secondary mb-2">Session Notes (optional)</label>
                     <textarea 
                         value={notes}
@@ -88,6 +90,20 @@ export const LiveSession: React.FC = () => {
                         placeholder="Jot down any thoughts or discoveries..."
                         className="w-full bg-background p-3 rounded-md border border-border h-28"
                     ></textarea>
+                    
+                    <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-2">
+                            Instructor Link (optional)
+                            <span className="text-xs text-text-secondary block mt-1">Link to Google Doc, lesson notes, etc.</span>
+                        </label>
+                        <input 
+                            type="url"
+                            value={sessionLink}
+                            onChange={(e) => setSessionLink(e.target.value)}
+                            placeholder="https://docs.google.com/..."
+                            className="w-full bg-background p-3 rounded-md border border-border"
+                        />
+                    </div>
                 </div>
             </div>
         </div>
