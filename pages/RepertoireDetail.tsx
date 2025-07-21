@@ -74,6 +74,7 @@ export const RepertoireDetail: React.FC = () => {
                             <p className="p-3 bg-background rounded-md mt-1 whitespace-pre-wrap">{item.notes || 'No notes yet.'}</p>
                         </div>
                     </div>
+            </div>
             
             {/* Practice History */}
             <div>
