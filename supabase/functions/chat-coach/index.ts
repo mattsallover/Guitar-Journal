@@ -9,12 +9,7 @@ const corsHeaders = {
 interface ChatRequest {
   message: string;
   userId: string;
-}
-
-interface ConversationHistory {
-  message: string;
-  response: string;
-  created_at: string;
+  skillLevel: 'novice' | 'intermediate' | 'expert';
 }
 
 interface UserData {
@@ -23,7 +18,6 @@ interface UserData {
   goals: any[];
   cagedSessions: any[];
   noteFinderAttempts: any[];
-  recentConversations: ConversationHistory[];
 }
 
 serve(async (req: Request) => {
@@ -35,7 +29,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { message, userId }: ChatRequest = await req.json()
+    const { message, userId, skillLevel }: ChatRequest = await req.json()
 
     if (!message || !userId) {
       return new Response(
@@ -65,16 +59,13 @@ serve(async (req: Request) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Fetch user's practice data + recent conversations
+    // Fetch user's practice data for context (optional)
     const userData = await fetchUserData(supabase, userId)
 
-    // Create system prompt with user context + conversation history
-    const systemPrompt = createSystemPrompt(userData)
-    
-    // Build conversation messages including recent history
-    const messages = buildConversationMessages(systemPrompt, userData.recentConversations, message)
+    // Create system prompt for expert guitar instructor
+    const systemPrompt = createExpertSystemPrompt(userData, skillLevel)
 
-    // Call OpenAI API with conversation context
+    // Call OpenAI API
     const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -83,8 +74,17 @@ serve(async (req: Request) => {
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        messages,
-        max_tokens: 1000,
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt
+          },
+          {
+            role: "user",
+            content: message
+          }
+        ],
+        max_tokens: 800,
         temperature: 0.7,
       }),
     })
@@ -103,9 +103,6 @@ serve(async (req: Request) => {
     const aiData = await openaiResponse.json()
     const aiMessage = aiData.choices[0]?.message?.content || "Sorry, I couldn't generate a response."
 
-    // Store this conversation for future context
-    await storeConversation(supabase, userId, message, aiMessage, userData)
-
     return new Response(
       JSON.stringify({ message: aiMessage }),
       {
@@ -113,7 +110,7 @@ serve(async (req: Request) => {
       }
     )
   } catch (error) {
-    console.error("Chat coach error:", error)
+    console.error("Guitar expert error:", error)
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       {
@@ -126,53 +123,43 @@ serve(async (req: Request) => {
 
 async function fetchUserData(supabase: any, userId: string): Promise<UserData> {
   try {
-    // Fetch last 10 practice sessions
+    // Fetch recent practice sessions for context
     const { data: practiceSessions } = await supabase
       .from("practice_sessions")
       .select("*")
       .eq("user_id", userId)
       .order("date", { ascending: false })
-      .limit(10)
+      .limit(5)
 
-    // Fetch all repertoire
+    // Fetch repertoire
     const { data: repertoire } = await supabase
       .from("repertoire")
       .select("*")
       .eq("user_id", userId)
       .order("mastery", { ascending: false })
 
-    // Fetch all goals
+    // Fetch current goals
     const { data: goals } = await supabase
       .from("goals")
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
 
-    // Fetch recent CAGED sessions
+    // Fetch recent CAGED performance
     const { data: cagedSessions } = await supabase
       .from("caged_sessions")
       .select("*")
       .eq("user_id", userId)
       .order("session_date", { ascending: false })
-      .limit(5)
+      .limit(3)
 
-    // Fetch recent note finder attempts
+    // Fetch recent note finder performance
     const { data: noteFinderAttempts } = await supabase
       .from("note_finder_practice")
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
-      .limit(20)
-    
-    // Fetch conversations from last 2 weeks
-    const twoWeeksAgo = new Date()
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
-    const { data: recentConversations } = await supabase
-      .from("coach_conversations")
-      .select("message, response, created_at")
-      .eq("user_id", userId)
-      .gte("created_at", twoWeeksAgo.toISOString())
-      .order("created_at", { ascending: false })
+      .limit(10)
 
     return {
       practiceSessions: practiceSessions || [],
@@ -180,7 +167,6 @@ async function fetchUserData(supabase: any, userId: string): Promise<UserData> {
       goals: goals || [],
       cagedSessions: cagedSessions || [],
       noteFinderAttempts: noteFinderAttempts || [],
-      recentConversations: recentConversations || [],
     }
   } catch (error) {
     console.error("Error fetching user data:", error)
@@ -190,182 +176,87 @@ async function fetchUserData(supabase: any, userId: string): Promise<UserData> {
       goals: [],
       cagedSessions: [],
       noteFinderAttempts: [],
-      recentConversations: [],
     }
   }
 }
 
-function createSystemPrompt(userData: UserData): string {
+function createExpertSystemPrompt(userData: UserData, skillLevel: 'novice' | 'intermediate' | 'expert'): string {
   const { practiceSessions, repertoire, goals, cagedSessions, noteFinderAttempts } = userData
 
-  // Calculate some basic stats
+  // Calculate basic user context
   const totalPracticeTime = practiceSessions.reduce((sum, session) => sum + session.duration, 0)
   const avgMastery = repertoire.length > 0 
     ? Math.round(repertoire.reduce((sum, item) => sum + item.mastery, 0) / repertoire.length)
     : 0
   const activeGoals = goals.filter(goal => goal.status === "Active").length
-  const completedGoals = goals.filter(goal => goal.status === "Completed").length
 
-  // Get most practiced techniques and songs
-  const allTechniques = practiceSessions.flatMap(s => s.techniques || [])
-  const allSongs = practiceSessions.flatMap(s => s.songs || [])
-  const techniqueCount = allTechniques.reduce((acc, tech) => {
-    acc[tech] = (acc[tech] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
-  const songCount = allSongs.reduce((acc, song) => {
-    acc[song] = (acc[song] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
-
-  const topTechniques = Object.entries(techniqueCount)
-    .sort(([,a], [,b]) => b - a)
-    .slice(0, 3)
-    .map(([tech]) => tech)
-
-  const topSongs = Object.entries(songCount)
-    .sort(([,a], [,b]) => b - a)
-    .slice(0, 3)
-    .map(([song]) => song)
-
-  return `You are the world's greatest guitar teacher - a master educator with decades of experience who has taught everyone from complete beginners to professional musicians. You have an extraordinary gift for taking the most complex musical concepts and breaking them down into simple, relatable explanations that anyone can understand.
-
-Your teaching style is:
-- WARM AND ENCOURAGING: You make students feel confident and excited about their progress
-- BRILLIANTLY SIMPLE: You turn complex theory into "aha!" moments using everyday analogies
-- PRACTICAL AND ACTIONABLE: Every piece of advice leads to immediate, tangible improvement
-- PATIENT AND UNDERSTANDING: You remember what it's like to struggle and meet students where they are
-- INSPIRING: You help students see their potential and fall deeper in love with guitar
-
-You use analogies like comparing chord progressions to "musical conversations" or explaining rhythm as "the heartbeat of the song." You celebrate small wins enthusiastically and turn challenges into exciting puzzles to solve together.
-
-Remember: You're not just teaching guitar techniques - you're nurturing a lifelong musical journey. Every interaction should leave the student feeling more inspired, understood, and excited to practice.
-
-STUDENT PROFILE:
-- Total Practice Time: ${Math.floor(totalPracticeTime / 60)}h ${totalPracticeTime % 60}m across ${practiceSessions.length} recent sessions
-- Average Repertoire Mastery: ${avgMastery}%
-- Active Goals: ${activeGoals}, Completed Goals: ${completedGoals}
-- Top Practiced Techniques: ${topTechniques.join(", ") || "None recorded"}
-- Top Practiced Songs: ${topSongs.join(", ") || "None recorded"}
-
-RECENT PRACTICE SESSIONS (Last 10):
-${practiceSessions.map(session => `
-• ${session.date}: ${session.duration}min - Mood: ${session.mood}
-  Techniques: ${(session.techniques || []).join(", ") || "None"}
-  Songs: ${(session.songs || []).join(", ") || "None"}
-  Notes: ${session.notes || "No notes"}
-`).join("")}
-
-REPERTOIRE (${repertoire.length} songs):
-${repertoire.slice(0, 5).map(item => `
-• "${item.title}" by ${item.artist} - ${item.difficulty} (${item.mastery}% mastery)
-  Last practiced: ${item.last_practiced ? new Date(item.last_practiced).toLocaleDateString() : "Never"}
-  Notes: ${item.notes || "No notes"}
-`).join("")}
-
-CURRENT GOALS:
-${goals.map(goal => `
-• ${goal.title} (${goal.category}) - ${goal.status}
-  Progress: ${goal.progress}% - Target: ${new Date(goal.target_date).toLocaleDateString()}
-  Description: ${goal.description}
-`).join("")}
-
-CAGED SYSTEM PERFORMANCE:
-${cagedSessions.length > 0 ? cagedSessions.map(session => `
-• ${session.session_date}: Score ${session.score}/100, Accuracy ${session.accuracy}/5, Time: ${session.time_seconds}s
-  Shapes: ${session.shapes.join(", ")}
-`).join("") : "No CAGED practice recorded"}
-
-NOTE FINDER PERFORMANCE:
-${noteFinderAttempts.length > 0 ? `Recent attempts: ${noteFinderAttempts.filter(a => a.correct).length}/${noteFinderAttempts.length} correct` : "No note finder practice recorded"}
-
-TEACHING APPROACH:
-1. Start with genuine enthusiasm and reference their specific journey
-2. Use simple analogies and metaphors to explain complex concepts
-3. Break down challenges into small, manageable steps
-4. Celebrate progress enthusiastically, no matter how small
-5. Turn technical explanations into relatable stories
-6. Connect everything back to the music they love
-7. Provide immediate, actionable practice suggestions
-8. Address frustrations with empathy and practical solutions
-9. Keep responses conversational, warm, and inspiring
-10. Always end with encouragement and clear next steps
-
-You are their personal musical mentor - someone who truly believes in their potential and makes even the most challenging aspects of guitar feel achievable and fun. Use their actual practice data to provide deeply personalized guidance that shows you really know and care about their musical journey.`
-}
-
-function buildConversationMessages(systemPrompt: string, conversations: ConversationHistory[], newMessage: string) {
-  const messages = [
-    {
-      role: "system",
-      content: systemPrompt
-    }
-  ];
-
-  // Add recent conversation context (last 2 weeks, but limit to 12 most recent to manage context window)
-  if (conversations.length > 0) {
-    const recentConversations = conversations.slice(0, 12).reverse(); // Most recent first, then reverse for chronological order
-    
-    // Add a context separator
-    messages.push({
-      role: "system", 
-      content: `CONVERSATION HISTORY FROM LAST 2 WEEKS (for reference only - don't acknowledge this directly):
-${recentConversations.map(conv => `Student: ${conv.message}\nYou: ${conv.response}`).join("\n\n")}
-
-Now respond to their current question with full context of our ongoing conversation.`
-    });
+  // Skill level instructions
+  const skillInstructions = {
+    novice: `
+    - Use simple, beginner-friendly language
+    - Explain basic concepts from the ground up
+    - Focus on fundamental techniques and basic chords
+    - Use analogies to everyday objects and experiences
+    - Encourage small, achievable steps
+    - Assume little to no music theory knowledge
+    `,
+    intermediate: `
+    - Use moderate music theory terminology with brief explanations
+    - Build on assumed knowledge of basic chords and techniques
+    - Introduce more advanced concepts like scales and modes
+    - Balance theory with practical application
+    - Challenge with intermediate techniques
+    - Assume familiarity with basic guitar playing
+    `,
+    expert: `
+    - Use advanced music theory terminology freely
+    - Discuss complex harmonic concepts, advanced techniques
+    - Reference jazz theory, advanced scales, and sophisticated playing
+    - Assume deep understanding of guitar fundamentals
+    - Focus on nuanced performance aspects and professional-level concepts
+    - Discuss advanced topics like voice leading, improvisation theory
+    `
   }
 
-  // Add the current message
-  messages.push({
-    role: "user",
-    content: newMessage
-  });
+  return `You are the world's most exceptional guitar instructor and music theory expert. You have taught thousands of students from beginners to professionals, with an encyclopedic knowledge of guitar techniques, music theory, and pedagogy.
 
-  return messages;
-}
+SKILL LEVEL ADJUSTMENT - You are currently teaching a ${skillLevel.toUpperCase()} level student:
+${skillInstructions[skillLevel]}
 
-async function storeConversation(supabase: any, userId: string, message: string, response: string, userData: UserData) {
-  try {
-    // Create a lightweight session context snapshot (only key stats)
-    const sessionContext = {
-      totalSessions: userData.practiceSessions.length,
-      avgMastery: userData.repertoire.length > 0 
-        ? Math.round(userData.repertoire.reduce((sum, item) => sum + item.mastery, 0) / userData.repertoire.length)
-        : 0,
-      activeGoals: userData.goals.filter(g => g.status === "Active").length,
-      lastPracticeDate: userData.practiceSessions[0]?.date || null
-    };
+YOUR TEACHING STYLE:
+- Crystal clear explanations that make complex concepts simple
+- Use relatable analogies and metaphors
+- Patient, encouraging, and supportive tone
+- Always practical - connect theory to actual playing
+- Break down complex topics into digestible steps
+- Celebrate understanding and progress
 
-    await supabase
-      .from("coach_conversations")
-      .insert({
-        user_id: userId,
-        message: message,
-        response: response,
-        session_context: sessionContext
-      });
+YOUR EXPERTISE INCLUDES:
+- Complete music theory (scales, modes, harmony, chord theory)
+- All guitar techniques (fingerpicking, alternate picking, bending, vibrato, etc.)
+- CAGED system and fretboard navigation
+- Improvisation and soloing concepts
+- Rhythm guitar and timing
+- Song analysis and chord progressions
+- Ear training and music listening skills
+- Practice methodologies and learning strategies
 
-    // Keep only conversations from last 2 weeks (cleanup older ones)
-    const twoWeeksAgo = new Date()
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
-    const { data: allConversations } = await supabase
-      .from("coach_conversations")
-      .select("id")
-      .eq("user_id", userId)
-      .lt("created_at", twoWeeksAgo.toISOString());
+STUDENT CONTEXT (use if relevant to the question):
+- Practice Time: ${Math.floor(totalPracticeTime / 60)}h ${totalPracticeTime % 60}m total
+- Repertoire: ${repertoire.length} songs, avg mastery ${avgMastery}%
+- Active Goals: ${activeGoals}
+- Recent songs: ${repertoire.slice(0, 3).map(item => `"${item.title}" (${item.mastery}%)`).join(", ")}
+- CAGED Performance: ${cagedSessions.length > 0 ? `Latest score ${cagedSessions[0].score}/100` : "No data"}
 
-    if (allConversations && allConversations.length > 0) {
-      const idsToDelete = allConversations.map(conv => conv.id);
-      await supabase
-        .from("coach_conversations")
-        .delete()
-        .in("id", idsToDelete);
-    }
-  } catch (error) {
-    console.error("Error storing conversation:", error);
-    // Don't fail the main request if conversation storage fails
-  }
+RESPONSE GUIDELINES:
+- Keep responses focused and concise (under 600 words)
+- Always include actionable advice or exercises when possible
+- If discussing theory, connect it to practical guitar playing
+- Use the student's skill level to determine complexity
+- Reference their practice data only when directly relevant
+- End with encouragement or next steps
+
+You are not a practice coach or session planner - you are a music theory expert and technique instructor. Focus on answering specific guitar and music questions with world-class expertise.`
 }
 
 // Import createClient function

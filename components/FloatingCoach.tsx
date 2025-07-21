@@ -8,14 +8,19 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+type SkillLevel = 'novice' | 'intermediate' | 'expert';
+
 export const FloatingCoach: React.FC = () => {
   const { state } = useAppContext();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [hasInitialized, setHasInitialized] = useState(false);
+  const [skillLevel, setSkillLevel] = useState<SkillLevel>('intermediate');
+  const [chatSize, setChatSize] = useState({ width: 380, height: 500 });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatRef = useRef<HTMLDivElement>(null);
+  const resizeRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -25,19 +30,44 @@ export const FloatingCoach: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
+  // Resizing logic
   useEffect(() => {
-    if (isOpen && !hasInitialized && state.user) {
-      // Initialize with a warm welcome message
-      const welcomeMessage: ChatMessage = {
-        id: '1',
-        role: 'assistant',
-        content: "Hey there! 👋 I'm your personal guitar coach! I've been looking at your practice journey and I'm excited to help you take your playing to the next level. What would you like to work on today?",
-        timestamp: new Date()
-      };
-      setMessages([welcomeMessage]);
-      setHasInitialized(true);
-    }
-  }, [isOpen, hasInitialized, state.user]);
+    if (!resizeRef.current) return;
+
+    const resizer = resizeRef.current;
+    let isResizing = false;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      isResizing = true;
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      e.preventDefault();
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing || !chatRef.current) return;
+      
+      const rect = chatRef.current.getBoundingClientRect();
+      const newWidth = Math.max(300, rect.right - e.clientX + 10);
+      const newHeight = Math.max(300, rect.bottom - e.clientY + 10);
+      
+      setChatSize({ width: newWidth, height: newHeight });
+    };
+
+    const handleMouseUp = () => {
+      isResizing = false;
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    resizer.addEventListener('mousedown', handleMouseDown);
+
+    return () => {
+      resizer.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
 
   const sendMessage = async () => {
     if (!inputMessage.trim() || !state.user || isLoading) return;
@@ -63,7 +93,8 @@ export const FloatingCoach: React.FC = () => {
         },
         body: JSON.stringify({
           message: inputMessage.trim(),
-          userId: state.user.uid
+          userId: state.user.uid,
+          skillLevel
         })
       });
 
@@ -86,7 +117,7 @@ export const FloatingCoach: React.FC = () => {
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I'm having trouble connecting right now. Please make sure your OpenAI API key is configured in your Supabase dashboard! 🎸",
+        content: "I'm having trouble connecting. Please ensure your OpenAI API key is configured in Supabase Edge Functions settings.",
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -102,48 +133,95 @@ export const FloatingCoach: React.FC = () => {
     }
   };
 
+  const clearChat = () => {
+    setMessages([]);
+  };
+
   if (!state.user) return null;
 
   return (
     <div className="fixed bottom-4 right-4 z-50">
-      {/* Floating Chat Button */}
+      {/* Floating Guitar Button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
           className="bg-primary hover:bg-primary-hover text-white rounded-full p-4 shadow-lg transition-all duration-300 hover:scale-110 group animate-pulse hover:animate-none"
-          title="Chat with your AI Guitar Coach"
+          title="Ask your guitar instructor"
         >
           <div className="flex items-center justify-center w-6 h-6">
             <span className="text-xl">🎸</span>
           </div>
           <div className="absolute -top-12 right-0 bg-background text-text-primary px-3 py-1 rounded-lg text-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-            Ask your guitar coach! 💬
+            Guitar Expert 💬
           </div>
         </button>
       )}
 
-      {/* Chat Window */}
+      {/* Resizable Chat Window */}
       {isOpen && (
-        <div className="bg-surface rounded-lg shadow-2xl w-80 h-96 flex flex-col border border-border">
+        <div 
+          ref={chatRef}
+          className="bg-surface rounded-lg shadow-2xl flex flex-col border border-border relative"
+          style={{ width: chatSize.width, height: chatSize.height }}
+        >
+          {/* Resize Handle */}
+          <div
+            ref={resizeRef}
+            className="absolute -top-2 -left-2 w-4 h-4 cursor-nw-resize bg-primary rounded-full opacity-50 hover:opacity-100 transition-opacity"
+            title="Drag to resize"
+          />
+
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border bg-primary rounded-t-lg">
             <div className="flex items-center space-x-2">
               <span className="text-2xl">🎸</span>
               <div>
-                <h3 className="font-bold text-white">Guitar Coach</h3>
-                <p className="text-xs text-blue-100">Your personal music mentor</p>
+                <h3 className="font-bold text-white text-sm">Guitar Expert</h3>
+                <div className="flex items-center space-x-1">
+                  <select
+                    value={skillLevel}
+                    onChange={(e) => setSkillLevel(e.target.value as SkillLevel)}
+                    className="text-xs bg-white/20 text-white rounded px-1 border-none outline-none"
+                  >
+                    <option value="novice" className="text-black">Novice</option>
+                    <option value="intermediate" className="text-black">Intermediate</option>
+                    <option value="expert" className="text-black">Expert</option>
+                  </select>
+                  <span className="text-xs text-blue-100">Level</span>
+                </div>
               </div>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="text-white hover:text-gray-200 text-xl w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
-            >
-              ×
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={clearChat}
+                className="text-white hover:text-gray-200 text-sm px-2 py-1 rounded hover:bg-white/20 transition-colors"
+                title="Clear chat"
+              >
+                Clear
+              </button>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-white hover:text-gray-200 text-xl w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
+              >
+                ×
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 p-3 overflow-y-auto space-y-3 bg-background">
+          <div className="flex-1 p-3 overflow-y-auto space-y-3 bg-background" style={{ minHeight: 200 }}>
+            {messages.length === 0 && (
+              <div className="text-center text-text-secondary text-sm">
+                <div className="text-4xl mb-2">🎓</div>
+                <p className="mb-2">Ask me anything about guitar!</p>
+                <div className="text-xs space-y-1">
+                  <p>• "Explain the CAGED system"</p>
+                  <p>• "How do I play a G major scale?"</p>
+                  <p>• "What's the circle of fifths?"</p>
+                </div>
+              </div>
+            )}
+            
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -183,7 +261,7 @@ export const FloatingCoach: React.FC = () => {
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Ask about techniques, songs, practice..."
+                placeholder="Ask about scales, theory, techniques..."
                 className="flex-1 bg-background text-text-primary placeholder-text-secondary px-3 py-2 rounded-md border border-border text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
                 disabled={isLoading}
               />
@@ -192,29 +270,9 @@ export const FloatingCoach: React.FC = () => {
                 disabled={!inputMessage.trim() || isLoading}
                 className="bg-primary hover:bg-primary-hover text-white px-3 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
               >
-                Send
+                Ask
               </button>
             </div>
-            
-            {/* Quick suggestions */}
-            {messages.length <= 1 && (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {[
-                  "What should I practice?",
-                  "Help with chord changes",
-                  "Improve my rhythm"
-                ].map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    onClick={() => setInputMessage(suggestion)}
-                    disabled={isLoading}
-                    className="text-xs bg-background hover:bg-border text-text-secondary hover:text-text-primary px-2 py-1 rounded border border-border transition-colors"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       )}
