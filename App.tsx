@@ -11,7 +11,6 @@ import { RepertoireDetail } from './pages/RepertoireDetail';
 import { Goals } from './pages/Goals';
 import { Progression } from './pages/Progression';
 import { CagedExplorer } from './pages/tools/CagedExplorer';
-import { CAGEDSessions } from './pages/tools/CAGEDSessions';
 import { NoteFinder } from './pages/tools/NoteFinder';
 import { ScalePractice } from './pages/tools/ScalePractice';
 import { LiveSession } from './pages/LiveSession';
@@ -36,7 +35,6 @@ const AppContent: React.FC = () => {
                     <Route path="/progression" element={<Progression />} />
                     <Route path="/session/live" element={<LiveSession />} />
                     <Route path="/tools/caged" element={<CagedExplorer />} />
-                    <Route path="/tools/caged-sessions" element={<CAGEDSessions />} />
                     <Route path="/tools/note-finder" element={<NoteFinder />} />
                     <Route path="/tools/scale-practice" element={<ScalePractice />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
