@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { RepertoireItem, Difficulty, GoalCategory } from '../types';
 import { Modal } from '../components/Modal';
+import { SmartInput } from '../components/SmartInput';
 import { DIFFICULTY_OPTIONS } from '../constants';
 import { supabase } from '../services/supabase';
 
@@ -336,19 +337,19 @@ export const Repertoire: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-text-secondary">Title</label>
-                                <input 
-                                    type="text" 
+                                <SmartInput
+                                    field="title"
                                     value={currentItem.title} 
                                     onChange={e => setCurrentItem({ ...currentItem, title: e.target.value })} 
                                     className="w-full bg-background p-3 rounded-md border border-border transition-all duration-200 focus:ring-2 focus:ring-primary focus:border-transparent" 
                                     placeholder="Enter song title"
-                                    autoFocus
                                 />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-text-secondary">Artist</label>
-                                <input 
-                                    type="text" 
+                                <SmartInput
+                                    field="artist"
+                                    context={{ title: currentItem.title }}
                                     value={currentItem.artist} 
                                     onChange={e => setCurrentItem({ ...currentItem, artist: e.target.value })} 
                                     className="w-full bg-background p-3 rounded-md border border-border transition-all duration-200 focus:ring-2 focus:ring-primary focus:border-transparent" 
