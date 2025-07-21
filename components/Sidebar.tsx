@@ -9,6 +9,7 @@ import { RepertoireIcon } from './icons/RepertoireIcon';
 import { GoalsIcon } from './icons/GoalsIcon';
 import { ToolsIcon } from './icons/ToolsIcon';
 import { ProgressionIcon } from './icons/ProgressionIcon';
+import { CoachIcon } from './icons/CoachIcon';
 
 export const Sidebar: React.FC = () => {
     const { state } = useAppContext();
@@ -47,6 +48,12 @@ export const Sidebar: React.FC = () => {
                 <NavLink to="/" end className={({isActive}) => isActive ? `${navLinkClasses} ${activeLinkClasses}` : navLinkClasses}>
                     <DashboardIcon className="w-6 h-6 mr-3" />
                     <span>Dashboard</span>
+                </NavLink>
+
+                {/* AI Coach - Standalone */}
+                <NavLink to="/coach" className={({isActive}) => isActive ? `${navLinkClasses} ${activeLinkClasses}` : navLinkClasses}>
+                    <CoachIcon className="w-6 h-6 mr-3" />
+                    <span>AI Coach</span>
                 </NavLink>
 
                 {/* Journal Section */}
