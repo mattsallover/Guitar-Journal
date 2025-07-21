@@ -5,6 +5,7 @@ import { supabase } from '../services/supabase';
 import YouTube from 'react-youtube';
 import { compressVideo, formatFileSize } from '../utils/mediaUtils';
 import { UploadProgress } from '../components/UploadProgress';
+import { PlaylistManager } from '../components/PlaylistManager';
 
 const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -43,6 +44,7 @@ export const LiveSession: React.FC = () => {
     const [youtubeUrl, setYoutubeUrl] = useState('');
     const [youtubeId, setYoutubeId] = useState<string | null>(null);
     const [showYouTube, setShowYouTube] = useState(false);
+    const [showPlaylistManager, setShowPlaylistManager] = useState(false);
     
     // Google Doc state
     const [googleDocUrl, setGoogleDocUrl] = useState('');
@@ -58,6 +60,12 @@ export const LiveSession: React.FC = () => {
     const [showCamera, setShowCamera] = useState(false);
     const [cameraError, setCameraError] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
+    
+    // Camera/audio device selection
+    const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+    const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+    const [selectedVideoDeviceId, setSelectedVideoDeviceId] = useState<string>('');
+    const [selectedAudioDeviceId, setSelectedAudioDeviceId] = useState<string>('');
     const [uploadProgress, setUploadProgress] = useState<{
         name: string;
         progress: number;
@@ -97,6 +105,32 @@ export const LiveSession: React.FC = () => {
         };
     }, [mediaStream]);
 
+    // Get available media devices
+    useEffect(() => {
+        const getDevices = async () => {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoInputs = devices.filter(device => device.kind === 'videoinput');
+                const audioInputs = devices.filter(device => device.kind === 'audioinput');
+                
+                setVideoDevices(videoInputs);
+                setAudioDevices(audioInputs);
+                
+                // Set default devices if none selected
+                if (!selectedVideoDeviceId && videoInputs.length > 0) {
+                    setSelectedVideoDeviceId(videoInputs[0].deviceId);
+                }
+                if (!selectedAudioDeviceId && audioInputs.length > 0) {
+                    setSelectedAudioDeviceId(audioInputs[0].deviceId);
+                }
+            } catch (error) {
+                console.error('Error enumerating devices:', error);
+            }
+        };
+
+        getDevices();
+    }, [selectedVideoDeviceId, selectedAudioDeviceId]);
+
     // Handle YouTube URL input
     const handleYouTubeUrlChange = (url: string) => {
         setYoutubeUrl(url);
@@ -120,9 +154,19 @@ export const LiveSession: React.FC = () => {
     const startCamera = async () => {
         try {
             setCameraError(null);
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { width: 1280, height: 720 }, 
-                audio: true 
+            
+            const constraints: MediaStreamConstraints = {
+                video: selectedVideoDeviceId ? {
+                    deviceId: { exact: selectedVideoDeviceId },
+                    width: 1280,
+                    height: 720
+                } : { width: 1280, height: 720 },
+                audio: selectedAudioDeviceId ? {
+                    deviceId: { exact: selectedAudioDeviceId }
+                } : true
+            };
+            
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
             });
             setMediaStream(stream);
             if (videoRef.current) {
@@ -269,6 +313,12 @@ export const LiveSession: React.FC = () => {
         }
     };
 
+    const handlePlaylistVideoSelect = (videoId: string, title: string) => {
+        setYoutubeId(videoId);
+        setYoutubeUrl(`https://www.youtube.com/watch?v=${videoId}`);
+        setShowYouTube(true);
+    };
+
     if (!topic) {
         return null;
     }
@@ -326,6 +376,13 @@ export const LiveSession: React.FC = () => {
                         </button>
                         
                         <button
+                            onClick={() => setShowPlaylistManager(true)}
+                            className="bg-background hover:bg-border text-text-primary p-3 rounded-md font-semibold transition-colors"
+                        >
+                            📋 Practice Playlists
+                        </button>
+                        
+                        <button
                             onClick={() => setShowGoogleDoc(!showGoogleDoc)}
                             className={`p-3 rounded-md font-semibold transition-colors ${
                                 showGoogleDoc ? 'bg-blue-600 text-white' : 'bg-background hover:bg-border text-text-primary'
@@ -347,6 +404,17 @@ export const LiveSession: React.FC = () => {
                     {/* YouTube URL Input */}
                     {showYouTube && (
                         <div className="mb-4">
+                            <div className="flex justify-between items-center mb-2">
+                                <label className="block text-sm font-medium text-text-secondary">
+                                    YouTube URL
+                                </label>
+                                <button
+                                    onClick={() => setShowPlaylistManager(true)}
+                                    className="text-xs text-primary hover:underline"
+                                >
+                                    📋 Load from Playlist
+                                </button>
+                            </div>
                             <label className="block text-sm font-medium text-text-secondary mb-2">
                                 YouTube URL
                             </label>
@@ -376,6 +444,47 @@ export const LiveSession: React.FC = () => {
                                 placeholder="https://docs.google.com/document/... or Google Drive link"
                                 className="w-full bg-background p-3 rounded-md border border-border"
                             />
+                        </div>
+                    )}
+
+                    {/* Camera Device Selection */}
+                    {showCamera && (
+                        <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-text-secondary mb-2">
+                                    Camera Device
+                                </label>
+                                <select
+                                    value={selectedVideoDeviceId}
+                                    onChange={e => setSelectedVideoDeviceId(e.target.value)}
+                                    className="w-full bg-background p-2 rounded-md border border-border text-sm"
+                                    disabled={isRecording || mediaStream}
+                                >
+                                    {videoDevices.map(device => (
+                                        <option key={device.deviceId} value={device.deviceId}>
+                                            {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-medium text-text-secondary mb-2">
+                                    Microphone
+                                </label>
+                                <select
+                                    value={selectedAudioDeviceId}
+                                    onChange={e => setSelectedAudioDeviceId(e.target.value)}
+                                    className="w-full bg-background p-2 rounded-md border border-border text-sm"
+                                    disabled={isRecording || mediaStream}
+                                >
+                                    {audioDevices.map(device => (
+                                        <option key={device.deviceId} value={device.deviceId}>
+                                            {device.label || `Microphone ${device.deviceId.slice(0, 8)}`}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                     )}
 
@@ -537,6 +646,13 @@ export const LiveSession: React.FC = () => {
                     </div>
                 </div>
             </div>
+            
+            {/* Playlist Manager Modal */}
+            <PlaylistManager
+                isOpen={showPlaylistManager}
+                onClose={() => setShowPlaylistManager(false)}
+                onVideoSelect={handlePlaylistVideoSelect}
+            />
         </div>
     );
 };

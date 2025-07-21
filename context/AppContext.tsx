@@ -1,6 +1,6 @@
 
 import React, { createContext, useReducer, useContext, ReactNode, useEffect } from 'react';
-import { User, PracticeSession, RepertoireItem, Goal, CAGEDSession, NoteFinderAttempt } from '../types';
+import { User, PracticeSession, RepertoireItem, Goal, CAGEDSession, NoteFinderAttempt, PracticePlaylist } from '../types';
 import { supabase } from '../services/supabase';
 import { AuthSession } from '@supabase/supabase-js';
 
@@ -11,6 +11,7 @@ interface AppState {
   goals: Goal[];
   cagedSessions: CAGEDSession[];
   noteFinderAttempts: NoteFinderAttempt[];
+  playlists: PracticePlaylist[];
   loading: boolean;
 }
 
@@ -21,6 +22,7 @@ type Action =
   | { type: 'SET_REPERTOIRE'; payload: RepertoireItem[] }
   | { type: 'SET_GOALS'; payload: Goal[] }
   | { type: 'SET_CAGED_SESSIONS'; payload: CAGEDSession[] }
+  | { type: 'SET_PLAYLISTS'; payload: PracticePlaylist[] }
   | { type: 'SET_NOTE_FINDER_ATTEMPTS'; payload: NoteFinderAttempt[] };
 
 
@@ -31,6 +33,7 @@ const initialState: AppState = {
   goals: [],
   cagedSessions: [],
   noteFinderAttempts: [],
+  playlists: [],
   loading: true,
 };
 
@@ -48,6 +51,8 @@ const appReducer = (state: AppState, action: Action): AppState => {
       return { ...state, goals: action.payload };
     case 'SET_CAGED_SESSIONS':
       return { ...state, cagedSessions: action.payload };
+    case 'SET_PLAYLISTS':
+      return { ...state, playlists: action.payload };
     case 'SET_NOTE_FINDER_ATTEMPTS':
       return { ...state, noteFinderAttempts: action.payload };
     default:
