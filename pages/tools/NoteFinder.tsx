@@ -23,28 +23,33 @@ const shuffle = <T,>(array: T[]): T[] => {
     return result;
 };
 
-// Scoring configuration
-const TARGET_SECONDS = 3; // Target time for finding a note
-const WEIGHT_SPEED = 0.4;
-const WEIGHT_ACCURACY = 0.6;
+// Quiz prompt types
+type QuizPromptType = 'find-all' | 'find-any' | 'find-on-string';
 
-// Calculate score based on correctness and speed
-const scoreAttempt = ({ correct, timeSeconds }: { correct: boolean; timeSeconds: number }): number => {
-    if (!correct) return 0; // No score for incorrect answers
-    
-    const speedScore = Math.max(0, Math.min(1, TARGET_SECONDS / timeSeconds));
-    const accuracyScore = 1; // Full accuracy score for correct answers
-    
-    return Math.round((speedScore * WEIGHT_SPEED + accuracyScore * WEIGHT_ACCURACY) * 100);
+interface QuizQuestion {
+    note: Note;
+    promptType: QuizPromptType;
+    targetString?: number; // for 'find-on-string' mode
+}
+
+// Helper to find all positions of a note on the fretboard
+const findAllNotePositions = (note: Note): Array<{ stringIndex: number; fret: number }> => {
+    const positions = [];
+    for (let stringIndex = 0; stringIndex < 6; stringIndex++) {
+        for (let fret = 0; fret <= 15; fret++) {
+            if (getNoteAt(stringIndex, fret) === note) {
+                positions.push({ stringIndex, fret });
+            }
+        }
+    }
+    return positions;
 };
-
 interface NoteStats {
     note: Note;
     attempts: number;
     correct: number;
     accuracy: number;
     avgTime: number;
-    avgScore: number;
 }
 
 export const NoteFinder: React.FC = () => {
@@ -52,14 +57,15 @@ export const NoteFinder: React.FC = () => {
     
     // Quiz State
     const [mode, setMode] = useState<'menu' | 'quiz' | 'results'>('menu');
-    const [quizSequence, setQuizSequence] = useState<Note[]>([]);
+    const [quizSequence, setQuizSequence] = useState<QuizQuestion[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [elapsed, setElapsed] = useState(0);
+    const [startTime, setStartTime] = useState<number>(0);
+    const [foundPositions, setFoundPositions] = useState<Set<string>>(new Set());
     const [quizResults, setQuizResults] = useState<{
         note: Note;
+        promptType: QuizPromptType;
         correct: boolean;
         timeSeconds: number;
-        score: number;
         stringNum: number;
         fretNum: number;
     }[]>([]);
@@ -73,7 +79,6 @@ export const NoteFinder: React.FC = () => {
     const [showStatsModal, setShowStatsModal] = useState(false);
 
     const startTimeRef = useRef<number>(0);
-    const timerRef = useRef<number | undefined>();
 
     useEffect(() => {
         if (state.user) {
@@ -116,11 +121,11 @@ export const NoteFinder: React.FC = () => {
     };
 
     const calculateNoteStats = (attempts: NoteFinderAttempt[]) => {
-        const statsMap = new Map<Note, { total: number; correct: number; totalTime: number; totalScore: number }>();
+        const statsMap = new Map<Note, { total: number; correct: number; totalTime: number }>();
         
         // Initialize all notes
         ALL_NOTES.forEach(note => {
-            statsMap.set(note as Note, { total: 0, correct: 0, totalTime: 0, totalScore: 0 });
+            statsMap.set(note as Note, { total: 0, correct: 0, totalTime: 0 });
         });
 
         // Aggregate attempts
@@ -129,10 +134,6 @@ export const NoteFinder: React.FC = () => {
             current.total++;
             if (attempt.correct) current.correct++;
             current.totalTime += attempt.timeSeconds;
-            
-            // Calculate score for this attempt
-            const score = scoreAttempt({ correct: attempt.correct, timeSeconds: attempt.timeSeconds });
-            current.totalScore += score;
         });
 
         // Convert to stats array
@@ -142,63 +143,79 @@ export const NoteFinder: React.FC = () => {
             correct: data.correct,
             accuracy: data.total > 0 ? (data.correct / data.total) * 100 : 0,
             avgTime: data.total > 0 ? data.totalTime / data.total : 0,
-            avgScore: data.total > 0 ? data.totalScore / data.total : 0,
         }));
 
         setNoteStats(stats);
     };
 
     const startQuiz = (numQuestions: number = 12) => {
-        const sequence = shuffle([...ALL_NOTES].slice(0, numQuestions)) as Note[];
+        // Create varied quiz questions
+        const notes = shuffle([...ALL_NOTES].slice(0, numQuestions)) as Note[];
+        const sequence: QuizQuestion[] = notes.map(note => {
+            const promptTypes: QuizPromptType[] = ['find-all', 'find-any', 'find-on-string'];
+            const promptType = promptTypes[Math.floor(Math.random() * promptTypes.length)];
+            
+            const question: QuizQuestion = { note, promptType };
+            
+            // For find-on-string mode, pick a random string that has this note
+            if (promptType === 'find-on-string') {
+                const availableStrings = [];
+                for (let stringIndex = 0; stringIndex < 6; stringIndex++) {
+                    for (let fret = 0; fret <= 15; fret++) {
+                        if (getNoteAt(stringIndex, fret) === note) {
+                            availableStrings.push(stringIndex);
+                            break; // Found this note on this string, move to next string
+                        }
+                    }
+                }
+                question.targetString = availableStrings[Math.floor(Math.random() * availableStrings.length)];
+            }
+            
+            return question;
+        });
+        
         setQuizSequence(sequence);
         setCurrentIndex(0);
         setQuizResults([]);
-        setElapsed(0);
+        setFoundPositions(new Set());
         setMode('quiz');
-        startTimeRef.current = performance.now();
-        
-        // Start elapsed timer for UI display
-        timerRef.current = window.setInterval(() => {
-            setElapsed(Math.round((performance.now() - startTimeRef.current) / 1000));
-        }, 100);
+        setStartTime(Date.now());
+        startTimeRef.current = Date.now();
     };
-
-    // Effect to handle question changes and timer resets
-    useEffect(() => {
-        if (mode === 'quiz' && quizSequence.length > 0) {
-            startTimeRef.current = performance.now();
-            setElapsed(0);
-            
-            // Clear existing timer and start new one
-            if (timerRef.current) {
-                clearInterval(timerRef.current);
-            }
-            
-            timerRef.current = window.setInterval(() => {
-                setElapsed(Math.round((performance.now() - startTimeRef.current) / 1000));
-            }, 100);
-        }
-        
-        return () => {
-            if (timerRef.current) {
-                clearInterval(timerRef.current);
-            }
-        };
-    }, [currentIndex, mode, quizSequence.length]);
 
     const handleFretClick = async (stringIndex: number, fret: number, clickedNote: Note) => {
         if (mode !== 'quiz') return;
 
-        // Stop timer
-        if (timerRef.current) {
-            clearInterval(timerRef.current);
+        const currentQuestion = quizSequence[currentIndex];
+        const targetNote = currentQuestion.note;
+        const timeSeconds = Math.round((Date.now() - startTimeRef.current) / 1000);
+        let correct = false;
+        let shouldAdvance = false;
+        
+        // Check correctness based on prompt type
+        if (currentQuestion.promptType === 'find-any') {
+            correct = clickedNote === targetNote;
+            shouldAdvance = true; // Always advance after first click
+        } else if (currentQuestion.promptType === 'find-on-string') {
+            correct = clickedNote === targetNote && stringIndex === currentQuestion.targetString;
+            shouldAdvance = true; // Always advance after first click
+        } else if (currentQuestion.promptType === 'find-all') {
+            correct = clickedNote === targetNote;
+            if (correct) {
+                // Mark this position as found
+                const positionKey = `${stringIndex}-${fret}`;
+                setFoundPositions(prev => new Set([...prev, positionKey]));
+                
+                // Check if all positions have been found
+                const allPositions = findAllNotePositions(targetNote);
+                const newFoundPositions = new Set([...foundPositions, positionKey]);
+                shouldAdvance = allPositions.every(pos => 
+                    newFoundPositions.has(`${pos.stringIndex}-${pos.fret}`)
+                );
+            } else {
+                shouldAdvance = true; // Wrong click ends the question
+            }
         }
-
-        const targetNote = quizSequence[currentIndex];
-        const timeMs = performance.now() - startTimeRef.current;
-        const timeSeconds = Math.round(timeMs / 1000);
-        const correct = clickedNote === targetNote;
-        const score = scoreAttempt({ correct, timeSeconds });
         
         // Convert stringIndex (0-5, high to low E) to stringNum (1-6, high to low E)
         const stringNum = stringIndex + 1;
@@ -221,17 +238,19 @@ export const NoteFinder: React.FC = () => {
         // Add to results
         setQuizResults(prev => [...prev, {
             note: targetNote,
+            promptType: currentQuestion.promptType,
             correct,
             timeSeconds,
-            score,
             stringNum,
             fretNum: fret
         }]);
 
         // Move to next question or finish
-        if (currentIndex < quizSequence.length - 1) {
+        if (shouldAdvance && currentIndex < quizSequence.length - 1) {
             setCurrentIndex(prev => prev + 1);
-        } else {
+            setFoundPositions(new Set()); // Reset for next question
+            startTimeRef.current = Date.now();
+        } else if (shouldAdvance) {
             setMode('results');
             // Refresh data to show updated stats
             setTimeout(fetchNoteFinderData, 500);
@@ -239,24 +258,41 @@ export const NoteFinder: React.FC = () => {
     };
 
     const resetQuiz = () => {
-        if (timerRef.current) {
-            clearInterval(timerRef.current);
-        }
         setMode('menu');
         setQuizSequence([]);
         setCurrentIndex(0);
         setQuizResults([]);
-        setElapsed(0);
+        setFoundPositions(new Set());
     };
 
-                        .sort((a, b) => b.avgScore - a.avgScore)
+    const getAccuracyColor = (accuracy: number) => {
         if (accuracy >= 80) return 'text-green-400';
         if (accuracy >= 60) return 'text-yellow-400';
         if (accuracy >= 40) return 'text-orange-400';
         return 'text-red-400';
-                                    {Math.round(note.accuracy)}% • {Math.round(note.avgScore)}
+    };
 
-    const currentNote = mode === 'quiz' && quizSequence.length > 0 ? quizSequence[currentIndex] : null;
+    const currentQuestion = mode === 'quiz' && quizSequence.length > 0 ? quizSequence[currentIndex] : null;
+    
+    // Generate highlights for current question
+    const getQuizHighlights = () => {
+        if (!currentQuestion) return [];
+        
+        if (currentQuestion.promptType === 'find-all') {
+            // Highlight remaining positions for "find all" mode
+            const allPositions = findAllNotePositions(currentQuestion.note);
+            return allPositions
+                .filter(pos => !foundPositions.has(`${pos.stringIndex}-${pos.fret}`))
+                .map(pos => ({
+                    string: pos.stringIndex,
+                    fret: pos.fret,
+                    color: 'bg-blue-500/30', // Semi-transparent hint
+                    label: ''
+                }));
+        }
+        
+        return []; // No highlights for other modes
+    };
 
     if (loading) {
         return (
@@ -337,30 +373,51 @@ export const NoteFinder: React.FC = () => {
                     </div>
                     
                     <div className="bg-surface p-6 rounded-lg">
-                        <h2 className="text-xl font-bold mb-4">How It Works</h2>
-                        <ol className="list-decimal list-inside space-y-2 text-text-secondary">
-                            <li>A note name will appear (e.g., "Find F#")</li>
-                            <li>Click any F# on the fretboard as quickly as possible</li>
-                            <li>Your accuracy and speed are tracked automatically</li>
-                            <li>View your performance heatmap to see which notes need work</li>
-                        </ol>
+                        <h2 className="text-xl font-bold mb-4">Three Quiz Modes</h2>
+                        <div className="space-y-3 text-text-secondary">
+                            <div>
+                                <strong className="text-primary">Find Any:</strong> "Find any C♯" → Click one C♯ anywhere (speed mode)
+                            </div>
+                            <div>
+                                <strong className="text-yellow-400">Find All:</strong> "Find all the C♯" → Click every C♯ on the fretboard
+                            </div>
+                            <div>
+                                <strong className="text-blue-400">Find on String:</strong> "Find C♯ on string 3" → Click the specific C♯
+                            </div>
+                            <p className="mt-3 text-sm">The quiz randomly mixes all three modes to test different recall skills!</p>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {mode === 'quiz' && currentNote && (
+            {mode === 'quiz' && currentQuestion && (
                 <div className="space-y-6">
                     <div className="text-center bg-surface p-6 rounded-lg">
                         <p className="text-text-secondary mb-2">Question {currentIndex + 1} of {quizSequence.length}</p>
-                        <p className="text-4xl font-bold text-primary mb-4">Find: {currentNote}</p>
-                        <p className="text-2xl font-mono text-yellow-400 mb-2">{elapsed}s</p>
-                        <p className="text-text-secondary">Click any {currentNote} on the fretboard below</p>
+                        <div className="text-4xl font-bold mb-4">
+                            {currentQuestion.promptType === 'find-any' && (
+                                <span className="text-primary">Find any <span className="text-white">{currentQuestion.note}</span></span>
+                            )}
+                            {currentQuestion.promptType === 'find-all' && (
+                                <span className="text-yellow-400">Find all the <span className="text-white">{currentQuestion.note}</span></span>
+                            )}
+                            {currentQuestion.promptType === 'find-on-string' && (
+                                <span className="text-blue-400">Find <span className="text-white">{currentQuestion.note}</span> on string {(currentQuestion.targetString! + 1)}</span>
+                            )}
+                        </div>
+                        <div className="text-sm text-text-secondary">
+                            {currentQuestion.promptType === 'find-any' && "Click one occurrence for speed"}
+                            {currentQuestion.promptType === 'find-all' && `Found: ${foundPositions.size} / ${findAllNotePositions(currentQuestion.note).length}`}
+                            {currentQuestion.promptType === 'find-on-string' && "Click the specific string location"}
+                        </div>
                     </div>
                     
                     <Fretboard
                         onFretClick={handleFretClick}
+                        highlightedNotes={getQuizHighlights()}
                         showFretNumbers={true}
                         allFretsClickable={true}
+                        targetString={currentQuestion.promptType === 'find-on-string' ? currentQuestion.targetString : undefined}
                     />
                     
                     <div className="text-center">
@@ -378,7 +435,7 @@ export const NoteFinder: React.FC = () => {
                 <div className="space-y-6">
                     <div className="bg-surface p-6 rounded-lg text-center">
                         <h2 className="text-2xl font-bold mb-4">Quiz Complete!</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                             <div>
                                 <div className="text-3xl font-bold text-primary">
                                     {quizResults.filter(r => r.correct).length}/{quizResults.length}
@@ -396,12 +453,6 @@ export const NoteFinder: React.FC = () => {
                                     {(quizResults.reduce((sum, r) => sum + r.timeSeconds, 0) / quizResults.length).toFixed(1)}s
                                 </div>
                                 <div className="text-text-secondary">Avg Time</div>
-                            </div>
-                            <div>
-                                <div className="text-3xl font-bold text-primary">
-                                    {Math.round(quizResults.reduce((sum, r) => sum + r.score, 0) / quizResults.length)}
-                                </div>
-                                <div className="text-text-secondary">Avg Score</div>
                             </div>
                         </div>
                         
@@ -440,7 +491,7 @@ export const NoteFinder: React.FC = () => {
                                             </span>
                                         </div>
                                         <div className="text-sm text-text-secondary">
-                                            {stat.correct}/{stat.attempts} correct • {stat.avgTime.toFixed(1)}s avg • {Math.round(stat.avgScore)} score
+                                            {stat.correct}/{stat.attempts} correct • {stat.avgTime.toFixed(1)}s avg
                                         </div>
                                     </div>
                                 ))}
