@@ -18,5 +18,3 @@ export const CAGED_SHAPES: Record<CagedShape, { name: CagedShape; intervals: { s
 
 export const MOOD_OPTIONS = ['Excellent', 'Good', 'Okay', 'Challenging', 'Frustrated'];
 export const DIFFICULTY_OPTIONS = ['Beginner', 'Intermediate', 'Advanced'];
-export const GOAL_STATUS_OPTIONS = ['Active', 'Completed'];
-export const GOAL_CATEGORY_OPTIONS = ['Technique', 'Song', 'Theory', 'Performance'];

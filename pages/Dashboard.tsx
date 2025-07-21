@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import { Goal, GoalStatus, RepertoireItem } from '../types';
 
 interface FocusCardProps {
     type: 'goal' | 'repertoire' | 'technique';
@@ -37,24 +36,12 @@ const FocusCard: React.FC<FocusCardProps> = ({ type, title, description, onStart
 export const Dashboard: React.FC = () => {
     const { state } = useAppContext();
     const navigate = useNavigate();
-    const { goals, repertoire, practiceSessions } = state;
+    const { repertoire, practiceSessions } = state;
 
     const focusSuggestions = useMemo(() => {
         const suggestions: FocusCardProps[] = [];
 
-        // 1. Active Goals
-        const activeGoals = goals.filter(g => g.status === GoalStatus.Active);
-        if (activeGoals.length > 0) {
-            const goal = activeGoals[0]; // Suggest the first active goal
-            suggestions.push({
-                type: 'goal',
-                title: goal.title,
-                description: `You're at ${goal.progress}% on this goal. Let's keep the momentum going!`,
-                onStart: () => navigate('/session/live', { state: { topic: goal.title } })
-            });
-        }
-
-        // 2. Stale Repertoire
+        // 1. Stale Repertoire
         const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const staleItems = repertoire.filter(item => {
             const lastPracticed = item.lastPracticed ? new Date(item.lastPracticed) : new Date(0);
@@ -70,7 +57,7 @@ export const Dashboard: React.FC = () => {
             });
         }
         
-        // 3. Recent Technique
+        // 2. Recent Technique
         if (practiceSessions.length > 0) {
             const lastSession = practiceSessions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
             if(lastSession.techniques.length > 0) {
@@ -86,7 +73,7 @@ export const Dashboard: React.FC = () => {
         
         return suggestions.slice(0, 3); // Limit to 3 suggestions for a clean look
 
-    }, [goals, repertoire, practiceSessions, navigate]);
+    }, [repertoire, practiceSessions, navigate]);
 
     return (
         <div className="p-8 space-y-8">
@@ -145,13 +132,13 @@ export const Dashboard: React.FC = () => {
                         <p className="text-sm text-text-secondary mt-1">Build your repertoire</p>
                     </button>
                      <button 
-                        onClick={() => navigate('/goals')} 
+                        onClick={() => navigate('/tools/caged')} 
                         className="bg-surface hover:bg-border p-6 rounded-lg text-center transition-all duration-300 hover:scale-105 hover:shadow-md group"
-                        title="Set new goals or track your progress"
+                        title="Practice chord shapes with interactive quizzes"
                      >
-                        <span className="text-3xl mb-3 block group-hover:scale-110 transition-transform duration-200">🎯</span>
-                        <p className="font-semibold text-lg">Track Goals</p>
-                        <p className="text-sm text-text-secondary mt-1">Set and achieve targets</p>
+                        <span className="text-3xl mb-3 block group-hover:scale-110 transition-transform duration-200">🎸</span>
+                        <p className="font-semibold text-lg">CAGED Practice</p>
+                        <p className="text-sm text-text-secondary mt-1">Master chord shapes</p>
                     </button>
                  </div>
             </div>

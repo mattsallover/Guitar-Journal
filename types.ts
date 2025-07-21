@@ -57,29 +57,6 @@ export interface RepertoireItem {
   notes: string;
 }
 
-export enum GoalStatus {
-    Active = 'Active',
-    Completed = 'Completed'
-}
-
-export enum GoalCategory {
-    Technique = 'Technique',
-    Song = 'Song',
-    Theory = 'Theory',
-    Performance = 'Performance'
-}
-
-export interface Goal {
-  id: string;
-  userId: string;
-  title: string;
-  description: string;
-  targetDate: string;
-  status: GoalStatus;
-  progress: number; // 0-100
-  category: GoalCategory;
-}
-
 export type CagedShape = 'C' | 'A' | 'G' | 'E' | 'D';
 export type Note = 'A' | 'A#' | 'B' | 'C' | 'C#' | 'D' | 'D#' | 'E' | 'F' | 'F#' | 'G' | 'G#';
 

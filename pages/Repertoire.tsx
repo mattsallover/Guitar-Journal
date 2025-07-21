@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import { RepertoireItem, Difficulty, GoalCategory } from '../types';
+import { RepertoireItem, Difficulty } from '../types';
 import { Modal } from '../components/Modal';
 import { Card, CardHeader, CardProgress } from '../components/shared/Card';
 import { Button } from '../components/shared/Button';
@@ -195,15 +195,6 @@ export const Repertoire: React.FC = () => {
         }
     };
     
-    const handleSetAsGoal = (item: RepertoireItem) => {
-        navigate('/goals', { 
-            state: { 
-                newGoalTitle: item.title,
-                newGoalCategory: GoalCategory.Song,
-                newGoalDescription: `Master "${item.title}" by ${item.artist}.`
-            }
-        });
-    };
 
     const sortedRepertoire = [...state.repertoire]
         .filter(item => 
@@ -284,16 +275,6 @@ export const Repertoire: React.FC = () => {
                                         title="View practice progression for this song"
                                     >
                                         📊 Progress
-                                    </button>
-                                    <button 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleSetAsGoal(item);
-                                        }}
-                                        className="bg-secondary/20 hover:bg-secondary/40 text-secondary-300 font-bold py-2 px-3 rounded-md text-sm whitespace-nowrap transition-all duration-200 hover:scale-105"
-                                        title="Create a goal for this song"
-                                    >
-                                        🎯 Set Goal
                                     </button>
                                     <button 
                                         onClick={(e) => {

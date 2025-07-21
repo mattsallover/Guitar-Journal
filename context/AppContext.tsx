@@ -1,6 +1,6 @@
 
 import React, { createContext, useReducer, useContext, ReactNode, useEffect } from 'react';
-import { User, PracticeSession, RepertoireItem, Goal, CAGEDSession, NoteFinderAttempt } from '../types';
+import { User, PracticeSession, RepertoireItem, CAGEDSession, NoteFinderAttempt } from '../types';
 import { supabase } from '../services/supabase';
 import { AuthSession } from '@supabase/supabase-js';
 
@@ -8,7 +8,6 @@ interface AppState {
   user: User | null;
   practiceSessions: PracticeSession[];
   repertoire: RepertoireItem[];
-  goals: Goal[];
   cagedSessions: CAGEDSession[];
   noteFinderAttempts: NoteFinderAttempt[];
   loading: boolean;
@@ -19,7 +18,6 @@ type Action =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_PRACTICE_SESSIONS'; payload: PracticeSession[] }
   | { type: 'SET_REPERTOIRE'; payload: RepertoireItem[] }
-  | { type: 'SET_GOALS'; payload: Goal[] }
   | { type: 'SET_CAGED_SESSIONS'; payload: CAGEDSession[] }
   | { type: 'SET_NOTE_FINDER_ATTEMPTS'; payload: NoteFinderAttempt[] };
 
@@ -28,7 +26,6 @@ const initialState: AppState = {
   user: null,
   practiceSessions: [],
   repertoire: [],
-  goals: [],
   cagedSessions: [],
   noteFinderAttempts: [],
   loading: true,
@@ -44,8 +41,6 @@ const appReducer = (state: AppState, action: Action): AppState => {
       return { ...state, practiceSessions: action.payload };
     case 'SET_REPERTOIRE':
       return { ...state, repertoire: action.payload };
-    case 'SET_GOALS':
-      return { ...state, goals: action.payload };
     case 'SET_CAGED_SESSIONS':
       return { ...state, cagedSessions: action.payload };
     case 'SET_NOTE_FINDER_ATTEMPTS':
@@ -196,29 +191,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       dispatch({ type: 'SET_NOTE_FINDER_ATTEMPTS', payload: attempts });
     }
   };
-  const fetchGoals = async (user: User) => {
-    const { data, error } = await supabase
-      .from('goals')
-      .select('*')
-      .eq('user_id', user.uid)
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('Error fetching goals:', error);
-    } else {
-      const goals: Goal[] = data.map(row => ({
-        id: row.id,
-        userId: row.user_id,
-        title: row.title,
-        description: row.description,
-        targetDate: row.target_date,
-        status: row.status,
-        progress: row.progress,
-        category: row.category,
-      }));
-      dispatch({ type: 'SET_GOALS', payload: goals });
-    }
-  };
 
   // Function to refresh all data - can be called by other components
   const refreshData = async () => {
@@ -228,7 +200,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       await Promise.all([
         fetchPracticeSessions(state.user),
         fetchRepertoire(state.user),
-        fetchGoals(state.user),
         fetchCAGEDSessions(state.user),
         fetchNoteFinderAttempts(state.user)
       ]);
@@ -279,7 +250,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!state.user) {
       dispatch({ type: 'SET_PRACTICE_SESSIONS', payload: [] });
       dispatch({ type: 'SET_REPERTOIRE', payload: [] });
-      dispatch({ type: 'SET_GOALS', payload: [] });
       dispatch({ type: 'SET_CAGED_SESSIONS', payload: [] });
       dispatch({ type: 'SET_NOTE_FINDER_ATTEMPTS', payload: [] });
       return;
@@ -292,7 +262,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ensureUserExists(state.user),
       fetchPracticeSessions(state.user),
       fetchRepertoire(state.user),
-      fetchGoals(state.user),
       fetchCAGEDSessions(state.user),
       fetchNoteFinderAttempts(state.user)
     ]).then(() => {
