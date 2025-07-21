@@ -21,12 +21,39 @@ const moodIcons: Record<Mood, string> = {
     [Mood.Frustrated]: '😠',
 };
 
+// Filter types
+type FilterType = 'all' | 'practice' | 'caged' | 'with-videos' | Mood;
+
+interface FilterPillProps {
+    active: boolean;
+    onClick: () => void;
+    children: React.ReactNode;
+}
+
+const FilterPill: React.FC<FilterPillProps> = ({ active, onClick, children }) => (
+    <button
+        onClick={onClick}
+        className={`px-3 py-1 rounded-full text-sm transition-colors ${
+            active 
+                ? 'bg-primary text-white' 
+                : 'bg-surface hover:bg-border text-text-secondary hover:text-text-primary'
+        }`}
+    >
+        {children}
+    </button>
+);
+
 // Combined activity type for unified display
 interface ActivityItem {
     id: string;
     type: 'practice' | 'caged';
     date: string;
     data: PracticeSession | CAGEDSession;
+}
+
+interface GroupedActivities {
+    month: string;
+    items: ActivityItem[];
 }
 
 export const PracticeLog: React.FC = () => {
@@ -38,6 +65,9 @@ export const PracticeLog: React.FC = () => {
     const [currentSession, setCurrentSession] = useState<Partial<PracticeSession> | null>(null);
     const [newRecordings, setNewRecordings] = useState<File[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [activeFilters, setActiveFilters] = useState<FilterType[]>(['all']);
+    const [isCompactView, setIsCompactView] = useState(false);
+    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [isSaving, setIsSaving] = useState(false);
     const [goalToUpdate, setGoalToUpdate] = useState<Goal | null>(null);
     const [masteryItemsToUpdate, setMasteryItemsToUpdate] = useState<RepertoireItem[]>([]);
@@ -444,14 +474,68 @@ export const PracticeLog: React.FC = () => {
         setGoalToUpdate(null);
     };
 
-    // Combine and filter all activities
-    const allActivities = useMemo((): ActivityItem[] => {
+    // Generate summary statistics
+    const summaryStats = useMemo(() => {
+        const now = new Date();
+        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const today = new Date().toDateString();
+        
+        // Calculate streak (consecutive days with practice)
+        const sortedDates = [...new Set([
+            ...state.practiceSessions.map(s => s.date),
+            ...state.cagedSessions.map(s => s.sessionDate)
+        ])].sort().reverse();
+        
+        let streak = 0;
+        let currentDate = new Date();
+        for (const dateStr of sortedDates) {
+            const sessionDate = new Date(dateStr + 'T00:00:00');
+            const daysDiff = Math.floor((currentDate.getTime() - sessionDate.getTime()) / (24 * 60 * 60 * 1000));
+            
+            if (daysDiff === streak) {
+                streak++;
+                currentDate = sessionDate;
+            } else {
+                break;
+            }
+        }
+        
+        // This week's practice time
+        const thisWeekMinutes = state.practiceSessions
+            .filter(s => new Date(s.date) >= oneWeekAgo)
+            .reduce((sum, s) => sum + s.duration, 0);
+        
+        // Average mood
+        const recentSessions = state.practiceSessions.filter(s => new Date(s.date) >= oneWeekAgo);
+        const avgMoodValue = recentSessions.length > 0 
+            ? recentSessions.reduce((sum, s) => {
+                const moodValues = { [Mood.Frustrated]: 1, [Mood.Challenging]: 2, [Mood.Okay]: 3, [Mood.Good]: 4, [Mood.Excellent]: 5 };
+                return sum + moodValues[s.mood];
+            }, 0) / recentSessions.length
+            : 3;
+        
+        const avgMoodIcon = avgMoodValue >= 4.5 ? '😊' : 
+                          avgMoodValue >= 3.5 ? '🙂' : 
+                          avgMoodValue >= 2.5 ? '😐' : 
+                          avgMoodValue >= 1.5 ? '😕' : '😠';
+        
+        // CAGED average score
+        const recentCagedSessions = state.cagedSessions.filter(s => new Date(s.sessionDate) >= oneWeekAgo);
+        const avgCAGEDScore = recentCagedSessions.length > 0 
+            ? Math.round(recentCagedSessions.reduce((sum, s) => sum + s.score, 0) / recentCagedSessions.length)
+            : null;
+        
+        return {
+            streak,
+            thisWeekMinutes,
+            avgMoodIcon,
+            avgCAGEDScore
+        };
+    }, [state.practiceSessions, state.cagedSessions]);
+
+    // Combine, filter, and group activities
+    const { allActivities, groupedActivities } = useMemo((): { allActivities: ActivityItem[], groupedActivities: GroupedActivities[] } => {
         const practiceActivities: ActivityItem[] = state.practiceSessions
-            .filter(session => 
-                session.notes.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                session.songs.some(s => s.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                session.techniques.some(t => t.toLowerCase().includes(searchTerm.toLowerCase()))
-            )
             .map(session => ({
                 id: session.id,
                 type: 'practice' as const,
@@ -460,10 +544,6 @@ export const PracticeLog: React.FC = () => {
             }));
 
         const cagedActivities: ActivityItem[] = state.cagedSessions
-            .filter(session =>
-                session.notes.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                session.shapes.some(shape => shape.toLowerCase().includes(searchTerm.toLowerCase()))
-            )
             .map(session => ({
                 id: session.id,
                 type: 'caged' as const,
@@ -471,9 +551,100 @@ export const PracticeLog: React.FC = () => {
                 data: session
             }));
 
-        return [...practiceActivities, ...cagedActivities]
+        let combined = [...practiceActivities, ...cagedActivities]
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [state.practiceSessions, state.cagedSessions, searchTerm]);
+        
+        // Apply search filter
+        if (searchTerm) {
+            combined = combined.filter(activity => {
+                if (activity.type === 'practice') {
+                    const session = activity.data as PracticeSession;
+                    return session.notes.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           session.songs.some(s => s.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                           session.techniques.some(t => t.toLowerCase().includes(searchTerm.toLowerCase()));
+                } else {
+                    const session = activity.data as CAGEDSession;
+                    return session.notes.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           session.shapes.some(shape => shape.toLowerCase().includes(searchTerm.toLowerCase()));
+                }
+            });
+        }
+        
+        // Apply type filters
+        if (!activeFilters.includes('all')) {
+            combined = combined.filter(activity => {
+                if (activeFilters.includes('practice') && activity.type === 'practice') return true;
+                if (activeFilters.includes('caged') && activity.type === 'caged') return true;
+                if (activeFilters.includes('with-videos') && activity.type === 'practice') {
+                    const session = activity.data as PracticeSession;
+                    return session.recordings.some(r => r.type === 'video');
+                }
+                if (activity.type === 'practice') {
+                    const session = activity.data as PracticeSession;
+                    return activeFilters.includes(session.mood);
+                }
+                return false;
+            });
+        }
+        
+        // Group by month
+        const grouped: GroupedActivities[] = [];
+        const monthGroups = new Map<string, ActivityItem[]>();
+        
+        combined.forEach(activity => {
+            const date = new Date(activity.date);
+            const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+            const monthLabel = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+            
+            if (!monthGroups.has(monthKey)) {
+                monthGroups.set(monthKey, []);
+                grouped.push({ month: monthLabel, items: [] });
+            }
+            monthGroups.get(monthKey)!.push(activity);
+        });
+        
+        // Fill in the items for each group
+        Array.from(monthGroups.entries()).forEach(([monthKey, items]) => {
+            const group = grouped.find(g => {
+                const date = new Date(items[0].date);
+                const expectedMonth = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+                return g.month === expectedMonth;
+            });
+            if (group) {
+                group.items = items;
+            }
+        });
+        
+        return { allActivities: combined, groupedActivities: grouped };
+    }, [state.practiceSessions, state.cagedSessions, searchTerm, activeFilters]);
+
+    const toggleFilter = (filter: FilterType) => {
+        if (filter === 'all') {
+            setActiveFilters(['all']);
+        } else {
+            setActiveFilters(prev => {
+                const newFilters = prev.filter(f => f !== 'all');
+                if (newFilters.includes(filter)) {
+                    const remaining = newFilters.filter(f => f !== filter);
+                    return remaining.length === 0 ? ['all'] : remaining;
+                } else {
+                    return [...newFilters, filter];
+                }
+            });
+        }
+    };
+
+    const toggleRowExpansion = (activityId: string) => {
+        setExpandedRows(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(activityId)) {
+                newSet.delete(activityId);
+            } else {
+                newSet.add(activityId);
+            }
+            return newSet;
+        });
+    };
 
     return (
         <div className="p-8">
