@@ -1,15 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { SmartInput } from './SmartInput';
 
 interface TagInputProps {
   values: string[];
   onChange: (values: string[]) => void;
   suggestions?: string[];
   placeholder?: string;
-  smartField?: string;
 }
 
-export const TagInput: React.FC<TagInputProps> = ({ values, onChange, suggestions = [], placeholder, smartField }) => {
+export const TagInput: React.FC<TagInputProps> = ({ values, onChange, suggestions = [], placeholder }) => {
   const [inputValue, setInputValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -80,27 +78,17 @@ export const TagInput: React.FC<TagInputProps> = ({ values, onChange, suggestion
             </button>
           </div>
         ))}
-        {smartField ? (
-          <SmartInput
-            field={smartField}
-            value={inputValue}
-            onChange={setInputValue}
-            placeholder={values.length > 0 ? '' : placeholder}
-            className="flex-grow bg-transparent p-1 focus:outline-none min-w-[120px] h-8"
-          />
-        ) : (
-          <input
-            type="text"
-            value={inputValue}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            onFocus={() => inputValue && setShowSuggestions(true)}
-            placeholder={values.length > 0 ? '' : placeholder}
-            className="flex-grow bg-transparent p-1 focus:outline-none min-w-[120px] h-8"
-          />
-        )}
+        <input
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
+          onFocus={() => inputValue && setShowSuggestions(true)}
+          placeholder={values.length > 0 ? '' : placeholder}
+          className="flex-grow bg-transparent p-1 focus:outline-none min-w-[120px] h-8"
+        />
       </div>
-      {!smartField && showSuggestions && filteredSuggestions.length > 0 && (
+      {showSuggestions && filteredSuggestions.length > 0 && (
         <ul className="absolute z-10 w-full mt-1 bg-surface border border-border rounded-md shadow-lg max-h-60 overflow-auto">
           {filteredSuggestions.map(suggestion => (
             <li

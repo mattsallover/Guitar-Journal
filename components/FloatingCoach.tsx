@@ -8,11 +8,6 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-interface ChatDimensions {
-  width: number;
-  height: number;
-}
-
 export const FloatingCoach: React.FC = () => {
   const { state } = useAppContext();
   const [isOpen, setIsOpen] = useState(false);
@@ -20,11 +15,7 @@ export const FloatingCoach: React.FC = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
-  const [dimensions, setDimensions] = useState<ChatDimensions>({ width: 380, height: 500 });
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -33,41 +24,6 @@ export const FloatingCoach: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return;
-      
-      const deltaX = e.clientX - resizeStart.x;
-      const deltaY = resizeStart.y - e.clientY; // Invert Y axis since we're resizing from bottom-right
-      
-      const newWidth = Math.max(320, Math.min(600, resizeStart.width + deltaX));
-      const newHeight = Math.max(300, Math.min(700, resizeStart.height + deltaY));
-      
-      setDimensions({ width: newWidth, height: newHeight });
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
-
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'nw-resize';
-      document.body.style.userSelect = 'none';
-    } else {
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-  }, [isResizing, resizeStart]);
 
   useEffect(() => {
     if (isOpen && !hasInitialized && state.user) {
@@ -82,17 +38,6 @@ export const FloatingCoach: React.FC = () => {
       setHasInitialized(true);
     }
   }, [isOpen, hasInitialized, state.user]);
-
-  const handleResizeStart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-    setResizeStart({
-      x: e.clientX,
-      y: e.clientY,
-      width: dimensions.width,
-      height: dimensions.height
-    });
-  };
 
   const sendMessage = async () => {
     if (!inputMessage.trim() || !state.user || isLoading) return;
@@ -179,13 +124,9 @@ export const FloatingCoach: React.FC = () => {
 
       {/* Chat Window */}
       {isOpen && (
-        <div 
-          ref={chatRef}
-          className="bg-surface rounded-lg shadow-2xl flex flex-col border border-border relative"
-          style={{ width: `${dimensions.width}px`, height: `${dimensions.height}px` }}
-        >
+        <div className="bg-surface rounded-lg shadow-2xl w-80 h-96 flex flex-col border border-border">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-border bg-primary rounded-t-lg shrink-0">
+          <div className="flex items-center justify-between p-4 border-b border-border bg-primary rounded-t-lg">
             <div className="flex items-center space-x-2">
               <span className="text-2xl">🎸</span>
               <div>
@@ -235,7 +176,7 @@ export const FloatingCoach: React.FC = () => {
           </div>
 
           {/* Input */}
-          <div className="p-3 border-t border-border shrink-0">
+          <div className="p-3 border-t border-border">
             <div className="flex space-x-2">
               <input
                 type="text"
@@ -275,15 +216,6 @@ export const FloatingCoach: React.FC = () => {
               </div>
             )}
           </div>
-          
-          {/* Resize Handle */}
-          <div
-            className="absolute top-0 left-0 w-4 h-4 cursor-nw-resize opacity-0 hover:opacity-100 transition-opacity"
-            onMouseDown={handleResizeStart}
-            style={{
-              background: 'linear-gradient(-45deg, transparent 40%, #666 40%, #666 60%, transparent 60%)',
-            }}
-          />
         </div>
       )}
     </div>

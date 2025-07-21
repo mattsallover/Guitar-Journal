@@ -7,7 +7,6 @@ import { MOOD_OPTIONS } from '../constants';
 import { TagInput } from '../components/TagInput';
 import { GoalUpdateModal } from '../components/GoalUpdateModal';
 import { MasteryUpdateModal } from '../components/MasteryUpdateModal';
-import { SmartInput } from '../components/SmartInput';
 import { UploadProgress } from '../components/UploadProgress';
 import { supabase } from '../services/supabase';
 import { compressVideo, generateVideoThumbnail, compressImage, formatFileSize } from '../utils/mediaUtils';
