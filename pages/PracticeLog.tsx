@@ -834,6 +834,7 @@ export const PracticeLog: React.FC = () => {
                                                         </button>
                                                     </div>
                                                 )}
+                                                <Link to={`/progression?focus=${encodeURIComponent(session.songs[0] || session.techniques[0] || 'session')}`} className="text-secondary hover:text-indigo-300" title="View progression">📊</Link>
                                             </div>
                                         </div>
                                     </div>
