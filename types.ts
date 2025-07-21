@@ -41,25 +41,6 @@ export interface PracticeSession {
   cameraRecordingPath?: string;
 }
 
-export interface YouTubeVideo {
-  id: string;
-  title: string;
-  url: string;
-  thumbnail?: string;
-  duration?: string;
-  addedAt: string;
-}
-
-export interface PracticePlaylist {
-  id: string;
-  userId: string;
-  name: string;
-  description: string;
-  videos: YouTubeVideo[];
-  createdAt: string;
-  updatedAt: string;
-}
-
 export enum Difficulty {
   Beginner = 'Beginner',
   Intermediate = 'Intermediate',
