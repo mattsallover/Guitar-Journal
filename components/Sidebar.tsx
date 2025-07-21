@@ -6,9 +6,7 @@ import { supabase } from '../services/supabase';
 import { DashboardIcon } from './icons/DashboardIcon';
 import { LogIcon } from './icons/LogIcon';
 import { RepertoireIcon } from './icons/RepertoireIcon';
-import { GoalsIcon } from './icons/GoalsIcon';
 import { ToolsIcon } from './icons/ToolsIcon';
-import { ProgressionIcon } from './icons/ProgressionIcon';
 
 export const Sidebar: React.FC = () => {
     const { state } = useAppContext();
@@ -26,8 +24,7 @@ export const Sidebar: React.FC = () => {
 
     const journalItems = [
         { to: "/log", icon: LogIcon, label: "Log Sessions", exact: false },
-        { to: "/repertoire", icon: RepertoireIcon, label: "Repertoire", exact: false },
-        { to: "/goals", icon: GoalsIcon, label: "Track Goals", exact: false }
+        { to: "/repertoire", icon: RepertoireIcon, label: "Repertoire", exact: false }
     ];
 
     const toolItems = [
