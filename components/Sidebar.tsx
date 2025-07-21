@@ -52,6 +52,7 @@ export const Sidebar: React.FC = () => {
                     {isToolsOpen && (
                         <div className="pl-8 mt-1 space-y-1">
                              <NavLink to="/tools/caged" className={({isActive}) => `${navLinkClasses} py-2 ${isActive ? activeLinkClasses : ''}`}>CAGED Explorer</NavLink>
+                             <NavLink to="/tools/caged-sessions" className={({isActive}) => `${navLinkClasses} py-2 ${isActive ? activeLinkClasses : ''}`}>CAGED Sessions</NavLink>
                              <NavLink to="/tools/note-finder" className={({isActive}) => `${navLinkClasses} py-2 ${isActive ? activeLinkClasses : ''}`}>Note Finder</NavLink>
                              <NavLink to="/tools/scale-practice" className={({isActive}) => `${navLinkClasses} py-2 ${isActive ? activeLinkClasses : ''}`}>Scale Practice</NavLink>
                         </div>

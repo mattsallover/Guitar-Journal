@@ -83,6 +83,19 @@ export interface Goal {
 export type CagedShape = 'C' | 'A' | 'G' | 'E' | 'D';
 export type Note = 'A' | 'A#' | 'B' | 'C' | 'C#' | 'D' | 'D#' | 'E' | 'F' | 'F#' | 'G' | 'G#';
 
+export interface CAGEDSession {
+  id: string;
+  userId: string;
+  sessionDate: string;
+  shapes: string[];
+  accuracy: number; // 1-5 scale
+  timeSeconds: number;
+  score: number; // 0-100 calculated score
+  notes: string;
+  recording: string; // storage path for audio/video
+  createdAt: string;
+}
+
 export interface FretPosition {
   string: number;
   fret: number;

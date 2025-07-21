@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Fretboard } from '../../components/Fretboard';
 import { CagedShape, Note } from '../../types';
 import { CAGED_SHAPES, ALL_NOTES, GUITAR_TUNING } from '../../constants';
@@ -92,6 +93,21 @@ export const CagedExplorer: React.FC = () => {
     return (
         <div className="p-8">
             <h1 className="text-3xl font-bold mb-4">CAGED System Explorer</h1>
+            
+            <div className="mb-6 p-4 bg-surface rounded-lg">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h2 className="text-lg font-semibold">Practice Sessions</h2>
+                        <p className="text-text-secondary text-sm">Track your CAGED system progress with timed sessions</p>
+                    </div>
+                    <Link 
+                        to="/tools/caged-sessions"
+                        className="bg-secondary hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md"
+                    >
+                        View Sessions
+                    </Link>
+                </div>
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                 <div className="lg:col-span-2">

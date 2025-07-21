@@ -1,6 +1,6 @@
 
 import React, { createContext, useReducer, useContext, ReactNode, useEffect } from 'react';
-import { User, PracticeSession, RepertoireItem, Goal } from '../types';
+import { User, PracticeSession, RepertoireItem, Goal, CAGEDSession } from '../types';
 import { supabase } from '../services/supabase';
 import { AuthSession } from '@supabase/supabase-js';
 
@@ -9,6 +9,7 @@ interface AppState {
   practiceSessions: PracticeSession[];
   repertoire: RepertoireItem[];
   goals: Goal[];
+  cagedSessions: CAGEDSession[];
   loading: boolean;
 }
 
