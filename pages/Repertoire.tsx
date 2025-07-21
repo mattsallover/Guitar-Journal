@@ -8,6 +8,69 @@ import { DIFFICULTY_OPTIONS } from '../constants';
 import { supabase } from '../services/supabase';
 
 
+// Levenshtein distance algorithm for fuzzy matching
+const levenshteinDistance = (str1: string, str2: string): number => {
+    const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+    
+    for (let i = 0; i <= str1.length; i += 1) {
+        matrix[0][i] = i;
+    }
+    
+    for (let j = 0; j <= str2.length; j += 1) {
+        matrix[j][0] = j;
+    }
+    
+    for (let j = 1; j <= str2.length; j += 1) {
+        for (let i = 1; i <= str1.length; i += 1) {
+            const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+            matrix[j][i] = Math.min(
+                matrix[j][i - 1] + 1, // deletion
+                matrix[j - 1][i] + 1, // insertion
+                matrix[j - 1][i - 1] + indicator // substitution
+            );
+        }
+    }
+    
+    return matrix[str2.length][str1.length];
+};
+
+// Normalize string for comparison
+const normalizeString = (str: string): string => {
+    return str.toLowerCase().trim().replace(/\s+/g, ' ');
+};
+
+// Check for potential duplicates
+const checkForDuplicates = (title: string, artist: string, repertoire: RepertoireItem[]): RepertoireItem[] => {
+    const normalizedTitle = normalizeString(title);
+    const normalizedArtist = normalizeString(artist);
+    
+    return repertoire.filter(item => {
+        const itemTitle = normalizeString(item.title);
+        const itemArtist = normalizeString(item.artist);
+        
+        // Exact match (normalized)
+        if (itemTitle === normalizedTitle && itemArtist === normalizedArtist) {
+            return true;
+        }
+        
+        // Fuzzy matching with Levenshtein distance (within 2 characters)
+        const titleDistance = levenshteinDistance(normalizedTitle, itemTitle);
+        const artistDistance = levenshteinDistance(normalizedArtist, itemArtist);
+        
+        // Consider it a potential duplicate if:
+        // - Title is very close (within 2 chars) and artist is exact match
+        // - Title is exact match and artist is close (within 2 chars)
+        // - Both title and artist are close (within 1 char each)
+        if ((titleDistance <= 2 && itemArtist === normalizedArtist) ||
+            (itemTitle === normalizedTitle && artistDistance <= 2) ||
+            (titleDistance <= 1 && artistDistance <= 1)) {
+            return true;
+        }
+        
+        return false;
+    });
+};
+
 export const Repertoire: React.FC = () => {
     const { state, refreshData } = useAppContext();
     const navigate = useNavigate();
@@ -16,6 +79,8 @@ export const Repertoire: React.FC = () => {
     const [currentItem, setCurrentItem] = useState<Partial<RepertoireItem> | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortKey, setSortKey] = useState<keyof RepertoireItem>('title');
+    const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
+    const [potentialDuplicates, setPotentialDuplicates] = useState<RepertoireItem[]>([]);
 
     const openModal = (item: Partial<RepertoireItem> | null = null) => {
         setCurrentItem(item ? { ...item } : { title: '', artist: '', difficulty: Difficulty.Beginner, mastery: 0, notes: '' });
@@ -26,8 +91,24 @@ export const Repertoire: React.FC = () => {
         setIsModalOpen(false);
         setCurrentItem(null);
     };
+    
+    const closeDuplicateModal = () => {
+        setDuplicateModalOpen(false);
+        setPotentialDuplicates([]);
+    };
+    
+    const handleEditMyEntry = () => {
+        closeDuplicateModal();
+        // Form stays open with current data for user to edit
+    };
+    
+    const handleThisIsNew = async () => {
+        closeDuplicateModal();
+        // Proceed with save despite duplicates
+        await performSave();
+    };
 
-    const handleSave = async () => {
+    const performSave = async () => {
         if (!currentItem || !currentItem.title || !state.user) return;
         setIsSaving(true);
 
@@ -68,6 +149,23 @@ export const Repertoire: React.FC = () => {
         } finally {
             setIsSaving(false);
         }
+    };
+    
+    const handleSave = async () => {
+        if (!currentItem || !currentItem.title || !state.user) return;
+        
+        // Only check for duplicates when adding new items (not editing existing ones)
+        if (!currentItem.id && currentItem.title && currentItem.artist) {
+            const duplicates = checkForDuplicates(currentItem.title, currentItem.artist, state.repertoire);
+            if (duplicates.length > 0) {
+                setPotentialDuplicates(duplicates);
+                setDuplicateModalOpen(true);
+                return;
+            }
+        }
+        
+        // No duplicates found, proceed with save
+        await performSave();
     };
     
     const handleDelete = async (id: string) => {
@@ -205,6 +303,65 @@ export const Repertoire: React.FC = () => {
                             <button onClick={closeModal} disabled={isSaving} className="bg-surface hover:bg-border text-text-primary font-bold py-2 px-4 rounded-md disabled:opacity-50">Cancel</button>
                             <button onClick={handleSave} disabled={isSaving} className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
                                 {isSaving ? 'Saving...' : 'Save Piece'}
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+            
+            {/* Duplicate Detection Modal */}
+            {duplicateModalOpen && (
+                <Modal isOpen={duplicateModalOpen} onClose={closeDuplicateModal} title="⚠️ Potential Duplicate Detected">
+                    <div className="space-y-6">
+                        <div className="text-center">
+                            <div className="text-yellow-400 text-4xl mb-2">🔍</div>
+                            <p className="text-text-secondary">
+                                We found {potentialDuplicates.length} similar {potentialDuplicates.length === 1 ? 'entry' : 'entries'} in your repertoire.
+                            </p>
+                        </div>
+                        
+                        {/* Your New Entry */}
+                        <div className="bg-blue-900/20 border border-blue-500 p-4 rounded-lg">
+                            <h3 className="text-sm font-medium text-blue-300 mb-2">📝 Your New Entry:</h3>
+                            <div className="text-text-primary">
+                                <div className="font-semibold">{currentItem?.title}</div>
+                                <div className="text-sm text-text-secondary">by {currentItem?.artist}</div>
+                            </div>
+                        </div>
+                        
+                        {/* Existing Entries */}
+                        <div className="bg-orange-900/20 border border-orange-500 p-4 rounded-lg">
+                            <h3 className="text-sm font-medium text-orange-300 mb-3">🎵 Existing {potentialDuplicates.length === 1 ? 'Entry' : 'Entries'}:</h3>
+                            <div className="space-y-3">
+                                {potentialDuplicates.map(duplicate => (
+                                    <div key={duplicate.id} className="border-l-2 border-orange-400 pl-3">
+                                        <div className="font-semibold text-text-primary">{duplicate.title}</div>
+                                        <div className="text-sm text-text-secondary">by {duplicate.artist}</div>
+                                        <div className="text-xs text-text-secondary mt-1">
+                                            {duplicate.difficulty} • {duplicate.mastery}% mastery
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        
+                        <div className="text-sm text-text-secondary text-center">
+                            <p>Is this a different song, or did you mean to update an existing entry?</p>
+                        </div>
+                        
+                        <div className="flex space-x-3">
+                            <button 
+                                onClick={handleEditMyEntry}
+                                className="flex-1 bg-surface hover:bg-border text-text-primary font-bold py-3 px-4 rounded-md"
+                            >
+                                📝 Edit My Entry
+                            </button>
+                            <button 
+                                onClick={handleThisIsNew}
+                                disabled={isSaving}
+                                className="flex-1 bg-primary hover:bg-primary-hover text-white font-bold py-3 px-4 rounded-md disabled:opacity-50"
+                            >
+                                {isSaving ? 'Saving...' : '✅ This is New'}
                             </button>
                         </div>
                     </div>
