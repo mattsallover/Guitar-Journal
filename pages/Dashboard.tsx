@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
+import { AIRecommendations } from '../components/AIRecommendations';
+import { SmartSearch } from '../components/SmartSearch';
 import { Goal, GoalStatus, RepertoireItem } from '../types';
 
 interface FocusCardProps {
@@ -89,7 +91,13 @@ export const Dashboard: React.FC = () => {
     }, [goals, repertoire, practiceSessions, navigate]);
 
     return (
-        <div className="p-8 space-y-8">
+        <div className="p-8 space-y-6">
+            {/* AI Features Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <SmartSearch />
+                <AIRecommendations />
+            </div>
+            
             <div>
                 <h1 className="text-4xl font-bold text-text-primary mb-2">Today's Focus</h1>
                 <p className="text-lg text-text-secondary">Smart suggestions to guide your practice session</p>
