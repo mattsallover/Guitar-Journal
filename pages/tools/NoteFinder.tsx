@@ -299,7 +299,20 @@ export const NoteFinder: React.FC = () => {
     const getQuizHighlights = () => {
         if (!currentQuestion) return [];
         
-        // No highlights for any modes - user must find notes on their own
+        // For "find-all" mode, show correctly found positions as green circles
+        if (currentQuestion.promptType === 'find-all') {
+            const allPositions = findAllNotePositions(currentQuestion.note);
+            return allPositions
+                .filter(pos => foundPositions.has(`${pos.stringIndex}-${pos.fret}`))
+                .map(pos => ({
+                    string: pos.stringIndex,
+                    fret: pos.fret,
+                    color: 'bg-green-500',
+                    label: currentQuestion.note
+                }));
+        }
+        
+        // No highlights for other modes
         return [];
     };
 
