@@ -82,6 +82,17 @@ export const PracticeLog: React.FC = () => {
         console.log('Attempting to save session:', currentSession);
         console.log('Current user:', state.user);
         
+        // ✅ 1. Check Supabase Auth Context
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        console.log('Supabase auth user:', user);
+        console.log('Auth error:', authError);
+        
+        if (!user) {
+            console.error('No authenticated user found!');
+            alert('Authentication error: Please try refreshing the page and logging in again.');
+            return;
+        }
+        
         // Validate required fields
         if (!currentSession.date || !currentSession.duration || !currentSession.mood) {
             alert('Please fill in all required fields (date, duration, mood)');
@@ -91,29 +102,58 @@ export const PracticeLog: React.FC = () => {
         setIsSaving(true);
 
         try {
-            // Upload new recordings to Supabase Storage
+            // ✅ 2. Upload new recordings with detailed debugging
             const uploadedRecordings = await Promise.all(
                 newRecordings.map(async (file) => {
-                    const fileName = `${Date.now()}-${file.name}`;
-                    const filePath = `recordings/${state.user!.uid}/${fileName}`;
+                    // ✅ 3. Check file size and type
+                    console.log('File details:', {
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        sizeInMB: (file.size / 1024 / 1024).toFixed(2)
+                    });
                     
-                    // Debug: Log the exact bucket and path we're trying to use
-                    console.log('Attempting upload to bucket: recordings');
-                    console.log('File path:', filePath);
-                    console.log('User ID:', state.user!.uid);
+                    if (file.size > 50 * 1024 * 1024) { // 50MB limit
+                        throw new Error(`File ${file.name} is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 50MB.`);
+                    }
+                    
+                    const fileName = `${Date.now()}-${file.name}`;
+                    // ✅ 4. Ensure path matches policy (auth.uid()/filename)
+                    const filePath = `${user.id}/${fileName}`;
+                    
+                    console.log('Upload details:', {
+                        bucket: 'recordings',
+                        filePath: filePath,
+                        userIdFromAuth: user.id,
+                        userIdFromState: state.user?.uid,
+                        matches: user.id === state.user?.uid
+                    });
                     
                     const { data, error } = await supabase.storage
                         .from('recordings')
                         .upload(filePath, file);
                     
                     if (error) {
-                        console.error('Storage upload error:', error);
+                        // ✅ 5. Detailed error logging
+                        console.error('Storage upload error details:', {
+                            message: error.message,
+                            error: error,
+                            bucket: 'recordings',
+                            filePath: filePath,
+                            fileName: file.name,
+                            fileSize: file.size,
+                            userId: user.id
+                        });
                         throw error;
                     }
+                    
+                    console.log('Upload successful:', data);
                     
                     const { data: { publicUrl } } = supabase.storage
                         .from('recordings')
                         .getPublicUrl(filePath);
+                    
+                    console.log('Public URL generated:', publicUrl);
                     
                     const type: 'audio' | 'video' = file.type.startsWith('audio') ? 'audio' : 'video';
                     return {
@@ -125,8 +165,10 @@ export const PracticeLog: React.FC = () => {
                 })
             );
 
+            console.log('All recordings uploaded successfully:', uploadedRecordings);
+
             const sessionData = {
-                user_id: state.user!.uid,
+                user_id: user.id, // Use the authenticated user ID
                 date: currentSession.date!,
                 duration: currentSession.duration!,
                 mood: currentSession.mood!,
@@ -139,7 +181,6 @@ export const PracticeLog: React.FC = () => {
             };
             
             console.log('Final sessionData payload for Supabase:', sessionData);
-            console.log('Current session state:', currentSession);
             
             if (currentSession.id) {
                 const { error } = await supabase
@@ -147,13 +188,19 @@ export const PracticeLog: React.FC = () => {
                     .update(sessionData)
                     .eq('id', currentSession.id);
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('Database update error:', error);
+                    throw error;
+                }
             } else {
                 const { error } = await supabase
                     .from('practice_sessions')
                     .insert([sessionData]);
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('Database insert error:', error);
+                    throw error;
+                }
             }
 
             const today = new Date().toISOString().split('T')[0];
@@ -189,8 +236,17 @@ export const PracticeLog: React.FC = () => {
         } catch (error) {
             console.error("Error saving session:", error);
             // More detailed error message
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-            alert(`Failed to save session: ${errorMessage}\n\nPlease check your internet connection or Supabase configuration.`);
+            if (error instanceof Error) {
+                console.error('Error details:', {
+                    message: error.message,
+                    stack: error.stack,
+                    name: error.name
+                });
+                alert(`Failed to save session: ${error.message}\n\nCheck the browser console for more details.`);
+            } else {
+                console.error('Unknown error:', error);
+                alert('Failed to save session due to an unknown error. Check the browser console for details.');
+            }
         } finally {
             setIsSaving(false);
         }
