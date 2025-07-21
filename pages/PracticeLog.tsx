@@ -91,7 +91,7 @@ export const PracticeLog: React.FC = () => {
     useEffect(() => {
         const liveSessionData = location.state;
         if (liveSessionData?.topic) {
-            const { topic, duration, notes, link, recordings } = liveSessionData;
+            const { topic, duration, notes, link } = liveSessionData;
             
             const isSong = repertoireTitles.includes(topic);
             const newSession: Partial<PracticeSession> = {
@@ -102,7 +102,7 @@ export const PracticeLog: React.FC = () => {
                 techniques: !isSong ? [topic] : [],
                 techniques: !isSong ? [topic] : [],
                 notes: notes || '',
-                recordings: recordings || [],
+                recordings: [],
                 link: link || ''
             };
             openModal(newSession);
