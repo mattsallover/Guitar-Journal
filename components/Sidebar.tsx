@@ -88,10 +88,10 @@ export const Sidebar: React.FC = () => {
                     <button 
                         onClick={() => setIsToolsOpen(!isToolsOpen)} 
                         className={`${groupButtonClasses} group`}
-                        title="Interactive tools for focused practice"
+                        title="Browse practice tools (or use 'Start Practice' for quick access)"
                     >
                         <ToolsIcon className="w-6 h-6 mr-3" />
-                        <span className="flex-1">Practice Tools</span>
+                        <span className="flex-1">Browse Tools</span>
                         <svg className={`w-4 h-4 ml-auto transition-transform duration-300 group-hover:scale-110 ${isToolsOpen ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
                     </button>
                     <div className={`overflow-hidden transition-all duration-300 ${isToolsOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>

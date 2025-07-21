@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { Goal, GoalStatus, RepertoireItem } from '../types';
+import { PracticeModal } from '../components/PracticeModal';
 
 interface FocusCardProps {
     type: 'goal' | 'repertoire' | 'technique';
@@ -38,6 +39,8 @@ export const Dashboard: React.FC = () => {
     const { state } = useAppContext();
     const navigate = useNavigate();
     const { goals, repertoire, practiceSessions } = state;
+
+    const [isPracticeModalOpen, setIsPracticeModalOpen] = React.useState(false);
 
     const focusSuggestions = useMemo(() => {
         const suggestions: FocusCardProps[] = [];
@@ -93,6 +96,18 @@ export const Dashboard: React.FC = () => {
             <div>
                 <h1 className="text-4xl font-bold text-text-primary mb-2">Today's Focus</h1>
                 <p className="text-lg text-text-secondary">Smart suggestions to guide your practice session</p>
+                
+                {/* Unified Start Practice Button */}
+                <div className="mt-6">
+                    <button 
+                        onClick={() => setIsPracticeModalOpen(true)}
+                        className="bg-primary hover:bg-primary-hover text-white font-bold py-4 px-8 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-lg flex items-center space-x-3 text-lg"
+                        title="Start a focused practice session"
+                    >
+                        <span className="text-2xl">🎸</span>
+                        <span>Start Practice</span>
+                    </button>
+                </div>
             </div>
             
             <div className="space-y-4">
@@ -155,6 +170,13 @@ export const Dashboard: React.FC = () => {
                     </button>
                  </div>
             </div>
+
+            {/* Unified Practice Modal */}
+            <PracticeModal 
+                isOpen={isPracticeModalOpen} 
+                onClose={() => setIsPracticeModalOpen(false)}
+                focusSuggestions={focusSuggestions}
+            />
 
         </div>
     );
