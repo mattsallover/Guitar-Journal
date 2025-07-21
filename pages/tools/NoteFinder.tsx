@@ -1,14 +1,389 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { useAppContext } from '../../context/AppContext';
+import { Fretboard } from '../../components/Fretboard';
+import { Modal } from '../../components/Modal';
+import { Note, NoteFinderAttempt } from '../../types';
+import { ALL_NOTES, GUITAR_TUNING } from '../../constants';
+import { supabase } from '../../services/supabase';
 
-import React from 'react';
+// Helper to get the note at a specific string and fret
+const getNoteAt = (stringIndex: number, fret: number): Note => {
+    const openNoteIndex = ALL_NOTES.indexOf(GUITAR_TUNING[stringIndex]);
+    const finalNoteIndex = (openNoteIndex + fret) % 12;
+    return ALL_NOTES[finalNoteIndex];
+};
+
+// Helper to shuffle array
+const shuffle = <T,>(array: T[]): T[] => {
+    const result = [...array];
+    for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+    }
+    return result;
+};
+
+interface NoteStats {
+    note: Note;
+    attempts: number;
+    correct: number;
+    accuracy: number;
+    avgTime: number;
+}
 
 export const NoteFinder: React.FC = () => {
+    const { state } = useAppContext();
+    
+    // Quiz State
+    const [mode, setMode] = useState<'menu' | 'quiz' | 'results'>('menu');
+    const [quizSequence, setQuizSequence] = useState<Note[]>([]);
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [startTime, setStartTime] = useState<number>(0);
+    const [quizResults, setQuizResults] = useState<{
+        note: Note;
+        correct: boolean;
+        timeSeconds: number;
+        stringNum: number;
+        fretNum: number;
+    }[]>([]);
+    
+    // Statistics State
+    const [noteStats, setNoteStats] = useState<NoteStats[]>([]);
+    const [recentAttempts, setRecentAttempts] = useState<NoteFinderAttempt[]>([]);
+    const [loading, setLoading] = useState(true);
+    
+    // Modal State
+    const [showStatsModal, setShowStatsModal] = useState(false);
+
+    const startTimeRef = useRef<number>(0);
+
+    useEffect(() => {
+        if (state.user) {
+            fetchNoteFinderData();
+        }
+    }, [state.user]);
+
+    const fetchNoteFinderData = async () => {
+        if (!state.user) return;
+        
+        try {
+            const { data, error } = await supabase
+                .from('note_finder_practice')
+                .select('*')
+                .eq('user_id', state.user.uid)
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (error) throw error;
+
+            const attempts: NoteFinderAttempt[] = data.map(row => ({
+                id: row.id,
+                userId: row.user_id,
+                sessionDate: row.session_date,
+                noteName: row.note_name as Note,
+                stringNum: row.string_num,
+                fretNum: row.fret_num,
+                correct: row.correct,
+                timeSeconds: row.time_seconds,
+                createdAt: row.created_at,
+            }));
+
+            setRecentAttempts(attempts);
+            calculateNoteStats(attempts);
+        } catch (error) {
+            console.error('Error fetching note finder data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const calculateNoteStats = (attempts: NoteFinderAttempt[]) => {
+        const statsMap = new Map<Note, { total: number; correct: number; totalTime: number }>();
+        
+        // Initialize all notes
+        ALL_NOTES.forEach(note => {
+            statsMap.set(note as Note, { total: 0, correct: 0, totalTime: 0 });
+        });
+
+        // Aggregate attempts
+        attempts.forEach(attempt => {
+            const current = statsMap.get(attempt.noteName)!;
+            current.total++;
+            if (attempt.correct) current.correct++;
+            current.totalTime += attempt.timeSeconds;
+        });
+
+        // Convert to stats array
+        const stats: NoteStats[] = Array.from(statsMap.entries()).map(([note, data]) => ({
+            note,
+            attempts: data.total,
+            correct: data.correct,
+            accuracy: data.total > 0 ? (data.correct / data.total) * 100 : 0,
+            avgTime: data.total > 0 ? data.totalTime / data.total : 0,
+        }));
+
+        setNoteStats(stats);
+    };
+
+    const startQuiz = (numQuestions: number = 12) => {
+        const sequence = shuffle([...ALL_NOTES].slice(0, numQuestions)) as Note[];
+        setQuizSequence(sequence);
+        setCurrentIndex(0);
+        setQuizResults([]);
+        setMode('quiz');
+        setStartTime(Date.now());
+        startTimeRef.current = Date.now();
+    };
+
+    const handleFretClick = async (stringIndex: number, fret: number, clickedNote: Note) => {
+        if (mode !== 'quiz') return;
+
+        const targetNote = quizSequence[currentIndex];
+        const timeSeconds = Math.round((Date.now() - startTimeRef.current) / 1000);
+        const correct = clickedNote === targetNote;
+        
+        // Convert stringIndex (0-5, high to low E) to stringNum (1-6, high to low E)
+        const stringNum = stringIndex + 1;
+
+        // Save to database
+        try {
+            await supabase.from('note_finder_practice').insert({
+                user_id: state.user!.uid,
+                session_date: new Date().toISOString().split('T')[0],
+                note_name: targetNote,
+                string_num: stringNum,
+                fret_num: fret,
+                correct,
+                time_seconds: timeSeconds
+            });
+        } catch (error) {
+            console.error('Error saving note finder attempt:', error);
+        }
+
+        // Add to results
+        setQuizResults(prev => [...prev, {
+            note: targetNote,
+            correct,
+            timeSeconds,
+            stringNum,
+            fretNum: fret
+        }]);
+
+        // Move to next question or finish
+        if (currentIndex < quizSequence.length - 1) {
+            setCurrentIndex(prev => prev + 1);
+            startTimeRef.current = Date.now();
+        } else {
+            setMode('results');
+            // Refresh data to show updated stats
+            setTimeout(fetchNoteFinderData, 500);
+        }
+    };
+
+    const resetQuiz = () => {
+        setMode('menu');
+        setQuizSequence([]);
+        setCurrentIndex(0);
+        setQuizResults([]);
+    };
+
+    const getAccuracyColor = (accuracy: number) => {
+        if (accuracy >= 80) return 'text-green-400';
+        if (accuracy >= 60) return 'text-yellow-400';
+        if (accuracy >= 40) return 'text-orange-400';
+        return 'text-red-400';
+    };
+
+    const currentNote = mode === 'quiz' && quizSequence.length > 0 ? quizSequence[currentIndex] : null;
+
+    if (loading) {
+        return (
+            <div className="p-8 flex justify-center items-center">
+                <div className="text-text-secondary">Loading note finder data...</div>
+            </div>
+        );
+    }
+
     return (
-        <div className="p-8 flex flex-col items-center justify-center h-full">
-            <h1 className="text-3xl font-bold mb-4">Note Finder</h1>
-            <p className="text-text-secondary text-lg text-center max-w-2xl">
-                This feature is coming soon! You'll be able to use this interactive tool to quickly find any note on the fretboard and test your knowledge.
-            </p>
-            <div className="mt-8 text-5xl">🎶</div>
+        <div className="p-8">
+            <h1 className="text-3xl font-bold mb-6">Note Finder Practice</h1>
+            
+            {/* Statistics Overview */}
+            {noteStats.some(s => s.attempts > 0) && (
+                <div className="mb-6 bg-surface p-4 rounded-lg">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold">Your Performance</h2>
+                        <button 
+                            onClick={() => setShowStatsModal(true)}
+                            className="text-primary hover:underline text-sm"
+                        >
+                            View Detailed Stats
+                        </button>
+                    </div>
+                    
+                    {/* Note Performance Heatmap */}
+                    <div className="grid grid-cols-12 gap-1 mb-4">
+                        {ALL_NOTES.map(note => {
+                            const stat = noteStats.find(s => s.note === note);
+                            const accuracy = stat?.accuracy || 0;
+                            const attempts = stat?.attempts || 0;
+                            
+                            let bgColor = 'bg-gray-600'; // No data
+                            if (attempts > 0) {
+                                if (accuracy >= 80) bgColor = 'bg-green-500';
+                                else if (accuracy >= 60) bgColor = 'bg-yellow-500';
+                                else if (accuracy >= 40) bgColor = 'bg-orange-500';
+                                else bgColor = 'bg-red-500';
+                            }
+                            
+                            return (
+                                <div
+                                    key={note}
+                                    className={`h-8 rounded flex items-center justify-center text-white text-sm font-bold ${bgColor} cursor-help`}
+                                    title={attempts > 0 ? `${note}: ${Math.round(accuracy)}% (${attempts} attempts)` : `${note}: No attempts yet`}
+                                >
+                                    {note}
+                                </div>
+                            );
+                        })}
+                    </div>
+                    
+                    <div className="text-xs text-text-secondary">
+                        🟢 80%+ • 🟡 60-79% • 🟠 40-59% • 🔴 &lt;40% • ⚫ No Data
+                    </div>
+                </div>
+            )}
+
+            {mode === 'menu' && (
+                <div className="space-y-6">
+                    <div className="bg-surface p-6 rounded-lg">
+                        <h2 className="text-xl font-bold mb-4">Practice Options</h2>
+                        <div className="space-y-4">
+                            <button 
+                                onClick={() => startQuiz(12)}
+                                className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 px-4 rounded-md"
+                            >
+                                🎯 Full Quiz (All 12 Notes)
+                            </button>
+                            <button 
+                                onClick={() => startQuiz(6)}
+                                className="w-full bg-secondary hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-md"
+                            >
+                                ⚡ Quick Quiz (6 Random Notes)
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-surface p-6 rounded-lg">
+                        <h2 className="text-xl font-bold mb-4">How It Works</h2>
+                        <ol className="list-decimal list-inside space-y-2 text-text-secondary">
+                            <li>A note name will appear (e.g., "Find F#")</li>
+                            <li>Click any F# on the fretboard as quickly as possible</li>
+                            <li>Your accuracy and speed are tracked automatically</li>
+                            <li>View your performance heatmap to see which notes need work</li>
+                        </ol>
+                    </div>
+                </div>
+            )}
+
+            {mode === 'quiz' && currentNote && (
+                <div className="space-y-6">
+                    <div className="text-center bg-surface p-6 rounded-lg">
+                        <p className="text-text-secondary mb-2">Question {currentIndex + 1} of {quizSequence.length}</p>
+                        <p className="text-4xl font-bold text-primary mb-4">Find: {currentNote}</p>
+                        <p className="text-text-secondary">Click any {currentNote} on the fretboard below</p>
+                    </div>
+                    
+                    <Fretboard
+                        onFretClick={handleFretClick}
+                        showFretNumbers={true}
+                    />
+                    
+                    <div className="text-center">
+                        <button 
+                            onClick={resetQuiz}
+                            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md"
+                        >
+                            End Quiz Early
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {mode === 'results' && (
+                <div className="space-y-6">
+                    <div className="bg-surface p-6 rounded-lg text-center">
+                        <h2 className="text-2xl font-bold mb-4">Quiz Complete!</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div>
+                                <div className="text-3xl font-bold text-primary">
+                                    {quizResults.filter(r => r.correct).length}/{quizResults.length}
+                                </div>
+                                <div className="text-text-secondary">Correct</div>
+                            </div>
+                            <div>
+                                <div className="text-3xl font-bold text-primary">
+                                    {Math.round((quizResults.filter(r => r.correct).length / quizResults.length) * 100)}%
+                                </div>
+                                <div className="text-text-secondary">Accuracy</div>
+                            </div>
+                            <div>
+                                <div className="text-3xl font-bold text-primary">
+                                    {(quizResults.reduce((sum, r) => sum + r.timeSeconds, 0) / quizResults.length).toFixed(1)}s
+                                </div>
+                                <div className="text-text-secondary">Avg Time</div>
+                            </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <button 
+                                onClick={() => startQuiz(quizSequence.length)}
+                                className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md"
+                            >
+                                Take Another Quiz
+                            </button>
+                            <button 
+                                onClick={resetQuiz}
+                                className="w-full bg-surface hover:bg-border text-text-primary font-bold py-2 px-4 rounded-md"
+                            >
+                                Back to Menu
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Detailed Stats Modal */}
+            {showStatsModal && (
+                <Modal isOpen={showStatsModal} onClose={() => setShowStatsModal(false)} title="Detailed Note Performance">
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {noteStats
+                                .filter(s => s.attempts > 0)
+                                .sort((a, b) => b.accuracy - a.accuracy)
+                                .map(stat => (
+                                    <div key={stat.note} className="bg-background p-3 rounded-md">
+                                        <div className="flex justify-between items-center">
+                                            <span className="font-bold text-lg">{stat.note}</span>
+                                            <span className={`font-bold ${getAccuracyColor(stat.accuracy)}`}>
+                                                {Math.round(stat.accuracy)}%
+                                            </span>
+                                        </div>
+                                        <div className="text-sm text-text-secondary">
+                                            {stat.correct}/{stat.attempts} correct • {stat.avgTime.toFixed(1)}s avg
+                                        </div>
+                                    </div>
+                                ))}
+                        </div>
+                        
+                        {noteStats.every(s => s.attempts === 0) && (
+                            <div className="text-center p-8 text-text-secondary">
+                                No practice data yet. Take a quiz to see your performance!
+                            </div>
+                        )}
+                    </div>
+                </Modal>
+            )}
         </div>
     );
 };

@@ -100,3 +100,15 @@ export interface FretPosition {
   string: number;
   fret: number;
 }
+
+export interface NoteFinderAttempt {
+  id: string;
+  userId: string;
+  sessionDate: string;
+  noteName: Note;
+  stringNum: number; // 1-6 (1=high E, 6=low E)
+  fretNum: number;   // 0-24
+  correct: boolean;
+  timeSeconds: number;
+  createdAt: string;
+}
