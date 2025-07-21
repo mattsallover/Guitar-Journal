@@ -244,16 +244,6 @@ export const LiveSession: React.FC = () => {
         });
     };
 
-    const handleFinishSession = () => {
-        navigate('/log', { 
-            state: { 
-                topic: topic, 
-                duration: Math.max(1, Math.round(time / 60)), // ensure duration is at least 1 minute
-                notes: notes,
-                link: sessionLink
-            } 
-        });
-    };
 
     if (!topic) {
         return null; // or a loading spinner
