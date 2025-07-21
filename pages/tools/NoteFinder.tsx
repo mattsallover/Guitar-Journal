@@ -297,6 +297,7 @@ export const NoteFinder: React.FC = () => {
                     <Fretboard
                         onFretClick={handleFretClick}
                         showFretNumbers={true}
+                        allFretsClickable={true}
                     />
                     
                     <div className="text-center">

@@ -7,6 +7,7 @@ interface FretboardProps {
     onFretClick?: (string: number, fret: number, note: Note) => void;
     showFretNumbers?: boolean;
     fretCount?: number;
+    allFretsClickable?: boolean;
 }
 
 const getNoteOnFret = (stringIndex: number, fret: number): Note => {
@@ -15,7 +16,7 @@ const getNoteOnFret = (stringIndex: number, fret: number): Note => {
     return ALL_NOTES[finalNoteIndex];
 };
 
-export const Fretboard: React.FC<FretboardProps> = ({ highlightedNotes = [], onFretClick, showFretNumbers = true, fretCount = FRET_COUNT }) => {
+export const Fretboard: React.FC<FretboardProps> = ({ highlightedNotes = [], onFretClick, showFretNumbers = true, fretCount = FRET_COUNT, allFretsClickable = false }) => {
     const fretMarkers = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
 
     return (
@@ -62,15 +63,21 @@ export const Fretboard: React.FC<FretboardProps> = ({ highlightedNotes = [], onF
                                         const fretNumber = fretIndex + 1;
                                         const note = getNoteOnFret(stringIndex, fretNumber);
                                         const highlight = highlightedNotes.find(n => n.string === stringIndex && n.fret === fretNumber);
+                                        const shouldShowClickableArea = highlight || (allFretsClickable && onFretClick);
                                         return (
                                             <div
                                                 key={fretIndex}
-                                                className="w-16 h-full flex justify-center items-center"
-                                                onClick={() => onFretClick && onFretClick(stringIndex, fretNumber, note)}
+                                                className={`w-16 h-full flex justify-center items-center ${shouldShowClickableArea ? 'cursor-pointer' : ''}`}
+                                                onClick={() => shouldShowClickableArea && onFretClick && onFretClick(stringIndex, fretNumber, note)}
                                             >
                                                 {highlight && (
                                                     <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-sm ${highlight.color} ring-1 ring-white/70 shadow-lg ${onFretClick ? 'cursor-pointer hover:scale-110 transition-transform' : ''}`}>
                                                         {highlight.label || note}
+                                                    </div>
+                                                )}
+                                                {!highlight && allFretsClickable && onFretClick && (
+                                                    <div className="w-8 h-8 rounded-full border border-gray-400 border-dashed flex items-center justify-center text-xs text-gray-400 hover:border-white hover:text-white hover:bg-gray-600/30 transition-all">
+                                                        {note}
                                                     </div>
                                                 )}
                                             </div>
