@@ -19,6 +19,9 @@ export interface Recording {
   name: string;
   type: 'audio' | 'video';
   url: string; // This will now be a permanent Cloud Storage URL
+  thumbnailUrl?: string; // For video thumbnails
+  originalSize?: number; // Original file size in bytes
+  compressedSize?: number; // Compressed file size in bytes
   // The 'file' property is temporary for upload and not stored in the database.
 }
 

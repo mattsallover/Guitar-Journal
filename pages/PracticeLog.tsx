@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
@@ -8,7 +7,9 @@ import { MOOD_OPTIONS } from '../constants';
 import { TagInput } from '../components/TagInput';
 import { GoalUpdateModal } from '../components/GoalUpdateModal';
 import { MasteryUpdateModal } from '../components/MasteryUpdateModal';
+import { UploadProgress } from '../components/UploadProgress';
 import { supabase } from '../services/supabase';
+import { compressVideo, generateVideoThumbnail, compressImage, formatFileSize } from '../utils/mediaUtils';
 
 
 const moodIcons: Record<Mood, string> = {
@@ -31,6 +32,15 @@ export const PracticeLog: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [goalToUpdate, setGoalToUpdate] = useState<Goal | null>(null);
     const [masteryItemsToUpdate, setMasteryItemsToUpdate] = useState<RepertoireItem[]>([]);
+    const [uploadProgress, setUploadProgress] = useState<{
+        name: string;
+        progress: number;
+        status: 'uploading' | 'compressing' | 'completed' | 'error';
+        error?: string;
+        originalSize?: number;
+        compressedSize?: number;
+    }[]>([]);
+    const [isUploading, setIsUploading] = useState(false);
 
 
     const repertoireTitles = useMemo(() => state.repertoire.map(r => r.title), [state.repertoire]);
@@ -78,6 +88,16 @@ export const PracticeLog: React.FC = () => {
     const handleSave = async () => {
         if (!currentSession || !state.user) return;
         
+        if (newRecordings.length > 0) {
+            setIsUploading(true);
+            setUploadProgress(newRecordings.map(file => ({
+                name: file.name,
+                progress: 0,
+                status: 'compressing',
+                originalSize: file.size
+            })));
+        }
+        
         // Debug logging
         console.log('Attempting to save session:', currentSession);
         console.log('Current user:', state.user);
@@ -104,68 +124,154 @@ export const PracticeLog: React.FC = () => {
         try {
             // ✅ 2. Upload new recordings with detailed debugging
             const uploadedRecordings = await Promise.all(
-                newRecordings.map(async (file) => {
-                    // ✅ 3. Check file size and type
-                    console.log('File details:', {
-                        name: file.name,
-                        size: file.size,
-                        type: file.type,
-                        sizeInMB: (file.size / 1024 / 1024).toFixed(2)
-                    });
+                newRecordings.map(async (file, index) => {
+                    const updateProgress = (progress: number, status: typeof uploadProgress[0]['status'], error?: string) => {
+                        setUploadProgress(prev => prev.map((item, i) => 
+                            i === index ? { ...item, progress, status, error } : item
+                        ));
+                    };
+
+                    try {
+                        updateProgress(0, 'compressing');
+
+                        // Compress file if needed
+                        let processedFile = file;
+                        let thumbnailFile: File | null = null;
+
+                        if (file.type.startsWith('video/')) {
+                            // Compress video and generate thumbnail
+                            console.log(`Compressing video: ${file.name} (${formatFileSize(file.size)})`);
+                            processedFile = await compressVideo(file, { 
+                                maxWidth: 1280, 
+                                maxHeight: 720, 
+                                quality: 0.7,
+                                maxSizeMB: 25 
+                            });
+                            
+                            // Generate thumbnail
+                            thumbnailFile = await generateVideoThumbnail(file);
+                            
+                            console.log(`Video compressed: ${formatFileSize(file.size)} → ${formatFileSize(processedFile.size)}`);
+                        } else if (file.type.startsWith('image/')) {
+                            // Compress image
+                            console.log(`Compressing image: ${file.name} (${formatFileSize(file.size)})`);
+                            processedFile = await compressImage(file, {
+                                maxWidth: 1920,
+                                maxHeight: 1080,
+                                quality: 0.8,
+                                maxSizeMB: 5
+                            });
+                            console.log(`Image compressed: ${formatFileSize(file.size)} → ${formatFileSize(processedFile.size)}`);
+                        }
+
+                        // Update progress state with compression results
+                        setUploadProgress(prev => prev.map((item, i) => 
+                            i === index ? { 
+                                ...item, 
+                                compressedSize: processedFile.size,
+                                status: 'uploading'
+                            } : item
+                        ));
+
+                        // ✅ 3. Check file size and type
+                        console.log('File details:', {
+                            name: processedFile.name,
+                            originalSize: file.size,
+                            compressedSize: processedFile.size,
+                            type: processedFile.type,
+                            sizeInMB: (processedFile.size / 1024 / 1024).toFixed(2)
+                        });
                     
-                    if (file.size > 50 * 1024 * 1024) { // 50MB limit
-                        throw new Error(`File ${file.name} is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 50MB.`);
-                    }
+                        if (processedFile.size > 50 * 1024 * 1024) { // 50MB limit
+                            throw new Error(`File ${processedFile.name} is too large (${(processedFile.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 50MB.`);
+                        }
                     
-                    const fileName = `${Date.now()}-${file.name}`;
-                    // ✅ 4. Ensure path matches policy (auth.uid()/filename)
-                    const filePath = `${user.id}/${fileName}`;
+                        const fileName = `${Date.now()}-${processedFile.name}`;
+                        // ✅ 4. Ensure path matches policy (auth.uid()/filename)
+                        const filePath = `${user.id}/${fileName}`;
                     
-                    console.log('Upload details:', {
-                        bucket: 'recordings',
-                        filePath: filePath,
-                        userIdFromAuth: user.id,
-                        userIdFromState: state.user?.uid,
-                        matches: user.id === state.user?.uid
-                    });
-                    
-                    const { data, error } = await supabase.storage
-                        .from('recordings')
-                        .upload(filePath, file);
-                    
-                    if (error) {
-                        // ✅ 5. Detailed error logging
-                        console.error('Storage upload error details:', {
-                            message: error.message,
-                            error: error,
+                        console.log('Upload details:', {
                             bucket: 'recordings',
                             filePath: filePath,
-                            fileName: file.name,
-                            fileSize: file.size,
-                            userId: user.id
+                            userIdFromAuth: user.id,
+                            userIdFromState: state.user?.uid,
+                            matches: user.id === state.user?.uid
                         });
+                    
+                        // Upload main file with progress tracking
+                        const { data, error } = await supabase.storage
+                            .from('recordings')
+                            .upload(filePath, processedFile, {
+                                cacheControl: '3600',
+                                upsert: false,
+                            });
+                    
+                        if (error) {
+                            // ✅ 5. Detailed error logging
+                            console.error('Storage upload error details:', {
+                                message: error.message,
+                                error: error,
+                                bucket: 'recordings',
+                                filePath: filePath,
+                                fileName: processedFile.name,
+                                fileSize: processedFile.size,
+                                userId: user.id
+                            });
+                            throw error;
+                        }
+                    
+                        updateProgress(75, 'uploading');
+                    
+                        console.log('Upload successful:', data);
+                    
+                        const { data: { publicUrl } } = supabase.storage
+                            .from('recordings')
+                            .getPublicUrl(filePath);
+                    
+                        console.log('Public URL generated:', publicUrl);
+
+                        // Upload thumbnail if we have one
+                        let thumbnailUrl: string | undefined;
+                        if (thumbnailFile) {
+                            const thumbPath = `${user.id}/thumbs/${Date.now()}-${thumbnailFile.name}`;
+                            const { data: thumbData, error: thumbError } = await supabase.storage
+                                .from('recordings')
+                                .upload(thumbPath, thumbnailFile);
+                            
+                            if (!thumbError) {
+                                const { data: { publicUrl: thumbPublicUrl } } = supabase.storage
+                                    .from('recordings')
+                                    .getPublicUrl(thumbPath);
+                                thumbnailUrl = thumbPublicUrl;
+                            }
+                        }
+
+                        updateProgress(100, 'completed');
+                    
+                        const type: 'audio' | 'video' = processedFile.type.startsWith('audio') ? 'audio' : 'video';
+                        return {
+                            id: filePath,
+                            name: file.name, // Keep original name for display
+                            type,
+                            url: publicUrl,
+                            thumbnailUrl,
+                            originalSize: file.size,
+                            compressedSize: processedFile.size
+                        };
+                    } catch (error) {
+                        console.error(`Error processing file ${file.name}:`, error);
+                        updateProgress(0, 'error', error instanceof Error ? error.message : 'Unknown error');
                         throw error;
                     }
-                    
-                    console.log('Upload successful:', data);
-                    
-                    const { data: { publicUrl } } = supabase.storage
-                        .from('recordings')
-                        .getPublicUrl(filePath);
-                    
-                    console.log('Public URL generated:', publicUrl);
-                    
-                    const type: 'audio' | 'video' = file.type.startsWith('audio') ? 'audio' : 'video';
-                    return {
-                        id: filePath,
-                        name: file.name,
-                        type,
-                        url: publicUrl,
-                    };
                 })
             );
 
-            console.log('All recordings uploaded successfully:', uploadedRecordings);
+            // Wait a moment to show completion
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            setIsUploading(false);
+            setUploadProgress([]);
+
+            console.log('All recordings processed successfully:', uploadedRecordings);
 
             const sessionData = {
                 user_id: user.id, // Use the authenticated user ID
@@ -235,6 +341,9 @@ export const PracticeLog: React.FC = () => {
             }
         } catch (error) {
             console.error("Error saving session:", error);
+            setIsUploading(false);
+            setUploadProgress([]);
+            
             // More detailed error message
             if (error instanceof Error) {
                 console.error('Error details:', {
@@ -390,12 +499,49 @@ export const PracticeLog: React.FC = () => {
                                 <h4 className="font-semibold text-text-secondary text-sm mb-2">Recordings:</h4>
                                 <div className="space-y-3">
                                 {session.recordings.map(rec => (
-                                    <div key={rec.id}>
+                                    <div key={rec.id} className="space-y-2">
                                         <p className="text-sm text-text-primary mb-1">{rec.name}</p>
+                                        
+                                        {/* Show thumbnail for videos */}
+                                        {rec.type === 'video' && rec.thumbnailUrl && (
+                                            <img 
+                                                src={rec.thumbnailUrl} 
+                                                alt={`${rec.name} thumbnail`}
+                                                className="w-32 h-20 object-cover rounded border border-border cursor-pointer hover:opacity-80"
+                                                onClick={() => {
+                                                    const video = document.createElement('video');
+                                                    video.src = rec.url;
+                                                    video.controls = true;
+                                                    video.className = 'max-w-full max-h-96';
+                                                    
+                                                    const modal = document.createElement('div');
+                                                    modal.className = 'fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4';
+                                                    modal.onclick = () => modal.remove();
+                                                    modal.appendChild(video);
+                                                    document.body.appendChild(modal);
+                                                }}
+                                            />
+                                        )}
+                                        
+                                        {/* Original media players */}
                                         {rec.type === 'audio' ? (
                                             <audio controls src={rec.url} className="h-10 w-full"></audio>
                                         ) : (
-                                            <video controls src={rec.url} className="max-w-xs rounded-md border border-border"></video>
+                                            <video controls src={rec.url} className="max-w-xs rounded-md border border-border">
+                                                <source src={rec.url} type="video/webm" />
+                                                <source src={rec.url} type="video/mp4" />
+                                                Your browser does not support the video tag.
+                                            </video>
+                                        )}
+                                        
+                                        {/* File size info if available */}
+                                        {rec.originalSize && rec.compressedSize && (
+                                            <p className="text-xs text-text-secondary">
+                                                Compressed: {formatFileSize(rec.originalSize)} → {formatFileSize(rec.compressedSize)}
+                                                <span className="text-green-400 ml-1">
+                                                    ({Math.round((1 - rec.compressedSize / rec.originalSize) * 100)}% smaller)
+                                                </span>
+                                            </p>
                                         )}
                                     </div>
                                 ))}
@@ -460,6 +606,16 @@ export const PracticeLog: React.FC = () => {
                         <div>
                             <label className="block text-sm font-medium text-text-secondary">Media Attachments (Audio/Video)</label>
                             <input type="file" multiple accept="audio/*,video/*" onChange={handleFileChange} className="w-full bg-background p-2 rounded-md border border-border" />
+                            {newRecordings.length > 0 && (
+                                <div className="mt-2 space-y-1">
+                                    {newRecordings.map((file, index) => (
+                                        <div key={index} className="text-sm text-text-secondary flex justify-between items-center">
+                                            <span>{file.name}</span>
+                                            <span className="text-xs">{formatFileSize(file.size)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex justify-end space-x-4">
@@ -489,6 +645,16 @@ export const PracticeLog: React.FC = () => {
                     onClose={() => setGoalToUpdate(null)}
                     goal={goalToUpdate}
                     onUpdate={handleGoalUpdate}
+                />
+            )}
+
+            {isUploading && (
+                <UploadProgress 
+                    files={uploadProgress}
+                    onCancel={() => {
+                        setIsUploading(false);
+                        setUploadProgress([]);
+                    }}
                 />
             )}
         </div>
