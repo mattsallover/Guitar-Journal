@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { Mood, PracticeSession } from '../types';
+import { CAGEDHeatmap } from '../components/CAGEDHeatmap';
 
 const moodIcons: Record<Mood, string> = {
     [Mood.Excellent]: '😊',
@@ -27,6 +28,8 @@ export const Progression: React.FC = () => {
     const initialFocus = queryParams.get('focus') || '';
     
     const [selectedFocus, setSelectedFocus] = useState(initialFocus);
+
+    const [viewMode, setViewMode] = useState<'focus' | 'caged-analytics'>('focus');
 
     useEffect(() => {
         const newFocusFromURL = new URLSearchParams(location.search).get('focus') || '';
@@ -69,9 +72,35 @@ export const Progression: React.FC = () => {
     return (
         <div className="p-8">
             <h1 className="text-3xl font-bold mb-2">Progression Timeline</h1>
-            <p className="text-text-secondary mb-6">Select a topic to see your practice history and listen to your progress.</p>
+            <p className="text-text-secondary mb-6">Track your practice progression and analyze your CAGED performance.</p>
 
-            <div className="mb-8 max-w-lg">
+            {/* View Mode Toggle */}
+            <div className="flex space-x-4 mb-6">
+                <button 
+                    onClick={() => setViewMode('focus')}
+                    className={`px-4 py-2 rounded-md font-semibold transition-colors ${
+                        viewMode === 'focus' 
+                            ? 'bg-primary text-white' 
+                            : 'bg-surface hover:bg-border text-text-primary'
+                    }`}
+                >
+                    📈 Focus Timeline
+                </button>
+                <button 
+                    onClick={() => setViewMode('caged-analytics')}
+                    className={`px-4 py-2 rounded-md font-semibold transition-colors ${
+                        viewMode === 'caged-analytics' 
+                            ? 'bg-primary text-white' 
+                            : 'bg-surface hover:bg-border text-text-primary'
+                    }`}
+                >
+                    🎯 CAGED Analytics
+                </button>
+            </div>
+
+            {viewMode === 'focus' && (
+                <>
+                    <div className="mb-8 max-w-lg">
                 <label htmlFor="focus-select" className="block text-sm font-medium text-text-secondary mb-1">
                     Select a song or technique:
                 </label>
@@ -87,8 +116,14 @@ export const Progression: React.FC = () => {
                     ))}
                 </select>
             </div>
+                </>
+            )}
 
-            {!selectedFocus ? (
+            {viewMode === 'caged-analytics' && (
+                <CAGEDHeatmap sessions={state.cagedSessions} />
+            )}
+
+            {viewMode === 'focus' && !selectedFocus ? (
                 <div className="p-8 flex flex-col items-center justify-center h-full bg-surface rounded-lg">
                     <div className="text-5xl mb-4">📈</div>
                     <h2 className="text-2xl font-bold mb-2">Trace Your Journey</h2>
@@ -96,7 +131,7 @@ export const Progression: React.FC = () => {
                         Pick a song or technique from the dropdown above to begin.
                     </p>
                 </div>
-            ) : (
+            ) : viewMode === 'focus' && selectedFocus ? (
                 <div>
                      <div className="bg-surface p-4 rounded-lg mb-6 flex justify-between items-center">
                         <div>
@@ -154,7 +189,7 @@ export const Progression: React.FC = () => {
                         </div>
                     )}
                 </div>
-            )}
+            ) : null}
         </div>
     );
 };
