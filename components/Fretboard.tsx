@@ -77,7 +77,6 @@ export const Fretboard: React.FC<FretboardProps> = ({ highlightedNotes = [], onF
                                                 )}
                                                 {!highlight && allFretsClickable && onFretClick && (
                                                     <div className="w-8 h-8 rounded-full border border-gray-400 border-dashed flex items-center justify-center text-xs text-gray-400 hover:border-white hover:text-white hover:bg-gray-600/30 transition-all">
-                                                        {note}
                                                     </div>
                                                 )}
                                             </div>
