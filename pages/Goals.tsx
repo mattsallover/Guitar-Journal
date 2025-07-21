@@ -103,6 +103,10 @@ export const Goals: React.FC = () => {
         navigate('/session/live', { state: { topic: title } });
     };
 
+    const handleQuickLogSession = () => {
+        navigate('/log');
+    };
+
     const filteredGoals = state.goals.filter(goal => filterStatus === 'all' || goal.status === filterStatus);
 
     const progressColor = (progress: number) => {
@@ -118,14 +122,24 @@ export const Goals: React.FC = () => {
                     <h1 className="text-4xl font-bold text-text-primary">Your Goals</h1>
                     <p className="text-text-secondary mt-1">Track your musical aspirations and progress</p>
                 </div>
-                <button 
-                    onClick={() => openModal()} 
-                    className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-lg flex items-center space-x-2"
-                    title="Set a new practice goal"
-                >
-                    <span>+</span>
-                    <span>Set New Goal</span>
-                </button>
+                <div className="flex space-x-3">
+                    <button 
+                        onClick={handleQuickLogSession}
+                        className="bg-secondary hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-md transition-all duration-200 hover:scale-105 flex items-center space-x-2"
+                        title="Log a practice session"
+                    >
+                        <span>📝</span>
+                        <span>Log Session</span>
+                    </button>
+                    <button 
+                        onClick={() => openModal()} 
+                        className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-lg flex items-center space-x-2"
+                        title="Set a new practice goal"
+                    >
+                        <span>+</span>
+                        <span>Set New Goal</span>
+                    </button>
+                </div>
             </div>
             
             <div className="mb-4">

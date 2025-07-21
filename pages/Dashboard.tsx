@@ -39,6 +39,14 @@ export const Dashboard: React.FC = () => {
     const navigate = useNavigate();
     const { goals, repertoire, practiceSessions } = state;
 
+    const handleQuickLogSession = () => {
+        navigate('/log');
+    };
+
+    const handleStartLiveSession = () => {
+        navigate('/session/live', { state: { topic: 'Practice Session' } });
+    };
+
     const focusSuggestions = useMemo(() => {
         const suggestions: FocusCardProps[] = [];
 
@@ -90,8 +98,32 @@ export const Dashboard: React.FC = () => {
 
     return (
         <div className="p-8 space-y-8">
+            {/* Prominent Action Bar */}
+            <div className="bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 p-6 rounded-xl">
+                <h2 className="text-2xl font-bold text-text-primary mb-4 text-center">Ready to Practice?</h2>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button 
+                        onClick={handleStartLiveSession}
+                        className="bg-primary hover:bg-primary-hover text-white font-bold py-4 px-8 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-xl flex items-center justify-center space-x-2 text-lg"
+                    >
+                        <span className="text-2xl">🎸</span>
+                        <span>Start Live Session</span>
+                    </button>
+                    <button 
+                        onClick={handleQuickLogSession}
+                        className="bg-secondary hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-xl flex items-center justify-center space-x-2 text-lg"
+                    >
+                        <span className="text-2xl">📝</span>
+                        <span>Log Past Session</span>
+                    </button>
+                </div>
+                <p className="text-center text-text-secondary mt-3 text-sm">
+                    Start practicing now or log a session you already completed
+                </p>
+            </div>
+            
             <div>
-                <h1 className="text-4xl font-bold text-text-primary mb-2">Today's Focus</h1>
+                <h1 className="text-3xl font-bold text-text-primary mb-2">Today's Focus</h1>
                 <p className="text-lg text-text-secondary">Smart suggestions to guide your practice session</p>
             </div>
             

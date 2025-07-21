@@ -57,6 +57,7 @@ interface NoteStats {
 
 export const NoteFinder: React.FC = () => {
     const { state } = useAppContext();
+    const navigate = useNavigate();
     
     // Quiz State
     const [mode, setMode] = useState<'menu' | 'quiz' | 'results'>('menu');
@@ -213,6 +214,10 @@ export const NoteFinder: React.FC = () => {
         startTimeRef.current = Date.now();
     };
 
+    const handleQuickLogSession = () => {
+        navigate('/log');
+    };
+
     const handleFretClick = async (stringIndex: number, fret: number, clickedNote: Note) => {
         if (mode !== 'quiz') return;
 
@@ -365,7 +370,17 @@ export const NoteFinder: React.FC = () => {
 
     return (
         <div className="p-8">
-            <h1 className="text-3xl font-bold mb-6">Note Finder Practice</h1>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold">Note Finder Practice</h1>
+                <button 
+                    onClick={handleQuickLogSession}
+                    className="bg-secondary hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition-all duration-200 hover:scale-105 flex items-center space-x-2"
+                    title="Log a practice session"
+                >
+                    <span>📝</span>
+                    <span>Log Session</span>
+                </button>
+            </div>
             
             {/* Statistics Overview */}
             {noteStats.some(s => s.attempts > 0) && (

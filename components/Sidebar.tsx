@@ -13,11 +13,20 @@ import { CoachIcon } from './icons/CoachIcon';
 
 export const Sidebar: React.FC = () => {
     const { state } = useAppContext();
+    const navigate = useNavigate();
     const [isJournalOpen, setIsJournalOpen] = useState(true); // Open by default
     const [isToolsOpen, setIsToolsOpen] = useState(false); // Closed by default
 
     const handleLogout = () => {
         supabase.auth.signOut();
+    };
+
+    const handleQuickLogSession = () => {
+        navigate('/log');
+    };
+
+    const handleStartLiveSession = () => {
+        navigate('/session/live', { state: { topic: 'Practice Session' } });
     };
 
     const navLinkClasses = "flex items-center px-4 py-3 text-text-secondary hover:bg-surface hover:text-text-primary rounded-md transition-all duration-300 hover:scale-[1.02]";
@@ -41,6 +50,27 @@ export const Sidebar: React.FC = () => {
         <div className="bg-background-dark border-r border-border w-64 p-4 flex flex-col h-full fixed">
             <div className="flex items-center mb-8">
                 <span className="text-2xl font-bold text-primary">Guitar<span className="text-text-primary">Journal</span></span>
+            </div>
+            
+            {/* Quick Actions */}
+            <div className="mb-8 bg-surface p-4 rounded-lg border border-primary/20">
+                <h3 className="text-sm font-semibold text-text-secondary mb-3 uppercase tracking-wide">Quick Actions</h3>
+                <div className="space-y-2">
+                    <button 
+                        onClick={handleStartLiveSession}
+                        className="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-2 px-3 rounded-md transition-all duration-200 hover:scale-[1.02] flex items-center space-x-2 text-sm"
+                    >
+                        <span>🎸</span>
+                        <span>Start Session</span>
+                    </button>
+                    <button 
+                        onClick={handleQuickLogSession}
+                        className="w-full bg-secondary hover:bg-indigo-700 text-white font-semibold py-2 px-3 rounded-md transition-all duration-200 hover:scale-[1.02] flex items-center space-x-2 text-sm"
+                    >
+                        <span>📝</span>
+                        <span>Log Session</span>
+                    </button>
+                </div>
             </div>
             
             <nav className="flex-1 space-y-2">

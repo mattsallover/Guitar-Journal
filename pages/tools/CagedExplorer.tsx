@@ -26,6 +26,7 @@ const getNotePosition = (noteToFind: Note, stringIndex: number): number => {
 
 export const CagedExplorer: React.FC = () => {
     const { state } = useAppContext();
+    const navigate = useNavigate();
     const [rootNote, setRootNote] = useState<Note>('C');
     const [cagedShape, setCagedShape] = useState<CagedShape>('C');
     const [mode, setMode] = useState<'explore' | 'quiz-session' | 'quiz-question' | 'quiz-answer'>('explore');
@@ -254,6 +255,10 @@ export const CagedExplorer: React.FC = () => {
         setCurrentSession(null);
         setSelectedFile(null);
         setMode('explore');
+    const handleQuickLogSession = () => {
+        navigate('/log');
+    };
+
     };
 
     const handleSaveSession = async () => {
@@ -382,7 +387,17 @@ export const CagedExplorer: React.FC = () => {
 
     return (
         <div className="p-8">
-            <h1 className="text-3xl font-bold mb-6">CAGED System Explorer & Practice</h1>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold">CAGED System Explorer & Practice</h1>
+                <button 
+                    onClick={handleQuickLogSession}
+                    className="bg-secondary hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition-all duration-200 hover:scale-105 flex items-center space-x-2"
+                    title="Log a practice session"
+                >
+                    <span>📝</span>
+                    <span>Log Session</span>
+                </button>
+            </div>
             
             {/* Stats Overview */}
             {averageStats && (

@@ -201,6 +201,14 @@ export const Repertoire: React.FC = () => {
         });
     };
 
+    const handlePracticeNow = (item: RepertoireItem) => {
+        navigate('/session/live', { state: { topic: item.title } });
+    };
+
+    const handleQuickLogSession = () => {
+        navigate('/log');
+    };
+
     const sortedRepertoire = [...state.repertoire]
         .filter(item => 
             item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -229,14 +237,24 @@ export const Repertoire: React.FC = () => {
                     <h1 className="text-4xl font-bold text-text-primary">Your Repertoire</h1>
                     <p className="text-text-secondary mt-1">Songs you're learning and mastering</p>
                 </div>
-                <button 
-                    onClick={() => openModal()} 
-                    className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-lg flex items-center space-x-2"
-                    title="Add a new song to your repertoire"
-                >
-                    <span>+</span>
-                    <span>Add Song</span>
-                </button>
+                <div className="flex space-x-3">
+                    <button 
+                        onClick={handleQuickLogSession}
+                        className="bg-secondary hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-md transition-all duration-200 hover:scale-105 flex items-center space-x-2"
+                        title="Log a practice session"
+                    >
+                        <span>📝</span>
+                        <span>Log Session</span>
+                    </button>
+                    <button 
+                        onClick={() => openModal()} 
+                        className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-lg flex items-center space-x-2"
+                        title="Add a new song to your repertoire"
+                    >
+                        <span>+</span>
+                        <span>Add Song</span>
+                    </button>
+                </div>
             </div>
             
             <div className="flex justify-between items-center mb-4">
@@ -280,6 +298,13 @@ export const Repertoire: React.FC = () => {
                                </div>
                             </Link>
                             <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                               <button 
+                                  onClick={() => handlePracticeNow(item)} 
+                                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md text-sm whitespace-nowrap transition-all duration-200 hover:scale-105"
+                                  title="Start practicing this song now"
+                               >
+                                  🎸 Practice
+                               </button>
                                <Link 
                                   to={`/progression?focus=${encodeURIComponent(item.title)}`} 
                                   className="text-sm text-secondary hover:underline transition-colors duration-200"
