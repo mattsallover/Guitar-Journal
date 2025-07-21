@@ -453,7 +453,6 @@ export const NoteFinder: React.FC = () => {
                                 )}
                             </div>
                         )}
-                        </div>
                     </div>
                     
                     <Fretboard
