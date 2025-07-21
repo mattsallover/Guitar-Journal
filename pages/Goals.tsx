@@ -73,6 +73,7 @@ export const Goals: React.FC = () => {
                 
                 if (error) throw error;
             }
+            await refreshData();
             closeModal();
         } catch (error) {
             console.error("Error saving goal:", error);
