@@ -1,15 +1,11 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { RepertoireItem, Difficulty, GoalCategory } from '../types';
 import { Modal } from '../components/Modal';
-import { Card, CardHeader, CardProgress } from '../components/shared/Card';
-import { Button } from '../components/shared/Button';
-import { EmptyState } from '../components/shared/EmptyState';
 import { DIFFICULTY_OPTIONS } from '../constants';
 import { supabase } from '../services/supabase';
-import { useProgressData } from '../hooks/useProgressData';
 
 
 // Levenshtein distance algorithm for fuzzy matching
@@ -265,79 +261,72 @@ export const Repertoire: React.FC = () => {
 
             <div className="space-y-1">
                 {sortedRepertoire.map(item => (
-                    <Card 
-                        key={item.id}
-                        onClick={() => navigate(`/repertoire/${item.id}`)}
-                    >
-                        <CardHeader
-                            title={item.title}
-                            subtitle={`by ${item.artist}`}
-                            badge={item.difficulty}
-                            actions={
-                                <>
-                                    <button 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            navigate(`/log?focus=${encodeURIComponent(item.title)}`);
-                                        }}
-                                        className="text-sm text-secondary hover:underline transition-colors duration-200"
-                                        title="View practice progression for this song"
-                                    >
-                                        📊 Progress
-                                    </button>
-                                    <button 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleSetAsGoal(item);
-                                        }}
-                                        className="bg-secondary/20 hover:bg-secondary/40 text-secondary-300 font-bold py-2 px-3 rounded-md text-sm whitespace-nowrap transition-all duration-200 hover:scale-105"
-                                        title="Create a goal for this song"
-                                    >
-                                        🎯 Set Goal
-                                    </button>
-                                    <button 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            openModal(item);
-                                        }}
-                                        className="text-sm text-primary hover:underline transition-colors duration-200"
-                                        title="Edit this song"
-                                    >
-                                        ✏️ Edit
-                                    </button>
-                                    <button 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDelete(item.id);
-                                        }}
-                                        className="text-sm text-red-400 hover:underline transition-colors duration-200"
-                                        title="Remove this song"
-                                    >
-                                        🗑️ Remove
-                                    </button>
-                                </>
-                            }
-                        />
-                        <div className="mt-1 text-sm text-text-secondary">
-                            Last practiced: {item.lastPracticed ? new Date(item.lastPracticed).toLocaleDateString() : 'Never'}
+                    <div key={item.id} className="bg-surface rounded-lg transition-all duration-300 hover:shadow-lg hover:scale-[1.01] group">
+                        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 p-4">
+                             <Link to={`/repertoire/${item.id}`} className="flex-1 mb-4 sm:mb-0 cursor-pointer">
+                                <h3 className="text-xl font-semibold text-primary hover:underline transition-colors duration-200">{item.title}</h3>
+                                <p className="text-text-secondary text-base">by {item.artist}</p>
+                                <p className="text-sm text-text-secondary mt-1">
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/20 text-primary mr-2">
+                                        {item.difficulty}
+                                    </span>
+                                    Last practiced: {item.lastPracticed ? new Date(item.lastPracticed).toLocaleDateString() : 'Never'}
+                                </p>
+                               <div className="mt-2 w-full sm:w-48">
+                                   <div className="w-full bg-background rounded-full h-2.5">
+                                       <div className={`${masteryColor(item.mastery)} h-2.5 rounded-full transition-all duration-500`} style={{width: `${item.mastery}%`}}></div>
+                                   </div>
+                                    <p className="text-xs text-left mt-1">{item.mastery}% Mastery</p>
+                               </div>
+                            </Link>
+                            <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                               <Link 
+                                  to={`/progression?focus=${encodeURIComponent(item.title)}`} 
+                                  className="text-sm text-secondary hover:underline transition-colors duration-200"
+                                  title="View practice progression for this song"
+                               >
+                                  📊 Progress
+                               </Link>
+                               <button 
+                                  onClick={() => handleSetAsGoal(item)} 
+                                  className="bg-secondary/20 hover:bg-secondary/40 text-secondary-300 font-bold py-2 px-3 rounded-md text-sm whitespace-nowrap transition-all duration-200 hover:scale-105"
+                                  title="Create a goal for this song"
+                               >
+                                  🎯 Set Goal
+                               </button>
+                               <button 
+                                  onClick={() => openModal(item)} 
+                                  className="text-sm text-primary hover:underline transition-colors duration-200"
+                                  title="Edit this song"
+                               >
+                                  ✏️ Edit
+                               </button>
+                               <button 
+                                  onClick={() => handleDelete(item.id)} 
+                                  className="text-sm text-red-400 hover:underline transition-colors duration-200"
+                                  title="Remove this song"
+                               >
+                                  🗑️ Remove
+                               </button>
+                            </div>
                         </div>
-                        <CardProgress 
-                            value={item.mastery} 
-                            label={`${item.mastery}% Mastery`}
-                        />
-                    </Card>
+                    </div>
                 ))}
                 
                 {sortedRepertoire.length === 0 && (
-                    <EmptyState
-                        icon="🎵"
-                        title="Build Your Repertoire"
-                        description="Start by adding the songs you're currently learning or want to master."
-                        primaryAction={{
-                            label: "Add Your First Song",
-                            onClick: () => openModal()
-                        }}
-                    />
+                    <div className="bg-surface p-12 rounded-lg text-center border-2 border-dashed border-border">
+                        <div className="text-6xl mb-6">🎵</div>
+                        <h2 className="text-2xl font-bold text-text-primary mb-3">Build Your Repertoire</h2>
+                        <p className="text-text-secondary text-lg mb-6 max-w-md mx-auto">
+                            Start by adding the songs you're currently learning or want to master.
+                        </p>
+                        <button 
+                            onClick={() => openModal()} 
+                            className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105"
+                        >
+                            Add Your First Song
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -401,12 +390,20 @@ export const Repertoire: React.FC = () => {
                         </div>
 
                         <div className="flex justify-end space-x-4">
-                            <Button variant="surface" onClick={closeModal} disabled={isSaving}>
+                            <button 
+                                onClick={closeModal} 
+                                disabled={isSaving} 
+                                className="bg-surface hover:bg-border text-text-primary font-bold py-3 px-6 rounded-md disabled:opacity-50 transition-all duration-200"
+                            >
                                 Cancel
-                            </Button>
-                            <Button onClick={handleSave} loading={isSaving}>
-                                Save Song
-                            </Button>
+                            </button>
+                            <button 
+                                onClick={handleSave} 
+                                disabled={isSaving} 
+                                className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
+                            >
+                                {isSaving ? 'Saving...' : 'Save Song'}
+                            </button>
                         </div>
                     </div>
                 </Modal>
@@ -453,12 +450,19 @@ export const Repertoire: React.FC = () => {
                         </div>
                         
                         <div className="flex space-x-3">
-                            <Button variant="surface" onClick={handleEditMyEntry} className="flex-1">
+                            <button 
+                                onClick={handleEditMyEntry}
+                                className="flex-1 bg-surface hover:bg-border text-text-primary font-bold py-3 px-4 rounded-md"
+                            >
                                 📝 Edit My Entry
-                            </Button>
-                            <Button onClick={handleThisIsNew} loading={isSaving} className="flex-1">
-                                ✅ This is New
-                            </Button>
+                            </button>
+                            <button 
+                                onClick={handleThisIsNew}
+                                disabled={isSaving}
+                                className="flex-1 bg-primary hover:bg-primary-hover text-white font-bold py-3 px-4 rounded-md disabled:opacity-50"
+                            >
+                                {isSaving ? 'Saving...' : '✅ This is New'}
+                            </button>
                         </div>
                     </div>
                 </Modal>
