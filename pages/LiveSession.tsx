@@ -80,8 +80,19 @@ export const LiveSession: React.FC = () => {
     const initializeCamera = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { width: 1280, height: 720 },
-                audio: true
+                video: { 
+                    width: { ideal: 1920, min: 1280 },
+                    height: { ideal: 1080, min: 720 },
+                    frameRate: { ideal: 30 }
+                },
+                audio: {
+                    sampleRate: 48000,
+                    channelCount: 2,
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false,
+                    suppressLocalAudioPlayback: false
+                }
             });
             setMediaStream(stream);
             setCameraError(null);
@@ -99,7 +110,9 @@ export const LiveSession: React.FC = () => {
 
         try {
             const recorder = new MediaRecorder(mediaStream, {
-                mimeType: 'video/webm;codecs=vp9,opus'
+                mimeType: 'video/webm;codecs=vp9,opus',
+                videoBitsPerSecond: 5000000, // 5 Mbps for high quality video
+                audioBitsPerSecond: 320000   // 320 kbps for high quality audio
             });
             
             const chunks: Blob[] = [];
