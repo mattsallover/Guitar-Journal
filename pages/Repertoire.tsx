@@ -9,7 +9,7 @@ import { supabase } from '../services/supabase';
 
 
 export const Repertoire: React.FC = () => {
-    const { state } = useAppContext();
+    const { state, refreshData } = useAppContext();
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -60,6 +60,7 @@ export const Repertoire: React.FC = () => {
                 
                 if (error) throw error;
             }
+            await refreshData(); // Refresh data to show the new/updated item
             closeModal();
         } catch (error) {
             console.error("Error saving repertoire item:", error);
