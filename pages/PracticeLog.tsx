@@ -12,11 +12,7 @@ import { compressVideo, compressImage, formatFileSize } from '../utils/mediaUtil
 import { supabase } from '../services/supabase';
 
 const moodIcons: Record<Mood, string> = {
-  [Mood.Excellent]: '😊',
-  [Mood.Good]: '🙂',
-  [Mood.Okay]: '😐',
-  [Mood.Challenging]: '😕',
-  [Mood.Frustrated]: '😠',
+  [Mood.Good]: '🙂', // Only keeping one since we always save as 'Good'
 };
 
 export const PracticeLog: React.FC = () => {
@@ -67,11 +63,8 @@ export const PracticeLog: React.FC = () => {
     setCurrentSession(session || {
       date: new Date().toISOString().split('T')[0],
       duration: 30,
-      mood: Mood.Good,
-      techniques: [],
-      songs: [],
+      topics: [], // Combined field for UI
       notes: '',
-      tags: [],
       recordings: [],
       link: ''
     });
@@ -217,15 +210,24 @@ export const PracticeLog: React.FC = () => {
     setUploadingFiles(false);
 
     try {
+      // Split topics into songs and techniques for database storage
+      const repertoireTitles = state.repertoire.map(r => r.title.toLowerCase());
+      const songs = (currentSession.topics || []).filter(topic => 
+        repertoireTitles.includes(topic.toLowerCase())
+      );
+      const techniques = (currentSession.topics || []).filter(topic => 
+        !repertoireTitles.includes(topic.toLowerCase())
+      );
+      
       const sessionData = {
         user_id: state.user.uid,
         date: currentSession.date || new Date().toISOString().split('T')[0],
         duration: currentSession.duration || 0,
-        mood: currentSession.mood || Mood.Good,
-        techniques: currentSession.techniques || [],
-        songs: currentSession.songs || [],
+        mood: 'Good', // Always use default mood
+        techniques: techniques,
+        songs: songs,
         notes: currentSession.notes || '',
-        tags: currentSession.tags || [],
+        tags: [], // Empty tags
         recordings: recordings,
         link: currentSession.link || ''
       };
@@ -246,8 +248,8 @@ export const PracticeLog: React.FC = () => {
       }
 
       // Update repertoire last_practiced for songs
-      if (currentSession.songs && currentSession.songs.length > 0) {
-        for (const songTitle of currentSession.songs) {
+      if (songs.length > 0) {
+        for (const songTitle of songs) {
           const matchingSong = state.repertoire.find(item => 
             item.title.toLowerCase() === songTitle.toLowerCase()
           );
@@ -265,9 +267,9 @@ export const PracticeLog: React.FC = () => {
       closeModal();
 
       // Check for mastery updates
-      if (currentSession.songs && currentSession.songs.length > 0) {
+      if (songs.length > 0) {
         const songsToUpdate = state.repertoire.filter(item => 
-          currentSession.songs!.includes(item.title)
+          songs.includes(item.title)
         );
         if (songsToUpdate.length > 0) {
           setMasteryItems(songsToUpdate);
@@ -278,11 +280,8 @@ export const PracticeLog: React.FC = () => {
       // Check for goal updates
       const relatedGoals = state.goals.filter(goal => 
         goal.status === 'Active' && (
-          (currentSession.songs && currentSession.songs.some(s => 
-            s.toLowerCase().includes(goal.title.toLowerCase())
-          )) ||
-          (currentSession.techniques && currentSession.techniques.some(t => 
-            t.toLowerCase().includes(goal.title.toLowerCase())
+          (currentSession.topics && currentSession.topics.some(topic => 
+            topic.toLowerCase().includes(goal.title.toLowerCase())
           ))
         )
       );
@@ -399,25 +398,16 @@ export const PracticeLog: React.FC = () => {
                   <span className="text-text-secondary">
                     {session.duration} min
                   </span>
-                  <span className="text-2xl" title={session.mood}>
-                    {moodIcons[session.mood]}
-                  </span>
                 </div>
                 
-                {session.songs.length > 0 && (
+                {(session.songs.length > 0 || session.techniques.length > 0) && (
                   <div className="mb-2">
-                    <span className="text-sm text-text-secondary">Songs: </span>
+                    <span className="text-sm text-text-secondary">Practiced: </span>
                     {session.songs.map(song => (
                       <span key={song} className="inline-block bg-primary/20 text-primary px-2 py-1 rounded-full text-sm mr-2">
                         {song}
                       </span>
                     ))}
-                  </div>
-                )}
-                
-                {session.techniques.length > 0 && (
-                  <div className="mb-2">
-                    <span className="text-sm text-text-secondary">Techniques: </span>
                     {session.techniques.map(technique => (
                       <span key={technique} className="inline-block bg-secondary/20 text-secondary-300 px-2 py-1 rounded-full text-sm mr-2">
                         {technique}
@@ -426,14 +416,6 @@ export const PracticeLog: React.FC = () => {
                   </div>
                 )}
                 
-                {session.tags.length > 0 && (
-                  <div className="mb-2">
-                    <span className="text-sm text-text-secondary">Tags: </span>
-                    {session.tags.map(tag => (
-                      <span key={tag} className="inline-block bg-border text-text-primary px-2 py-1 rounded-full text-sm mr-2">
-                        #{tag}
-                      </span>
-                    ))}
                   </div>
                 )}
 
@@ -524,7 +506,7 @@ export const PracticeLog: React.FC = () => {
       {isModalOpen && currentSession && (
         <Modal isOpen={isModalOpen} onClose={closeModal} title={currentSession.id ? "Edit Session" : "Log Practice Session"}>
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-2">Date</label>
                 <input 
@@ -544,52 +526,23 @@ export const PracticeLog: React.FC = () => {
                   min="1"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">Mood</label>
-                <select 
-                  value={currentSession.mood} 
-                  onChange={e => setCurrentSession({ ...currentSession, mood: e.target.value as Mood })}
-                  className="w-full bg-background p-2 rounded-md border border-border"
-                >
-                  {MOOD_OPTIONS.map(m => <option key={m} value={m}>{moodIcons[m]} {m}</option>)}
-                </select>
-              </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-2">Techniques</label>
+              <label className="block text-sm font-medium text-text-secondary mb-2">What did you practice?</label>
               <TagInput 
-                values={currentSession.techniques || []}
-                onChange={techniques => setCurrentSession({ ...currentSession, techniques })}
+                values={currentSession.topics || []}
+                onChange={topics => setCurrentSession({ ...currentSession, topics })}
                 suggestions={[
+                  ...state.repertoire.map(r => r.title),
                   'Alternate Picking', 'Sweep Picking', 'Legato', 'Tapping',
                   'Bending', 'Vibrato', 'Slides', 'Hammer-ons', 'Pull-offs',
-                  'Palm Muting', 'Fingerpicking', 'Tremolo', 'Harmonics'
+                  'Palm Muting', 'Fingerpicking', 'Tremolo', 'Harmonics',
+                  'Scales', 'Chords', 'Arpeggios', 'Rhythm', 'Lead'
                 ]}
-                placeholder="Add techniques (press Enter)"
-              />
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-2">Songs</label>
-              <TagInput 
-                values={currentSession.songs || []}
-                onChange={songs => setCurrentSession({ ...currentSession, songs })}
-                suggestions={state.repertoire.map(r => r.title)}
-                placeholder="Add songs (press Enter)"
-              />
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-2">Tags</label>
-              <TagInput 
-                values={currentSession.tags || []}
-                onChange={tags => setCurrentSession({ ...currentSession, tags })}
-                suggestions={[
-                  'warmup', 'scales', 'chords', 'solo', 'rhythm', 'theory',
-                  'improvisation', 'composition', 'recording', 'performance'
-                ]}
-                placeholder="Add tags (press Enter)"
+                placeholder="Add songs, techniques, concepts (press Enter)"
               />
             </div>
 

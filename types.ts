@@ -37,6 +37,7 @@ export interface PracticeSession {
   tags: string[];
   recordings: Recording[];
   link?: string;
+  topics?: string[]; // UI-only field for combined songs/techniques
 }
 
 export enum Difficulty {

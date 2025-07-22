@@ -27,10 +27,7 @@ export const LiveSession: React.FC = () => {
     const [isPaused, setIsPaused] = useState(false);
     
     // Practice session details
-    const [mood, setMood] = useState<Mood>(Mood.Good);
-    const [techniques, setTechniques] = useState<string[]>([]);
-    const [songs, setSongs] = useState<string[]>([]);
-    const [tags, setTags] = useState<string[]>([]);
+    const [topics, setTopics] = useState<string[]>([]);
     const [link, setLink] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     
@@ -347,15 +344,24 @@ export const LiveSession: React.FC = () => {
         
         // Save practice session directly to database
         try {
+            // Split topics into songs (from repertoire) and techniques (everything else)
+            const repertoireTitles = state.repertoire.map(r => r.title.toLowerCase());
+            const songs = topics.filter(topic => 
+                repertoireTitles.includes(topic.toLowerCase())
+            );
+            const techniques = topics.filter(topic => 
+                !repertoireTitles.includes(topic.toLowerCase())
+            );
+            
             const sessionData = {
                 user_id: state.user.uid,
                 date: new Date().toISOString().split('T')[0],
                 duration: Math.max(1, Math.round(time / 60)),
-                mood: mood,
+                mood: 'Good', // Default mood since field is required
                 techniques: techniques,
                 songs: topic ? [topic, ...songs.filter(s => s !== topic)] : songs,
                 notes: notes,
-                tags: tags,
+                tags: [], // Empty tags array since field exists in DB
                 recordings: recordings,
                 link: link
             };
@@ -521,66 +527,32 @@ export const LiveSession: React.FC = () => {
                     <h3 className="text-lg font-semibold text-text-primary mb-4 text-center">📝 Session Details</h3>
                     
                     <div className="space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-text-secondary mb-2">Mood</label>
-                                <select 
-                                    value={mood} 
-                                    onChange={e => setMood(e.target.value as Mood)}
-                                    className="w-full bg-background p-2 rounded-md border border-border"
-                                >
-                                    {MOOD_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label className="block text-sm font-medium text-text-secondary mb-2">Link (optional)</label>
-                                <input 
-                                    type="url" 
-                                    value={link}
-                                    onChange={(e) => setLink(e.target.value)}
-                                    placeholder="https://..."
-                                    className="w-full bg-background p-2 rounded-md border border-border"
-                                />
-                            </div>
-                        </div>
-                        
                         <div>
-                            <label className="block text-sm font-medium text-text-secondary mb-2">Techniques Practiced</label>
-                            <TagInput 
-                                values={techniques}
-                                onChange={setTechniques}
-                                suggestions={[
-                                    'Alternate Picking', 'Sweep Picking', 'Legato', 'Tapping',
-                                    'Bending', 'Vibrato', 'Slides', 'Hammer-ons', 'Pull-offs',
-                                    'Palm Muting', 'Fingerpicking', 'Tremolo', 'Harmonics'
-                                ]}
-                                placeholder="Add techniques (press Enter)"
+                            <label className="block text-sm font-medium text-text-secondary mb-2">Link (optional)</label>
+                            <input 
+                                type="url" 
+                                value={link}
+                                onChange={(e) => setLink(e.target.value)}
+                                placeholder="https://..."
+                                className="w-full bg-background p-2 rounded-md border border-border"
                             />
                         </div>
                         
                         <div>
                             <label className="block text-sm font-medium text-text-secondary mb-2">
-                                Additional Songs {topic && <span className="text-xs">({topic} is already included)</span>}
+                                What did you practice? {topic && <span className="text-xs">({topic} is already included)</span>}
                             </label>
                             <TagInput 
-                                values={songs}
-                                onChange={setSongs}
-                                suggestions={state.repertoire.map(r => r.title)}
-                                placeholder="Add other songs practiced (press Enter)"
-                            />
-                        </div>
-                        
-                        <div>
-                            <label className="block text-sm font-medium text-text-secondary mb-2">Tags</label>
-                            <TagInput 
-                                values={tags}
-                                onChange={setTags}
+                                values={topics}
+                                onChange={setTopics}
                                 suggestions={[
-                                    'warmup', 'scales', 'chords', 'solo', 'rhythm', 'theory',
-                                    'improvisation', 'composition', 'recording', 'performance'
+                                    ...state.repertoire.map(r => r.title),
+                                    'Alternate Picking', 'Sweep Picking', 'Legato', 'Tapping',
+                                    'Bending', 'Vibrato', 'Slides', 'Hammer-ons', 'Pull-offs',
+                                    'Palm Muting', 'Fingerpicking', 'Tremolo', 'Harmonics',
+                                    'Scales', 'Chords', 'Arpeggios', 'Rhythm', 'Lead'
                                 ]}
-                                placeholder="Add tags (press Enter)"
+                                placeholder="Add songs, techniques, concepts (press Enter)"
                             />
                         </div>
                     </div>
