@@ -3,7 +3,7 @@
 import { CAGEDSession, CagedShape, Note } from '../types';
 import { ALL_NOTES } from '../constants';
 
-interface ShapePerformance {
+export interface ShapePerformance {
   shape: CagedShape;
   totalAttempts: number;
   correctAnswers: number;
@@ -13,7 +13,7 @@ interface ShapePerformance {
   lastPracticed?: string;
 }
 
-interface NotePerformance {
+export interface NotePerformance {
   note: Note;
   totalAttempts: number;
   correctAnswers: number;
@@ -23,7 +23,7 @@ interface NotePerformance {
   lastPracticed?: string;
 }
 
-interface HeatmapCell {
+export interface HeatmapCell {
   shape: CagedShape;
   note: Note;
   attempts: number;
@@ -33,7 +33,7 @@ interface HeatmapCell {
 }
 
 // Extract performance data from quiz session notes
-function extractQuizPerformance(session: CAGEDSession): Array<{
+export function extractQuizPerformance(session: CAGEDSession): Array<{
   shape: CagedShape;
   note: Note;
   correct: boolean;
