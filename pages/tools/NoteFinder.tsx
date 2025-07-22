@@ -365,40 +365,46 @@ export const NoteFinder: React.FC = () => {
 
     return (
         <div className="p-8">
-            <h1 className="text-3xl font-bold mb-6">Note Finder Practice</h1>
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold mb-2">Note Finder Practice</h1>
+                <p className="text-text-secondary">Master fretboard navigation with intelligent quizzes and progress tracking</p>
+            </div>
             
             {/* Statistics Overview */}
             {noteStats.some(s => s.attempts > 0) && (
-                <div className="mb-6 bg-surface p-4 rounded-lg">
+                <div className="mb-8 bg-surface/80 backdrop-blur-sm border border-border/50 p-6 rounded-xl shadow-lg">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold">Your Performance</h2>
+                        <h2 className="text-xl font-bold flex items-center">
+                            <span className="text-2xl mr-2">📊</span>
+                            Your Performance
+                        </h2>
                         <button 
                             onClick={() => setShowStatsModal(true)}
-                            className="text-primary hover:underline text-sm"
+                            className="text-primary hover:text-primary-hover text-sm font-medium hover:underline transition-colors duration-200"
                         >
-                            View Detailed Stats
+                            📋 View Details
                         </button>
                     </div>
                     
                     {/* Note Performance Heatmap */}
-                    <div className="grid grid-cols-12 gap-1 mb-4">
+                    <div className="grid grid-cols-6 md:grid-cols-12 gap-2 mb-6">
                         {ALL_NOTES.map(note => {
                             const stat = noteStats.find(s => s.note === note);
                             const accuracy = stat?.accuracy || 0;
                             const attempts = stat?.attempts || 0;
                             
-                            let bgColor = 'bg-gray-600'; // No data
+                            let bgColor = 'bg-gray-700/50'; // No data
                             if (attempts > 0) {
-                                if (accuracy >= 80) bgColor = 'bg-green-500';
-                                else if (accuracy >= 60) bgColor = 'bg-yellow-500';
-                                else if (accuracy >= 40) bgColor = 'bg-orange-500';
-                                else bgColor = 'bg-red-500';
+                                if (accuracy >= 80) bgColor = 'bg-green-500/80 border-green-400/50';
+                                else if (accuracy >= 60) bgColor = 'bg-yellow-500/80 border-yellow-400/50';
+                                else if (accuracy >= 40) bgColor = 'bg-orange-500/80 border-orange-400/50';
+                                else bgColor = 'bg-red-500/80 border-red-400/50';
                             }
                             
                             return (
                                 <div
                                     key={note}
-                                    className={`h-8 rounded flex items-center justify-center text-white text-sm font-bold ${bgColor} cursor-help`}
+                                    className={`h-10 rounded-lg border backdrop-blur-sm flex items-center justify-center text-white text-sm font-bold ${bgColor} cursor-help transition-all duration-200 hover:scale-110 hover:shadow-lg`}
                                     title={attempts > 0 ? `${note}: ${Math.round(accuracy)}% (${attempts} attempts)` : `${note}: No attempts yet`}
                                 >
                                     {note}
@@ -407,7 +413,7 @@ export const NoteFinder: React.FC = () => {
                         })}
                     </div>
                     
-                    <div className="text-xs text-text-secondary">
+                    <div className="text-xs text-text-secondary text-center">
                         🟢 80%+ • 🟡 60-79% • 🟠 40-59% • 🔴 &lt;40% • ⚫ No Data
                     </div>
                 </div>
@@ -415,53 +421,81 @@ export const NoteFinder: React.FC = () => {
 
             {mode === 'menu' && (
                 <div className="space-y-6">
-                    <div className="bg-surface p-6 rounded-lg">
-                        <h2 className="text-xl font-bold mb-4">Quiz Modes</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Quiz Mode Selection */}
+                    <div className="bg-surface/80 backdrop-blur-sm border border-border/50 p-6 rounded-xl shadow-lg">
+                        <h2 className="text-xl font-bold mb-6 flex items-center">
+                            <span className="text-2xl mr-2">🎯</span>
+                            Choose Your Challenge
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                             <button 
                                 onClick={() => startQuiz('find-any', 12)}
-                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md"
+                                className="group bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-6 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl active:scale-[0.98] border border-blue-500/30"
                             >
-                                🚀 Find Any Mode
-                                <div className="text-sm mt-1 opacity-80">Click one occurrence (speed mode)</div>
+                                <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-200">🚀</div>
+                                <div className="text-lg font-bold mb-1">Find Any Mode</div>
+                                <div className="text-sm opacity-90">Click one occurrence (speed mode)</div>
                             </button>
                             <button 
                                 onClick={() => startQuiz('find-all', 12)}
-                                className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded-md"
+                                className="group bg-gradient-to-br from-yellow-600 to-yellow-700 hover:from-yellow-500 hover:to-yellow-600 text-white font-bold py-6 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl active:scale-[0.98] border border-yellow-500/30"
                             >
-                                🔍 Find All Mode
-                                <div className="text-sm mt-1 opacity-80">Find every occurrence on fretboard</div>
+                                <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-200">🔍</div>
+                                <div className="text-lg font-bold mb-1">Find All Mode</div>
+                                <div className="text-sm opacity-90">Find every occurrence on fretboard</div>
                             </button>
                             <button 
                                 onClick={() => startQuiz('find-on-string', 12)}
-                                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-md"
+                                className="group bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-bold py-6 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl active:scale-[0.98] border border-purple-500/30"
                             >
-                                🎯 Find on String Mode
-                                <div className="text-sm mt-1 opacity-80">Find note on specific string</div>
+                                <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-200">🎯</div>
+                                <div className="text-lg font-bold mb-1">On String Mode</div>
+                                <div className="text-sm opacity-90">Find note on specific string</div>
                             </button>
                             <button 
                                 onClick={() => startQuiz('combo', 12)}
-                                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-md"
+                                className="group bg-gradient-to-br from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-bold py-6 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl active:scale-[0.98] border border-green-500/30"
                             >
-                                🎲 Combo Mode
-                                <div className="text-sm mt-1 opacity-80">Random mix of all three modes</div>
+                                <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-200">🎲</div>
+                                <div className="text-lg font-bold mb-1">Combo Mode</div>
+                                <div className="text-sm opacity-90">Random mix of all three modes</div>
                             </button>
                         </div>
                     </div>
                     
-                    <div className="bg-surface p-6 rounded-lg">
-                        <h2 className="text-xl font-bold mb-4">Three Quiz Modes</h2>
-                        <div className="space-y-3 text-text-secondary">
-                            <div>
-                                <strong className="text-primary">Find Any:</strong> "Find any C♯" → Click one C♯ anywhere (speed mode)
+                    {/* Mode Explanations */}
+                    <div className="bg-surface/80 backdrop-blur-sm border border-border/50 p-6 rounded-xl shadow-lg">
+                        <h2 className="text-xl font-bold mb-6 flex items-center">
+                            <span className="text-2xl mr-2">ℹ️</span>
+                            How Each Mode Works
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded-lg">
+                                <div className="flex items-center mb-2">
+                                    <span className="text-2xl mr-2">🚀</span>
+                                    <strong className="text-blue-400">Find Any</strong>
+                                </div>
+                                <p className="text-sm text-text-secondary">"Find any C♯" → Click one C♯ anywhere (speed mode)</p>
                             </div>
-                            <div>
-                                <strong className="text-yellow-400">Find All:</strong> "Find all the C♯" → Click every C♯ on the fretboard
+                            <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-lg">
+                                <div className="flex items-center mb-2">
+                                    <span className="text-2xl mr-2">🔍</span>
+                                    <strong className="text-yellow-400">Find All</strong>
+                                </div>
+                                <p className="text-sm text-text-secondary">"Find all the C♯" → Click every C♯ on the fretboard</p>
                             </div>
-                            <div>
-                                <strong className="text-blue-400">Find on String:</strong> "Find C♯ on string 3" → Click the specific C♯
+                            <div className="bg-purple-500/10 border border-purple-500/30 p-4 rounded-lg">
+                                <div className="flex items-center mb-2">
+                                    <span className="text-2xl mr-2">🎯</span>
+                                    <strong className="text-purple-400">On String</strong>
+                                </div>
+                                <p className="text-sm text-text-secondary">"Find C♯ on string 3" → Click the specific C♯</p>
                             </div>
-                            <p className="mt-3 text-sm">The quiz randomly mixes all three modes to test different recall skills!</p>
+                        </div>
+                        <div className="mt-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                            <p className="text-sm text-text-secondary text-center">
+                                <strong className="text-green-400">💡 Pro Tip:</strong> Combo mode randomly mixes all three modes to test different recall skills!
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -469,29 +503,32 @@ export const NoteFinder: React.FC = () => {
 
             {mode === 'quiz' && currentQuestion && (
                 <div className="space-y-6">
-                    <div className="text-center bg-surface p-6 rounded-lg relative">
+                    <div className="text-center bg-surface/80 backdrop-blur-sm border border-border/50 p-8 rounded-xl shadow-lg relative">
                         {!showFeedback ? (
                             <>
-                                <p className="text-text-secondary mb-2">Question {currentIndex + 1} of {quizSequence.length}</p>
-                                <div className="text-4xl font-bold mb-4">
+                                <div className="bg-background/50 backdrop-blur-sm px-4 py-2 rounded-full inline-block mb-4">
+                                    <p className="text-text-secondary text-sm">Question {currentIndex + 1} of {quizSequence.length}</p>
+                                </div>
+                                <div className="text-5xl font-bold mb-6 leading-tight">
                                     {currentQuestion.promptType === 'find-any' && (
-                                        <span className="text-primary">Find any <span className="text-white">{currentQuestion.note}</span></span>
+                                        <span className="text-blue-400">Find any <span className="text-white bg-blue-500/20 px-3 py-1 rounded-lg">{currentQuestion.note}</span></span>
                                     )}
                                     {currentQuestion.promptType === 'find-all' && (
-                                        <span className="text-yellow-400">Find all the <span className="text-white">{currentQuestion.note}</span></span>
+                                        <span className="text-yellow-400">Find all the <span className="text-white bg-yellow-500/20 px-3 py-1 rounded-lg">{currentQuestion.note}</span></span>
                                     )}
                                     {currentQuestion.promptType === 'find-on-string' && (
-                                        <span className="text-blue-400">Find <span className="text-white">{currentQuestion.note}</span> on string {(currentQuestion.targetString! + 1)}</span>
+                                        <span className="text-purple-400">Find <span className="text-white bg-purple-500/20 px-3 py-1 rounded-lg">{currentQuestion.note}</span> on string {(currentQuestion.targetString! + 1)}</span>
                                     )}
                                 </div>
-                                <div className="text-sm text-text-secondary">
-                                    {currentQuestion.promptType === 'find-any' && "Click one occurrence for speed"}
-                                    {currentQuestion.promptType === 'find-all' && `Found: ${foundPositions.size} / ${findAllNotePositions(currentQuestion.note).length}`}
-                                    {currentQuestion.promptType === 'find-on-string' && "Click the specific string location"}
+                                <div className="text-base text-text-secondary bg-background/30 backdrop-blur-sm px-4 py-2 rounded-lg inline-block">
+                                    {currentQuestion.promptType === 'find-any' && "⚡ Click one occurrence for speed"}
+                                    {currentQuestion.promptType === 'find-all' && `🎯 Found: ${foundPositions.size} / ${findAllNotePositions(currentQuestion.note).length}`}
+                                    {currentQuestion.promptType === 'find-on-string' && "🎯 Click the specific string location"}
                                 </div>
                                 
                                 {/* Add "Give Up" button for find-all mode */}
                                 {currentQuestion.promptType === 'find-all' && foundPositions.size < findAllNotePositions(currentQuestion.note).length && (
+                                    <div className="mt-6">
                                     <button 
                                         onClick={() => {
                                             // Force advance to next question
@@ -504,24 +541,29 @@ export const NoteFinder: React.FC = () => {
                                                 setTimeout(fetchNoteFinderData, 500);
                                             }
                                         }}
-                                        className="mt-3 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-md text-sm"
+                                        className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-lg text-sm transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
                                     >
-                                        Give Up & Skip to Next Note
+                                        🏳️ Give Up & Skip to Next Note
                                     </button>
+                                    </div>
                                 )}
                             </>
                         ) : (
-                            <div className="space-y-4">
-                                <div className="text-2xl font-bold">
+                            <div className="space-y-6">
+                                <div className="text-3xl font-bold">
                                     You clicked: <span className="text-white">{lastClickFeedback?.clickedNote}</span>
                                 </div>
                                 {lastClickFeedback?.correct ? (
-                                    <div className="text-3xl text-green-400">
+                                    <div className="bg-green-500/20 border border-green-500/50 p-6 rounded-xl">
+                                        <div className="text-4xl text-green-400 mb-2">
                                         ✅ Correct!
+                                        </div>
                                     </div>
                                 ) : (
-                                    <div className="text-3xl text-red-400">
+                                    <div className="bg-red-500/20 border border-red-500/50 p-6 rounded-xl">
+                                        <div className="text-4xl text-red-400 mb-2">
                                         ❌ Wrong! 
+                                        </div>
                                         <div className="text-lg mt-2">
                                             Expected: <span className="text-white">{lastClickFeedback?.expectedNote}</span>
                                         </div>
@@ -539,12 +581,12 @@ export const NoteFinder: React.FC = () => {
                         targetString={currentQuestion.promptType === 'find-on-string' ? currentQuestion.targetString : undefined}
                     />
                     
-                    <div className="text-center">
+                    <div className="text-center mt-6">
                         <button 
                             onClick={resetQuiz}
-                            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md"
+                            className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
                         >
-                            End Quiz Early
+                            🛑 End Quiz Early
                         </button>
                     </div>
                 </div>
@@ -552,24 +594,28 @@ export const NoteFinder: React.FC = () => {
 
             {mode === 'results' && (
                 <div className="space-y-6">
-                    <div className="bg-surface p-6 rounded-lg text-center">
-                        <h2 className="text-2xl font-bold mb-4">Quiz Complete!</h2>
+                    <div className="bg-surface/80 backdrop-blur-sm border border-border/50 p-8 rounded-xl shadow-lg text-center">
+                        <div className="text-4xl mb-4">🎉</div>
+                        <h2 className="text-3xl font-bold mb-6 text-green-400">Quiz Complete!</h2>
                         
                         {/* Overall Results */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                            <div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <div className="bg-background/50 backdrop-blur-sm p-4 rounded-lg">
+                                <div className="text-2xl mb-2">🎯</div>
                                 <div className="text-3xl font-bold text-primary">
                                     {quizResults.filter(r => r.correct).length}/{quizResults.length}
                                 </div>
                                 <div className="text-text-secondary">Correct</div>
                             </div>
-                            <div>
+                            <div className="bg-background/50 backdrop-blur-sm p-4 rounded-lg">
+                                <div className="text-2xl mb-2">📊</div>
                                 <div className="text-3xl font-bold text-primary">
                                     {Math.round((quizResults.filter(r => r.correct).length / quizResults.length) * 100)}%
                                 </div>
                                 <div className="text-text-secondary">Accuracy</div>
                             </div>
-                            <div>
+                            <div className="bg-background/50 backdrop-blur-sm p-4 rounded-lg">
+                                <div className="text-2xl mb-2">⏱️</div>
                                 <div className="text-3xl font-bold text-primary">
                                     {(quizResults.reduce((sum, r) => sum + r.timeSeconds, 0) / quizResults.length).toFixed(1)}s
                                 </div>
@@ -580,7 +626,7 @@ export const NoteFinder: React.FC = () => {
                         {/* Per-Note Breakdown */}
                         {Object.keys(quizNoteStats).length > 0 && (
                             <div className="mb-6">
-                                <h3 className="text-lg font-bold mb-3">Performance by Note</h3>
+                                <h3 className="text-lg font-bold mb-4">📈 Performance by Note</h3>
                                 <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
                                     {Object.entries(quizNoteStats).map(([note, stats]) => {
                                         const accuracy = Math.round((stats.correct / (stats.correct + stats.incorrect)) * 100);
@@ -588,7 +634,7 @@ export const NoteFinder: React.FC = () => {
                                                      accuracy >= 60 ? 'bg-yellow-500' : 
                                                      accuracy >= 40 ? 'bg-orange-500' : 'bg-red-500';
                                         return (
-                                            <div key={note} className={`${color} p-2 rounded text-white text-center`}>
+                                            <div key={note} className={`${color} p-3 rounded-lg text-white text-center transition-all duration-200 hover:scale-105`}>
                                                 <div className="font-bold">{note}</div>
                                                 <div className="text-xs">{accuracy}%</div>
                                                 <div className="text-xs">{stats.correct}/{stats.correct + stats.incorrect}</div>
@@ -602,15 +648,15 @@ export const NoteFinder: React.FC = () => {
                         <div className="space-y-2">
                             <button 
                                 onClick={resetQuiz}
-                                className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md"
+                                className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
                             >
-                                Choose Another Quiz Mode
+                                🎯 Choose Another Quiz Mode
                             </button>
                             <button 
                                 onClick={resetQuiz}
-                                className="w-full bg-surface hover:bg-border text-text-primary font-bold py-2 px-4 rounded-md"
+                                className="w-full bg-surface hover:bg-border text-text-primary font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
                             >
-                                Back to Menu
+                                🏠 Back to Menu
                             </button>
                         </div>
                     </div>
@@ -626,7 +672,7 @@ export const NoteFinder: React.FC = () => {
                                 .filter(s => s.attempts > 0)
                                 .sort((a, b) => b.accuracy - a.accuracy)
                                 .map(stat => (
-                                    <div key={stat.note} className="bg-background p-3 rounded-md">
+                                    <div key={note.note} className="bg-background/50 backdrop-blur-sm border border-border/30 p-4 rounded-lg hover:bg-background/80 transition-all duration-200">
                                         <div className="flex justify-between items-center">
                                             <span className="font-bold text-lg">{stat.note}</span>
                                             <span className={`font-bold ${getAccuracyColor(stat.accuracy)}`}>
@@ -642,7 +688,9 @@ export const NoteFinder: React.FC = () => {
                         
                         {noteStats.every(s => s.attempts === 0) && (
                             <div className="text-center p-8 text-text-secondary">
-                                No practice data yet. Take a quiz to see your performance!
+                                <div className="text-4xl mb-4">🤔</div>
+                                <h3 className="text-lg font-bold mb-2">No Data Yet</h3>
+                                <p>Take a quiz to see your performance!</p>
                             </div>
                         )}
                     </div>

@@ -358,7 +358,7 @@ export const CagedExplorer: React.FC = () => {
                 .eq('id', session.id);
 
             if (error) throw error;
-            await refreshData(); // This will now refresh CAGED sessions too
+            await fetchSessions(); // This will now refresh CAGED sessions too
         } catch (error) {
             console.error('Error deleting session:', error);
             alert('Failed to delete session. Please try again.');
@@ -381,129 +381,201 @@ export const CagedExplorer: React.FC = () => {
     } : null;
 
     return (
-        <div className="p-8">
-            <h1 className="text-3xl font-bold mb-6">CAGED System Explorer & Practice</h1>
+        <div className="p-4 md:p-8 space-y-6">
+            <div className="mb-6">
+                <h1 className="text-3xl font-bold mb-2">CAGED System Explorer</h1>
+                <p className="text-text-secondary">Master chord shapes with interactive exploration and timed quizzes</p>
+            </div>
             
-            {/* Stats Overview */}
+            {/* Performance Stats - Micro Cards */}
             {averageStats && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div className="bg-surface p-4 rounded-lg text-center">
-                        <div className="text-2xl font-bold text-primary">{averageStats.avgScore}</div>
-                        <div className="text-sm text-text-secondary">Avg Score</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+                    <div className="bg-surface/50 backdrop-blur-sm border border-border/30 p-3 rounded-xl text-center hover:bg-surface/80 transition-all duration-300 hover:scale-[1.02] group">
+                        <div className="text-2xl mb-1 group-hover:scale-110 transition-transform duration-200">🧠</div>
+                        <div className="text-xl font-bold text-primary">{averageStats.avgScore}</div>
+                        <div className="text-xs text-text-secondary">Avg Score</div>
                     </div>
-                    <div className="bg-surface p-4 rounded-lg text-center">
-                        <div className="text-2xl font-bold text-primary">{formatTime(averageStats.avgTime)}</div>
-                        <div className="text-sm text-text-secondary">Avg Time</div>
+                    <div className="bg-surface/50 backdrop-blur-sm border border-border/30 p-3 rounded-xl text-center hover:bg-surface/80 transition-all duration-300 hover:scale-[1.02] group">
+                        <div className="text-2xl mb-1 group-hover:scale-110 transition-transform duration-200">⏱️</div>
+                        <div className="text-xl font-bold text-primary">{formatTime(averageStats.avgTime)}</div>
+                        <div className="text-xs text-text-secondary">Avg Time</div>
                     </div>
-                    <div className="bg-surface p-4 rounded-lg text-center">
-                        <div className="text-2xl font-bold text-green-400">{averageStats.bestScore}</div>
-                        <div className="text-sm text-text-secondary">Best Score</div>
+                    <div className="bg-surface/50 backdrop-blur-sm border border-border/30 p-3 rounded-xl text-center hover:bg-surface/80 transition-all duration-300 hover:scale-[1.02] group">
+                        <div className="text-2xl mb-1 group-hover:scale-110 transition-transform duration-200">💯</div>
+                        <div className="text-xl font-bold text-green-400">{averageStats.bestScore}</div>
+                        <div className="text-xs text-text-secondary">Best Score</div>
                     </div>
-                    <div className="bg-surface p-4 rounded-lg text-center">
-                        <div className="text-2xl font-bold text-green-400">{formatTime(averageStats.bestTime)}</div>
-                        <div className="text-sm text-text-secondary">Best Time</div>
+                    <div className="bg-surface/50 backdrop-blur-sm border border-border/30 p-3 rounded-xl text-center hover:bg-surface/80 transition-all duration-300 hover:scale-[1.02] group">
+                        <div className="text-2xl mb-1 group-hover:scale-110 transition-transform duration-200">⚡</div>
+                        <div className="text-xl font-bold text-green-400">{formatTime(averageStats.bestTime)}</div>
+                        <div className="text-xs text-text-secondary">Best Time</div>
                     </div>
                 </div>
             )}
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                {/* Main Fretboard */}
+                <div className="xl:col-span-3 order-2 xl:order-1">
                     <Fretboard 
                         highlightedNotes={notesToDisplay}
                         onFretClick={undefined}
                     />
                 </div>
                 
-                <div className="bg-gray-900 p-6 rounded-lg shadow-xl">
+                {/* Control Panel - Sticky on larger screens */}
+                <div className="order-1 xl:order-2 xl:sticky xl:top-4 space-y-6">
                     {mode === 'explore' && (
                         <>
-                            <h2 className="text-xl font-semibold mb-4">Explorer</h2>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-text-secondary">Root Note</label>
-                                    <select value={rootNote} onChange={e => setRootNote(e.target.value as Note)} className="w-full bg-surface p-2 rounded-md border border-border">
-                                        {ALL_NOTES.map(n => <option key={n} value={n}>{n}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-text-secondary">CAGED Shape</label>
-                                    <select value={cagedShape} onChange={e => setCagedShape(e.target.value as CagedShape)} className="w-full bg-surface p-2 rounded-md border border-border">
-                                        {Object.keys(CAGED_SHAPES).map(s => <option key={s} value={s}>{s} Shape</option>)}
-                                    </select>
-                                </div>
-                                <div className="flex space-x-4 pt-4">
-                                    <div className="flex items-center"><div className="w-5 h-5 rounded-full bg-red-500 mr-2 ring-1 ring-white/70"></div>Root</div>
-                                    <div className="flex items-center"><div className="w-5 h-5 rounded-full bg-black mr-2 ring-1 ring-white/70"></div>Interval</div>
+                            {/* Shape Explorer Card */}
+                            <div className="bg-surface/80 backdrop-blur-sm border border-border/50 p-5 rounded-xl shadow-lg">
+                                <h2 className="text-lg font-bold text-text-primary mb-4 flex items-center">
+                                    <span className="text-xl mr-2">🎛️</span>
+                                    Shape Explorer
+                                </h2>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-text-secondary mb-2">Root Note</label>
+                                        <select 
+                                            value={rootNote} 
+                                            onChange={e => setRootNote(e.target.value as Note)} 
+                                            className="w-full bg-background/50 backdrop-blur-sm border border-border/60 p-3 rounded-lg text-text-primary hover:border-primary/50 focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all duration-200"
+                                        >
+                                            {ALL_NOTES.map(n => <option key={n} value={n}>{n}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-text-secondary mb-2">CAGED Shape</label>
+                                        <select 
+                                            value={cagedShape} 
+                                            onChange={e => setCagedShape(e.target.value as CagedShape)} 
+                                            className="w-full bg-background/50 backdrop-blur-sm border border-border/60 p-3 rounded-lg text-text-primary hover:border-primary/50 focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all duration-200"
+                                        >
+                                            {Object.keys(CAGED_SHAPES).map(s => <option key={s} value={s}>{s} Shape</option>)}
+                                        </select>
+                                    </div>
+                                    
+                                    {/* Legend */}
+                                    <div className="flex items-center justify-center space-x-6 pt-3 border-t border-border/30">
+                                        <div className="flex items-center text-sm">
+                                            <div className="w-4 h-4 rounded-full bg-red-500 mr-2 ring-1 ring-white/70"></div>
+                                            <span className="text-text-secondary">Root</span>
+                                        </div>
+                                        <div className="flex items-center text-sm">
+                                            <div className="w-4 h-4 rounded-full bg-black mr-2 ring-1 ring-white/70"></div>
+                                            <span className="text-text-secondary">Interval</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="mt-6 space-y-2">
-                                <button onClick={startQuizSession} className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 px-4 rounded-md">
-                                    🎯 Start Timed Quiz Session
-                                </button>
-                                <button onClick={() => openSessionModal()} className="w-full bg-secondary hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">
-                                    📝 Log Manual Session
-                                </button>
+                            {/* Action Buttons Card */}
+                            <div className="bg-surface/80 backdrop-blur-sm border border-border/50 p-5 rounded-xl shadow-lg">
+                                <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center">
+                                    <span className="text-xl mr-2">🎯</span>
+                                    Practice Mode
+                                </h3>
+                                <div className="space-y-3">
+                                    <button 
+                                        onClick={startQuizSession} 
+                                        className="w-full bg-gradient-to-r from-primary to-blue-600 hover:from-primary-hover hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] flex items-center justify-center"
+                                    >
+                                        <span className="text-lg mr-2">🎯</span>
+                                        Start Timed Quiz
+                                    </button>
+                                    <button 
+                                        onClick={() => openSessionModal()} 
+                                        className="w-full bg-gradient-to-r from-secondary to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] flex items-center justify-center"
+                                    >
+                                        <span className="text-lg mr-2">📝</span>
+                                        Log Manual Session
+                                    </button>
+                                </div>
                             </div>
                         </>
                     )}
                     
                     {mode === 'quiz-session' && currentQuestion && (
-                         <>
-                            <h2 className="text-xl font-semibold mb-4">Quiz Session</h2>
-                            <div className="text-center">
-                                <div className="text-2xl font-mono font-bold text-primary mb-4">
-                                    {formatTime(quizTimer)}
+                        <div className="bg-surface/80 backdrop-blur-sm border border-border/50 p-5 rounded-xl shadow-lg">
+                            <h2 className="text-lg font-bold text-text-primary mb-4 flex items-center">
+                                <span className="text-xl mr-2">⏱️</span>
+                                Quiz Session
+                            </h2>
+                            <div className="text-center space-y-4">
+                                <div className="bg-background/50 p-4 rounded-lg">
+                                    <div className="text-3xl font-mono font-bold text-primary mb-2">
+                                        {formatTime(quizTimer)}
+                                    </div>
+                                    <div className="text-sm text-text-secondary">
+                                        Question {currentQuestionIndex + 1} of {quizQuestions.length} • Correct: {correctAnswers}
+                                    </div>
                                 </div>
-                                <div className="mb-4">
-                                    <p className="text-sm text-text-secondary">Question {currentQuestionIndex + 1} of {quizQuestions.length}</p>
-                                    <p className="text-sm text-text-secondary">Correct: {correctAnswers}/{Math.max(currentQuestionIndex, 1)}</p>
+                                
+                                <div className="bg-primary/10 border border-primary/30 p-4 rounded-lg">
+                                    <p className="text-sm text-text-secondary mb-1">Find on your guitar:</p>
+                                    <p className="text-xl font-bold text-primary mb-1">{currentQuestion.root} Major</p>
+                                    <p className="text-sm text-text-secondary mb-1">using the</p>
+                                    <p className="text-xl font-bold text-primary">{currentQuestion.shape} Shape</p>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                    <button 
+                                        onClick={handleReveal} 
+                                        className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
+                                    >
+                                        💡 Show Answer
+                                    </button>
+                                    <button 
+                                        onClick={handleCompleteSession} 
+                                        className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] text-sm"
+                                    >
+                                        🏁 Complete Early
+                                    </button>
                                 </div>
                             </div>
-                            
-                            <div className="text-center bg-surface p-4 rounded-md">
-                                <p className="text-text-secondary">Find on your guitar:</p>
-                                <p className="text-2xl font-bold text-primary my-2">{currentQuestion.root} Major</p>
-                                <p className="text-text-secondary">using the</p>
-                                <p className="text-2xl font-bold text-primary my-2">{currentQuestion.shape} shape</p>
-                            </div>
-                            
-                            <div className="mt-6 space-y-2">
-                                <button onClick={handleReveal} className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-md">
-                                    Show Answer
-                                </button>
-                                <button onClick={handleCompleteSession} className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-md">
-                                    Complete Session Early
-                                </button>
-                            </div>
-                        </>
+                        </div>
                     )}
                     
                     {mode === 'quiz-answer' && currentQuestion && (
-                        <>
-                            <h2 className="text-xl font-semibold mb-4">Answer</h2>
-                            <div className="text-center bg-surface p-4 rounded-md">
-                                <p className="text-text-primary font-semibold">This is {currentQuestion.root} Major ({currentQuestion.shape} shape)</p>
-                            </div>
-                            
-                            <div className="mt-6 text-center">
-                                <p className="text-text-secondary mb-3">Did you get it right?</p>
-                                <div className="flex space-x-2">
-                                    <button onClick={handleCorrectAnswer} className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-2 rounded-md transition-colors text-sm">
-                                        ✅ Correct
-                                    </button>
-                                    <button onClick={handleIncorrectAnswer} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-2 rounded-md transition-colors text-sm">
-                                        ❌ Wrong
-                                    </button>
+                        <div className="bg-surface/80 backdrop-blur-sm border border-border/50 p-5 rounded-xl shadow-lg">
+                            <h2 className="text-lg font-bold text-text-primary mb-4 flex items-center">
+                                <span className="text-xl mr-2">💡</span>
+                                Answer Revealed
+                            </h2>
+                            <div className="text-center space-y-4">
+                                <div className="bg-green-500/10 border border-green-500/30 p-4 rounded-lg">
+                                    <p className="text-green-400 font-bold">
+                                        {currentQuestion.root} Major ({currentQuestion.shape} shape)
+                                    </p>
                                 </div>
-                            </div>
-                            
-                            <div className="mt-4">
-                                <button onClick={handleCompleteSession} className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-md">
-                                    Complete Session Early
+                                
+                                <div>
+                                    <p className="text-text-secondary mb-3 text-sm">Did you get it right?</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button 
+                                            onClick={handleCorrectAnswer} 
+                                            className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-3 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center"
+                                        >
+                                            <span className="text-lg mr-1">✅</span>
+                                            Yes
+                                        </button>
+                                        <button 
+                                            onClick={handleIncorrectAnswer} 
+                                            className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-3 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center"
+                                        >
+                                            <span className="text-lg mr-1">❌</span>
+                                            No
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <button 
+                                    onClick={handleCompleteSession} 
+                                    className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] text-sm"
+                                >
+                                    🏁 Complete Early
                                 </button>
                             </div>
-                        </>
+                        </div>
                     )}
                 </div>
             </div>
@@ -511,58 +583,69 @@ export const CagedExplorer: React.FC = () => {
             {/* Recent Sessions */}
             {sessions.length > 0 && (
                 <div className="mt-8">
-                    <h2 className="text-2xl font-bold mb-4">Recent Sessions</h2>
-                    <div className="space-y-3">
+                    <h2 className="text-2xl font-bold mb-6 flex items-center">
+                        <span className="text-2xl mr-3">📊</span>
+                        Recent Sessions
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {sessions.map(session => (
-                            <div key={session.id} className="bg-surface p-4 rounded-lg">
-                                <div className="flex justify-between items-start">
-                                    <div className="flex-1">
-                                        <div className="flex items-center space-x-4 mb-2">
-                                            <h3 className="text-lg font-semibold">
-                                                {new Date(session.sessionDate).toLocaleDateString()}
-                                            </h3>
-                                            <div className={`text-xl font-bold ${getScoreColor(session.score)}`}>
+                            <div key={session.id} className="bg-surface/80 backdrop-blur-sm border border-border/50 p-4 rounded-xl hover:bg-surface transition-all duration-300 hover:scale-[1.01] hover:shadow-lg group">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                        <h3 className="text-sm font-medium text-text-secondary">
+                                            {new Date(session.sessionDate).toLocaleDateString()}
+                                        </h3>
+                                        <div className="flex items-center space-x-3 mt-1">
+                                            <div className={`text-lg font-bold ${getScoreColor(session.score)}`}>
                                                 {session.score}/100
                                             </div>
-                                            <div className="text-text-secondary">
+                                            <div className="text-text-secondary text-sm">
                                                 {formatTime(session.timeSeconds)}
                                             </div>
                                         </div>
-                                        
-                                        <div className="flex items-center space-x-4 mb-2">
-                                            <div className="flex space-x-1">
-                                                <span className="text-sm text-text-secondary">Shapes:</span>
-                                                {session.shapes.map(shape => (
-                                                    <span key={shape} className="bg-primary/20 text-primary px-2 py-1 rounded text-sm">
-                                                        {shape}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                            <div className="text-sm text-text-secondary">
-                                                Accuracy: {getAccuracyLabel(session.accuracy)}
-                                            </div>
-                                        </div>
-
-                                        {session.notes && (
-                                            <p className="text-text-primary text-sm">{session.notes}</p>
-                                        )}
                                     </div>
                                     
-                                    <div className="flex space-x-2 ml-4">
+                                    <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                         <button 
                                             onClick={() => openSessionModal(session)} 
-                                            className="text-sm text-primary hover:underline"
+                                            className="text-xs text-primary hover:text-primary-hover"
                                         >
-                                            Edit
+                                            ✏️
                                         </button>
                                         <button 
                                             onClick={() => handleDeleteSession(session)} 
-                                            className="text-sm text-red-400 hover:underline"
+                                            className="text-xs text-red-400 hover:text-red-300"
                                         >
-                                            Delete
+                                            🗑️
                                         </button>
                                     </div>
                                 </div>
+                                
+                                {/* Shape Tags */}
+                                <div className="flex flex-wrap gap-1 mb-3">
+                                    {session.shapes.map(shape => (
+                                        <span key={shape} className="inline-block bg-primary/20 border border-primary/30 text-primary px-2 py-1 rounded-full text-xs font-medium">
+                                            {shape}
+                                        </span>
+                                    ))}
+                                </div>
+                                
+                                {/* Accuracy Badge */}
+                                <div className="flex justify-between items-center">
+                                    <div className="text-xs text-text-secondary">
+                                        {getAccuracyLabel(session.accuracy)}
+                                    </div>
+                                    {/* Optional: Mini trend indicator */}
+                                    <div className="text-xs text-green-400 flex items-center">
+                                        📈
+                                    </div>
+                                </div>
+                                
+                                {session.notes && (
+                                    <div className="mt-2 pt-2 border-t border-border/30">
+                                        <p className="text-xs text-text-primary line-clamp-2">{session.notes}</p>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
