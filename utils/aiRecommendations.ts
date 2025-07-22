@@ -1,7 +1,7 @@
 import { Note, NoteFinderAttempt } from '../types';
 import { ALL_NOTES } from '../constants';
 
-export interface NotePerformance {
+interface NotePerformance {
   note: Note;
   accuracy: number; // 0-1
   avgTimeMs: number;
@@ -11,7 +11,7 @@ export interface NotePerformance {
   needsPractice: boolean;
 }
 
-export interface AIRecommendation {
+interface AIRecommendation {
   priorityNotes: Note[]; // Notes to focus on (weak areas)
   maintenanceNotes: Note[]; // Notes to maintain (strong areas)  
   difficultyLevel: 'beginner' | 'intermediate' | 'advanced';

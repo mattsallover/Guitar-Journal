@@ -17,7 +17,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 // Database types based on our schema
-export interface Database {
+interface Database {
   public: {
     Tables: {
       users: {

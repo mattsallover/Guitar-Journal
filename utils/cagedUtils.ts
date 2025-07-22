@@ -1,8 +1,8 @@
 // CAGED scoring and utility functions
 
-export const TARGET_TIME_SECONDS = 20; // Baseline target time for completing all 5 shapes
+const TARGET_TIME_SECONDS = 20; // Baseline target time for completing all 5 shapes
 
-export interface CAGEDScoreInput {
+interface CAGEDScoreInput {
   shapes: string[];
   accuracy: number; // 1-5 scale
   time_seconds: number;
