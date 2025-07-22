@@ -49,6 +49,10 @@ export const Dashboard: React.FC = () => {
     const handleLogPastSession = () => {
         setShowSessionModal(true);
     };
+    
+    const handleGoToGoals = () => {
+        navigate('/goals');
+    };
 
     const focusSuggestions = useMemo(() => {
         const suggestions: FocusCardProps[] = [];
@@ -141,10 +145,10 @@ export const Dashboard: React.FC = () => {
                                 Start Your First Session
                             </button>
                             <button 
-                                onClick={() => navigate('/repertoire')} 
+                                onClick={handleGoToGoals} 
                                 className="bg-secondary hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105"
                             >
-                                Add Your First Song
+                                Set Your First Goal
                             </button>
                         </div>
                     </div>
@@ -173,7 +177,7 @@ export const Dashboard: React.FC = () => {
                         <p className="text-sm text-text-secondary mt-1">Build your repertoire</p>
                     </button>
                      <button 
-                        onClick={() => navigate('/goals')} 
+                        onClick={handleGoToGoals} 
                         className="bg-surface hover:bg-border p-6 rounded-lg text-center transition-all duration-300 hover:scale-105 hover:shadow-md group"
                         title="Set new goals or track your progress"
                      >

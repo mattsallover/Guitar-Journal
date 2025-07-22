@@ -29,7 +29,7 @@ const AppContent: React.FC = () => {
             <Sidebar />
             <main className="flex-1 ml-64 overflow-y-auto bg-background">
                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/" element={<Goals />} />
                     <Route path="/log" element={<PracticeLog />} />
                     <Route path="/repertoire" element={<Repertoire />} />
                     <Route path="/repertoire/:id" element={<RepertoireDetail />} />
