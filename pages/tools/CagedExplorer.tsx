@@ -7,6 +7,7 @@ import { CAGED_SHAPES, ALL_NOTES, GUITAR_TUNING } from '../../constants';
 import { supabase } from '../../services/supabase';
 import { computeCAGEDScore, getAccuracyLabel, getScoreColor, formatTime } from '../../utils/cagedUtils';
 import { compressVideo, compressImage, formatFileSize } from '../../utils/mediaUtils';
+import { aiService, AICoachingResponse } from '../../services/aiService';
 
 // Helper to get the name of a note at a specific fret and string
 const getNoteNameOnFret = (stringIndex: number, fret: number): Note => {
@@ -45,6 +46,13 @@ export const CagedExplorer: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(true);
+    
+    // AI Mode State
+    const [isAIMode, setIsAIMode] = useState(false);
+    const [aiCoaching, setAiCoaching] = useState<AICoachingResponse | null>(null);
+    const [isAILoading, setIsAILoading] = useState(false);
+    const [showAIPanel, setShowAIPanel] = useState(false);
+    const [aiQuestion, setAiQuestion] = useState('');
 
     useEffect(() => {
         if (state.user) {
@@ -52,6 +60,12 @@ export const CagedExplorer: React.FC = () => {
         }
     }, [state.user]);
 
+    // Load AI coaching when sessions change and AI mode is on
+    useEffect(() => {
+        if (isAIMode && sessions.length >= 3) {
+            loadAICoaching();
+        }
+    }, [isAIMode, sessions]);
     useEffect(() => {
         return () => {
             if (quizInterval) {
