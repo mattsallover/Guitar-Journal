@@ -53,6 +53,7 @@ export const CagedExplorer: React.FC = () => {
     const [isAILoading, setIsAILoading] = useState(false);
     const [showAIPanel, setShowAIPanel] = useState(false);
     const [aiQuestion, setAiQuestion] = useState('');
+    const [aiAnswer, setAiAnswer] = useState('');
 
 
     const hasEnoughDataForAI = state.cagedSessions.length >= 3;
@@ -380,6 +381,36 @@ export const CagedExplorer: React.FC = () => {
             alert('Failed to delete session. Please try again.');
         }
     };
+
+    const handleAIQuestion = async () => {
+        if (!aiQuestion.trim()) return;
+        
+        setIsAILoading(true);
+        try {
+            const answer = await aiService.answerMusicTheoryQuestion(aiQuestion, {
+                userLevel: sessions.length < 5 ? 'beginner' : sessions.length < 15 ? 'intermediate' : 'advanced'
+            });
+            setAiAnswer(answer);
+        } catch (error) {
+            console.error('Error getting AI answer:', error);
+            setAiAnswer('Sorry, I had trouble answering that question. Please try again later.');
+        } finally {
+            setIsAILoading(false);
+        }
+    };
+
+    const loadAICoaching = async () => {
+        setIsAILoading(true);
+        try {
+            const coaching = await aiService.getCAGEDCoaching(sessions);
+            setAiCoaching(coaching);
+            setShowAIPanel(true);
+        } catch (error) {
+            console.error('Error loading AI coaching:', error);
+        } finally {
+            setIsAILoading(false);
+        }
+    };
     
     const notesToDisplay = mode === 'explore' ? highlightedNotes : mode === 'quiz-answer' ? quizAnswerNotes : [];
 
@@ -541,6 +572,26 @@ export const CagedExplorer: React.FC = () => {
                                                     </ul>
                                                 </div>
                                             )}
+                                        </div>
+                                    )}
+                                    
+                                    {/* AI Answer Display */}
+                                    {aiAnswer && (
+                                        <div className="bg-yellow-950/50 border border-yellow-400/20 p-4 rounded-lg">
+                                            <h4 className="text-yellow-200 font-semibold mb-2 flex items-center">
+                                                <span className="text-lg mr-2">🤖</span>
+                                                AI Answer
+                                            </h4>
+                                            <p className="text-yellow-100 leading-relaxed whitespace-pre-wrap">{aiAnswer}</p>
+                                            <button
+                                                onClick={() => {
+                                                    setAiAnswer('');
+                                                    setAiQuestion('');
+                                                }}
+                                                className="mt-3 text-xs text-yellow-300 hover:text-yellow-200 underline"
+                                            >
+                                                Clear answer
+                                            </button>
                                         </div>
                                     )}
                                     
