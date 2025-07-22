@@ -3,6 +3,7 @@ import { useAppContext } from '../../context/AppContext';
 import { Fretboard } from '../../components/Fretboard';
 import { Modal } from '../../components/Modal';
 import { generateNoteRecommendations, generateAIQuizSequence, analyzeNotePerformance } from '../../utils/aiRecommendations';
+import { aiService, AICoachingResponse, AIExerciseRoutine } from '../../services/aiService';
 import { Note, NoteFinderAttempt } from '../../types';
 import { ALL_NOTES, GUITAR_TUNING } from '../../constants';
 import { supabase } from '../../services/supabase';
@@ -57,11 +58,24 @@ interface NoteStats {
 }
 
 export const NoteFinder: React.FC = () => {
-    const { state } = useAppContext();
+    const { state, refreshData } = useAppContext();
     
     // AI Recommendations State
     const [aiRecommendations, setAiRecommendations] = useState<any>(null);
     const [showAIInsights, setShowAIInsights] = useState(false);
+    
+    // Intelligent Mode State
+    const [intelligentMode, setIntelligentMode] = useState(false);
+    const [aiCoaching, setAiCoaching] = useState<AICoachingResponse | null>(null);
+    const [journalAnalysis, setJournalAnalysis] = useState<string>('');
+    const [personalizedRoutine, setPersonalizedRoutine] = useState<AIExerciseRoutine | null>(null);
+    const [theoryQuestion, setTheoryQuestion] = useState('');
+    const [theoryAnswer, setTheoryAnswer] = useState('');
+    const [aiLoading, setAiLoading] = useState(false);
+    const [showCoaching, setShowCoaching] = useState(false);
+    const [showJournal, setShowJournal] = useState(false);
+    const [showRoutine, setShowRoutine] = useState(false);
+    const [showTheory, setShowTheory] = useState(false);
     
     // Quiz State
     const [mode, setMode] = useState<'menu' | 'quiz' | 'results'>('menu');
@@ -109,8 +123,76 @@ export const NoteFinder: React.FC = () => {
         if (recentAttempts.length > 0) {
             const recommendations = generateNoteRecommendations(recentAttempts);
             setAiRecommendations(recommendations);
+            
+            // Auto-generate AI coaching if intelligent mode is on and we have enough data
+            if (intelligentMode && recentAttempts.length >= 20) {
+                generateAICoaching();
+            }
         }
-    }, [recentAttempts]);
+    }, [recentAttempts, intelligentMode]);
+
+    const generateAICoaching = async () => {
+        if (aiLoading) return;
+        setAiLoading(true);
+        try {
+            const coaching = await aiService.generateNaturalLanguageCoaching(recentAttempts, state.goals);
+            setAiCoaching(coaching);
+        } catch (error) {
+            console.error('Failed to generate AI coaching:', error);
+        } finally {
+            setAiLoading(false);
+        }
+    };
+
+    const generateJournalAnalysis = async () => {
+        if (aiLoading) return;
+        setAiLoading(true);
+        try {
+            const analysis = await aiService.analyzePracticeJournal(state.practiceSessions);
+            setJournalAnalysis(analysis);
+            setShowJournal(true);
+        } catch (error) {
+            console.error('Failed to analyze journal:', error);
+            setJournalAnalysis('Sorry, I encountered an error analyzing your practice journal. Please check your AI configuration.');
+            setShowJournal(true);
+        } finally {
+            setAiLoading(false);
+        }
+    };
+
+    const generatePersonalizedRoutine = async () => {
+        if (aiLoading) return;
+        setAiLoading(true);
+        try {
+            const routine = await aiService.generatePersonalizedExercise(recentAttempts, state.goals);
+            setPersonalizedRoutine(routine);
+            setShowRoutine(true);
+        } catch (error) {
+            console.error('Failed to generate routine:', error);
+        } finally {
+            setAiLoading(false);
+        }
+    };
+
+    const askTheoryQuestion = async () => {
+        if (aiLoading || !theoryQuestion.trim()) return;
+        setAiLoading(true);
+        try {
+            const answer = await aiService.answerMusicTheoryQuestion(theoryQuestion, {
+                attempts: recentAttempts,
+                userLevel: aiRecommendations?.difficultyLevel,
+                currentNote: currentQuestion?.note
+            });
+            setTheoryAnswer(answer);
+            setShowTheory(true);
+        } catch (error) {
+            console.error('Failed to answer theory question:', error);
+            setTheoryAnswer('Sorry, I encountered an error. Please check your AI configuration.');
+            setShowTheory(true);
+        } finally {
+            setAiLoading(false);
+        }
+    };
 
     const fetchNoteFinderData = async () => {
         if (!state.user) return;
@@ -408,7 +490,20 @@ export const NoteFinder: React.FC = () => {
         <div className="p-8">
             <div className="mb-8">
                 <h1 className="text-3xl font-bold mb-2">Note Finder Practice</h1>
-                <p className="text-text-secondary">Master fretboard navigation with intelligent quizzes and progress tracking</p>
+                <div className="flex items-center justify-between">
+                    <p className="text-text-secondary">Master fretboard navigation with intelligent quizzes and progress tracking</p>
+                    <div className="flex items-center space-x-3">
+                        <label className="flex items-center space-x-2 text-sm">
+                            <input
+                                type="checkbox"
+                                checked={intelligentMode}
+                                onChange={(e) => setIntelligentMode(e.target.checked)}
+                                className="rounded border-border"
+                            />
+                            <span className="text-text-secondary">🤖 Intelligent Mode</span>
+                        </label>
+                    </div>
+                </div>
             </div>
             
             {/* Statistics Overview */}
@@ -462,6 +557,125 @@ export const NoteFinder: React.FC = () => {
 
             {mode === 'menu' && (
                 <div className="space-y-6">
+                    {intelligentMode && recentAttempts.length >= 10 && aiCoaching && (
+                        <div className="bg-surface/80 backdrop-blur-sm border border-blue-500/50 p-6 rounded-xl shadow-lg mb-8">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-bold flex items-center">
+                                    <span className="text-2xl mr-2">🤖</span>
+                                    AI Coach Insights
+                                </h2>
+                                <button 
+                                    onClick={() => setShowCoaching(!showCoaching)}
+                                    className="text-sm bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 px-3 py-1 rounded-md transition-colors duration-200"
+                                >
+                                    {showCoaching ? 'Hide' : 'Show'} Details
+                                </button>
+                            </div>
+                            
+                            <div className="bg-blue-600/10 border border-blue-500/30 p-4 rounded-lg mb-4">
+                                <p className="text-blue-100">{aiCoaching.coaching}</p>
+                            </div>
+                            
+                            {showCoaching && (
+                                <div className="space-y-4">
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-blue-300 mb-2">🎯 Recommendations</h3>
+                                        <ul className="space-y-1">
+                                            {aiCoaching.recommendations.map((rec, i) => (
+                                                <li key={i} className="text-sm text-text-secondary flex items-start">
+                                                    <span className="text-blue-400 mr-2">•</span>
+                                                    {rec}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                    
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-blue-300 mb-2">💡 Musical Insights</h3>
+                                        <ul className="space-y-1">
+                                            {aiCoaching.insights.map((insight, i) => (
+                                                <li key={i} className="text-sm text-text-secondary flex items-start">
+                                                    <span className="text-yellow-400 mr-2">•</span>
+                                                    {insight}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Intelligent Mode Panel */}
+                    {intelligentMode && (
+                        <div className="bg-surface/80 backdrop-blur-sm border border-purple-500/50 p-6 rounded-xl shadow-lg mb-8">
+                            <h2 className="text-xl font-bold mb-6 flex items-center">
+                                <span className="text-2xl mr-2">🧠</span>
+                                AI-Powered Tools
+                            </h2>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <button 
+                                    onClick={generateAICoaching}
+                                    disabled={aiLoading || recentAttempts.length < 10}
+                                    className="bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 font-bold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <div className="text-2xl mb-1">🎯</div>
+                                    <div className="text-sm">Get Coaching</div>
+                                    {recentAttempts.length < 10 && <div className="text-xs mt-1">Need 10+ attempts</div>}
+                                </button>
+                                
+                                <button 
+                                    onClick={generateJournalAnalysis}
+                                    disabled={aiLoading || state.practiceSessions.length === 0}
+                                    className="bg-green-600/20 hover:bg-green-600/40 text-green-300 font-bold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <div className="text-2xl mb-1">📝</div>
+                                    <div className="text-sm">Analyze Journal</div>
+                                    {state.practiceSessions.length === 0 && <div className="text-xs mt-1">Need practice logs</div>}
+                                </button>
+                                
+                                <button 
+                                    onClick={generatePersonalizedRoutine}
+                                    disabled={aiLoading || recentAttempts.length < 5}
+                                    className="bg-orange-600/20 hover:bg-orange-600/40 text-orange-300 font-bold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <div className="text-2xl mb-1">🏃</div>
+                                    <div className="text-sm">Custom Routine</div>
+                                    {recentAttempts.length < 5 && <div className="text-xs mt-1">Need 5+ attempts</div>}
+                                </button>
+                                
+                                <div className="bg-purple-600/20 text-purple-300 font-bold py-3 px-4 rounded-lg">
+                                    <div className="text-2xl mb-1">💬</div>
+                                    <div className="text-sm mb-2">Ask Theory</div>
+                                    <div className="flex">
+                                        <input
+                                            type="text"
+                                            value={theoryQuestion}
+                                            onChange={(e) => setTheoryQuestion(e.target.value)}
+                                            placeholder="What's a mode?"
+                                            className="flex-1 bg-background/50 text-xs p-1 rounded text-white"
+                                            onKeyPress={(e) => e.key === 'Enter' && askTheoryQuestion()}
+                                        />
+                                        <button 
+                                            onClick={askTheoryQuestion}
+                                            disabled={aiLoading || !theoryQuestion.trim()}
+                                            className="ml-1 text-xs px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded disabled:opacity-50"
+                                        >
+                                            Ask
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {aiLoading && (
+                                <div className="mt-4 text-center">
+                                    <div className="text-primary">🤖 AI is thinking...</div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    
                     {/* Quiz Mode Selection */}
                     <div className="bg-surface/80 backdrop-blur-sm border border-border/50 p-6 rounded-xl shadow-lg">
                         <div className="flex justify-between items-center mb-6">
@@ -849,6 +1063,81 @@ export const NoteFinder: React.FC = () => {
                                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300"
                             >
                                 🎯 Start AI-Optimized Quiz
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+            
+            {/* AI Modals */}
+            {showJournal && (
+                <Modal isOpen={showJournal} onClose={() => setShowJournal(false)} title="📝 Practice Journal Analysis">
+                    <div className="prose prose-invert max-w-none">
+                        <div className="whitespace-pre-line text-text-primary">{journalAnalysis}</div>
+                    </div>
+                </Modal>
+            )}
+            
+            {showRoutine && personalizedRoutine && (
+                <Modal isOpen={showRoutine} onClose={() => setShowRoutine(false)} title="🏃 Personalized Practice Routine">
+                    <div className="space-y-4">
+                        <div className="bg-background/50 p-4 rounded-lg">
+                            <h3 className="text-lg font-bold text-primary">{personalizedRoutine.title}</h3>
+                            <p className="text-text-secondary mt-1">{personalizedRoutine.description}</p>
+                            <p className="text-sm text-text-secondary mt-2">⏱️ Estimated time: {personalizedRoutine.estimatedTime}</p>
+                        </div>
+                        
+                        <div className="space-y-3">
+                            {personalizedRoutine.exercises.map((exercise, i) => (
+                                <div key={i} className="border border-border/30 p-4 rounded-lg">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h4 className="font-semibold text-text-primary">{exercise.name}</h4>
+                                        <div className="flex items-center space-x-2">
+                                            <span className="text-xs px-2 py-1 bg-primary/20 text-primary rounded-full">
+                                                {exercise.difficulty}
+                                            </span>
+                                            <span className="text-sm text-text-secondary">{exercise.duration}</span>
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-text-secondary">{exercise.instructions}</p>
+                                </div>
+                            ))}
+                        </div>
+                        
+                        <div className="text-center">
+                            <button 
+                                onClick={() => setShowRoutine(false)}
+                                className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-6 rounded-lg"
+                            >
+                                Start This Routine
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+            
+            {showTheory && (
+                <Modal isOpen={showTheory} onClose={() => setShowTheory(false)} title="💬 Music Theory Answer">
+                    <div className="space-y-4">
+                        <div className="bg-background/50 p-4 rounded-lg">
+                            <h3 className="font-semibold text-primary mb-2">Your Question:</h3>
+                            <p className="text-text-primary italic">"{theoryQuestion}"</p>
+                        </div>
+                        
+                        <div className="prose prose-invert max-w-none">
+                            <div className="whitespace-pre-line text-text-primary">{theoryAnswer}</div>
+                        </div>
+                        
+                        <div className="text-center">
+                            <button 
+                                onClick={() => {
+                                    setShowTheory(false);
+                                    setTheoryQuestion('');
+                                    setTheoryAnswer('');
+                                }}
+                                className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-6 rounded-lg"
+                            >
+                                Ask Another Question
                             </button>
                         </div>
                     </div>
