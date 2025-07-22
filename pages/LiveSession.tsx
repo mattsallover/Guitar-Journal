@@ -28,6 +28,7 @@ export const LiveSession: React.FC = () => {
     const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+    const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [uploadingFiles, setUploadingFiles] = useState(false);
     const [uploadProgressData, setUploadProgressData] = useState<Array<{
         name: string;
@@ -38,6 +39,12 @@ export const LiveSession: React.FC = () => {
         compressedSize?: number;
     }>>([]);
     const [sessionRecordings, setSessionRecordings] = useState<Recording[]>([]);
+    
+    // Audio level monitoring
+    const [audioLevel, setAudioLevel] = useState(0);
+    const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
+    const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
+    const [animationFrame, setAnimationFrame] = useState<number | null>(null);
     
     useEffect(() => {
         if (location.state?.topic) {
@@ -67,9 +74,38 @@ export const LiveSession: React.FC = () => {
             if (mediaStream) {
                 mediaStream.getTracks().forEach(track => track.stop());
             }
+            if (audioContext) {
+                audioContext.close();
+            }
+            if (animationFrame) {
+                cancelAnimationFrame(animationFrame);
+            }
         };
     }, [previewUrl, mediaStream]);
 
+    // Audio level monitoring function
+    const updateAudioLevel = () => {
+        if (!analyser) return;
+        
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyser.getByteFrequencyData(dataArray);
+        
+        // Calculate average volume
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+            sum += dataArray[i];
+        }
+        const average = sum / bufferLength;
+        const level = (average / 255) * 100; // Convert to percentage
+        
+        setAudioLevel(level);
+        
+        if (isRecording) {
+            const frame = requestAnimationFrame(updateAudioLevel);
+            setAnimationFrame(frame);
+        }
+    };
     const startRecording = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -77,6 +113,16 @@ export const LiveSession: React.FC = () => {
                 audio: true 
             });
             setMediaStream(stream);
+            
+            // Set up audio monitoring
+            const audioCtx = new AudioContext();
+            const source = audioCtx.createMediaStreamSource(stream);
+            const analyserNode = audioCtx.createAnalyser();
+            analyserNode.fftSize = 256;
+            source.connect(analyserNode);
+            
+            setAudioContext(audioCtx);
+            setAnalyser(analyserNode);
             
             const recorder = new MediaRecorder(stream, {
                 mimeType: 'video/webm;codecs=vp9,opus'
@@ -95,15 +141,26 @@ export const LiveSession: React.FC = () => {
                 const url = URL.createObjectURL(blob);
                 setPreviewUrl(url);
                 setRecordedChunks([blob]);
+                setShowPreviewModal(true);
                 
                 // Stop the stream
                 stream.getTracks().forEach(track => track.stop());
                 setMediaStream(null);
+                
+                // Stop audio monitoring
+                if (animationFrame) {
+                    cancelAnimationFrame(animationFrame);
+                    setAnimationFrame(null);
+                }
+                setAudioLevel(0);
             };
             
             recorder.start();
             setMediaRecorder(recorder);
             setIsRecording(true);
+            
+            // Start audio level monitoring
+            updateAudioLevel();
             
             // Show live preview
             const videoElement = document.getElementById('recordingVideo') as HTMLVideoElement;
@@ -136,6 +193,11 @@ export const LiveSession: React.FC = () => {
         }
         setPreviewUrl(null);
         setRecordedChunks([]);
+        setShowPreviewModal(false);
+    };
+    
+    const keepRecording = () => {
+        setShowPreviewModal(false);
     };
 
     const uploadRecording = async (): Promise<Recording[]> => {
@@ -327,9 +389,38 @@ export const LiveSession: React.FC = () => {
                         />
                     </div>
                     
+                    {/* Audio Level Meter */}
+                    {isRecording && (
+                        <div className="mb-4 flex justify-center">
+                            <div className="w-full max-w-md">
+                                <div className="flex items-center space-x-2 mb-2">
+                                    <span className="text-sm text-text-secondary">🎤 Audio Level:</span>
+                                    <span className="text-sm font-mono text-text-primary">{Math.round(audioLevel)}%</span>
+                                </div>
+                                <div className="w-full bg-background rounded-full h-3 border border-border">
+                                    <div 
+                                        className={`h-3 rounded-full transition-all duration-100 ${
+                                            audioLevel > 70 ? 'bg-red-500' :
+                                            audioLevel > 40 ? 'bg-yellow-500' :
+                                            audioLevel > 10 ? 'bg-green-500' :
+                                            'bg-gray-600'
+                                        }`}
+                                        style={{ width: `${Math.min(audioLevel, 100)}%` }}
+                                    ></div>
+                                </div>
+                                <div className="text-xs text-text-secondary mt-1 text-center">
+                                    {audioLevel < 10 ? 'Too quiet - speak louder' :
+                                     audioLevel > 70 ? 'Loud - good level!' :
+                                     audioLevel > 40 ? 'Good audio level' :
+                                     'Moderate level'}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    
                     {/* Recording Controls */}
                     <div className="flex flex-wrap justify-center gap-2">
-                        {!isRecording && !previewUrl && (
+                        {!isRecording && !showPreviewModal && (
                             <button 
                                 onClick={startRecording}
                                 className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md flex items-center space-x-2"
@@ -349,19 +440,17 @@ export const LiveSession: React.FC = () => {
                             </button>
                         )}
                         
-                        {previewUrl && (
-                            <>
-                                <button 
-                                    onClick={clearRecording}
-                                    className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-md"
-                                >
-                                    Clear & Re-record
-                                </button>
-                            </>
+                        {previewUrl && !showPreviewModal && (
+                            <button 
+                                onClick={() => setShowPreviewModal(true)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md"
+                            >
+                                📹 Review Recording
+                            </button>
                         )}
                     </div>
                     
-                    {previewUrl && (
+                    {previewUrl && !showPreviewModal && (
                         <p className="text-center text-sm text-green-400 mt-2">
                             ✅ Recording ready! It will be uploaded when you finish the session.
                         </p>
@@ -387,6 +476,53 @@ export const LiveSession: React.FC = () => {
                 </div>
             </div>
         </div>
+        
+        {/* Video Preview Modal */}
+        {showPreviewModal && previewUrl && (
+            <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex justify-center items-center p-4">
+                <div className="bg-surface rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+                    <div className="flex justify-between items-center p-4 border-b border-border">
+                        <h2 className="text-xl font-bold text-text-primary">📹 Review Your Recording</h2>
+                        <button 
+                            onClick={() => setShowPreviewModal(false)}
+                            className="text-text-secondary hover:text-text-primary text-2xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface transition-all"
+                        >
+                            &times;
+                        </button>
+                    </div>
+                    
+                    <div className="p-6 flex-1 overflow-auto">
+                        <div className="mb-4">
+                            <video 
+                                className="w-full rounded-lg border border-border bg-black"
+                                controls
+                                src={previewUrl}
+                                style={{ aspectRatio: '16/9' }}
+                            />
+                        </div>
+                        
+                        <p className="text-text-secondary text-center mb-6">
+                            Review your recording and decide if you want to keep it or record again.
+                        </p>
+                        
+                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                            <button 
+                                onClick={keepRecording}
+                                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-md transition-all"
+                            >
+                                ✅ Keep This Recording
+                            </button>
+                            <button 
+                                onClick={clearRecording}
+                                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-md transition-all"
+                            >
+                                🔄 Record Again
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
         
         {/* Upload Progress Modal */}
         {uploadingFiles && (
