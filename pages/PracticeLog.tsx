@@ -620,12 +620,14 @@ export const PracticeLog: React.FC = () => {
       />
 
       {/* Goal Update Modal */}
-      <GoalUpdateModal 
-        isOpen={showGoalModal}
-        onClose={() => setShowGoalModal(false)}
-        goal={relatedGoal}
-        onUpdate={handleGoalUpdate}
-      />
+      {relatedGoal && (
+        <GoalUpdateModal 
+          isOpen={showGoalModal}
+          onClose={() => setShowGoalModal(false)}
+          goal={relatedGoal}
+          onUpdate={handleGoalUpdate}
+        />
+      )}
     </div>
   );
 };
