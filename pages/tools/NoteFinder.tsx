@@ -844,124 +844,89 @@ export const NoteFinder: React.FC = () => {
                         )}
                     </div>
                     
-                    <Fretboard
-                        onFretClick={handleFretClick}
-                        highlightedNotes={getQuizHighlights()}
-                        showFretNumbers={true}
-                        allFretsClickable={true}
-                        fretCount={aiRecommendations?.maxFrets || 15}
-                        targetString={currentQuestion.promptType === 'find-on-string' ? currentQuestion.targetString : undefined}
-                    />
-                    
-                    <div className="text-center mt-6">
-                        <button 
-                            onClick={resetQuiz}
-                            className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
-                        >
-                            🛑 End Quiz Early
-                        </button>
-                    </div>
-                </div>
-            )}
+                    {/* AI Assistant Panel */}
+                    {noteFinderAttempts.length >= 20 && (
+                        <div className="bg-gradient-to-br from-blue-900/10 to-purple-900/10 border border-blue-500/20 rounded-lg overflow-hidden">
+                            {/* AI Panel Header - Always Visible */}
+                            <div 
+                                className="flex items-center justify-between p-4 cursor-pointer hover:bg-blue-900/10 transition-colors"
+                                onClick={() => setAiPanelExpanded(!aiPanelExpanded)}
+                            >
+                                <div className="flex items-center space-x-3">
+                                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                                        <span className="text-sm">🤖</span>
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-text-primary">AI Practice Assistant</h3>
+                                        <p className="text-xs text-text-secondary">
+                                            {aiPanelExpanded ? 'Click to minimize' : 'Click to expand • Get personalized insights & coaching'}
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center space-x-3">
+                                    {/* Status Indicator */}
+                                    <div className="flex items-center space-x-2">
+                                        <div className={`w-2 h-2 rounded-full ${intelligentMode ? 'bg-green-400' : 'bg-gray-400'}`}></div>
+                                        <span className="text-xs text-text-secondary">
+                                            {intelligentMode ? 'Active' : 'Inactive'}
+                                        </span>
+                                    </div>
+                                    
+                                    {/* Toggle Switch */}
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={intelligentMode} 
+                                            onChange={(e) => setIntelligentMode(e.target.checked)}
+                                            className="sr-only peer"
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                        <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                    
+                                    {/* Expand/Collapse Icon */}
+                                    <div className={`transition-transform duration-200 ${aiPanelExpanded ? 'rotate-180' : ''}`}>
+                                        <svg className="w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
 
-            {mode === 'results' && (
-                <div className="space-y-6">
-                    <div className="bg-surface/80 backdrop-blur-sm border border-border/50 p-8 rounded-xl shadow-lg text-center">
-                        <div className="text-4xl mb-4">🎉</div>
-                        <h2 className="text-3xl font-bold mb-6 text-green-400">Quiz Complete!</h2>
-                        
-                        {/* Overall Results */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                            <div className="bg-background/50 backdrop-blur-sm p-4 rounded-lg">
-                                <div className="text-2xl mb-2">🎯</div>
-                                <div className="text-3xl font-bold text-primary">
-                                    {quizResults.filter(r => r.correct).length}/{quizResults.length}
-                                </div>
-                                <div className="text-text-secondary">Correct</div>
-                            </div>
-                            <div className="bg-background/50 backdrop-blur-sm p-4 rounded-lg">
-                                <div className="text-2xl mb-2">📊</div>
-                                <div className="text-3xl font-bold text-primary">
-                                    {Math.round((quizResults.filter(r => r.correct).length / quizResults.length) * 100)}%
-                                </div>
-                                <div className="text-text-secondary">Accuracy</div>
-                            </div>
-                            <div className="bg-background/50 backdrop-blur-sm p-4 rounded-lg">
-                                <div className="text-2xl mb-2">⏱️</div>
-                                <div className="text-3xl font-bold text-primary">
-                                    {(quizResults.reduce((sum, r) => sum + r.timeSeconds, 0) / quizResults.length).toFixed(1)}s
-                                </div>
-                                <div className="text-text-secondary">Avg Time</div>
-                            </div>
-                        </div>
-                        
-                        {/* Per-Note Breakdown */}
-                        {Object.keys(quizNoteStats).length > 0 && (
-                            <div className="mb-6">
-                                <h3 className="text-lg font-bold mb-4">📈 Performance by Note</h3>
-                                <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
-                                    {Object.entries(quizNoteStats).map(([note, stats]) => {
-                                        const accuracy = Math.round((stats.correct / (stats.correct + stats.incorrect)) * 100);
-                                        const color = accuracy >= 80 ? 'bg-green-500' : 
-                                                     accuracy >= 60 ? 'bg-yellow-500' : 
-                                                     accuracy >= 40 ? 'bg-orange-500' : 'bg-red-500';
-                                        return (
-                                            <div key={note} className={`${color} p-3 rounded-lg text-white text-center transition-all duration-200 hover:scale-105`}>
-                                                <div className="font-bold">{note}</div>
-                                                <div className="text-xs">{accuracy}%</div>
-                                                <div className="text-xs">{stats.correct}/{stats.correct + stats.incorrect}</div>
+                            {/* AI Panel Content - Expandable */}
+                            {aiPanelExpanded && intelligentMode && recommendations && (
+                                <div className="border-t border-blue-500/20 p-6 space-y-6">
+                                    {/* AI Performance Analysis */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="bg-red-900/20 border border-red-500/30 p-4 rounded-lg">
+                                            <h4 className="font-semibold text-red-300 mb-2 flex items-center">
+                                                <span className="mr-2">⚠️</span>
+                                                Focus Areas ({recommendations.priorityNotes.length})
+                                            </h4>
+                                            <div className="flex flex-wrap gap-2">
+                                                {recommendations.priorityNotes.map(note => (
+                                                    <span key={note} className="bg-red-500/20 border border-red-500/50 text-red-300 px-3 py-1 rounded-full text-sm font-medium">
+                                                        {note}
+                                                    </span>
+                                                ))}
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-                        
-                        <div className="space-y-2">
-                            <button 
-                                onClick={resetQuiz}
-                                className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
-                            >
-                                🎯 Choose Another Quiz Mode
-                            </button>
-                            <button 
-                                onClick={resetQuiz}
-                                className="w-full bg-surface hover:bg-border text-text-primary font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
-                            >
-                                🏠 Back to Menu
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Detailed Stats Modal */}
-            {showStatsModal && (
-                <Modal isOpen={showStatsModal} onClose={() => setShowStatsModal(false)} title="Detailed Note Performance">
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {noteStats
-                                .filter(s => s.attempts > 0)
-                                .sort((a, b) => b.accuracy - a.accuracy)
-                                .map(stat => (
-                                    <div key={stat.note} className="bg-background/50 backdrop-blur-sm border border-border/30 p-4 rounded-lg hover:bg-background/80 transition-all duration-200">
-                                        <div className="flex justify-between items-center">
-                                            <span className="font-bold text-lg">{stat.note}</span>
-                                            <span className={`font-bold ${getAccuracyColor(stat.accuracy)}`}>
-                                                {Math.round(stat.accuracy)}%
-                                            </span>
                                         </div>
-                                        <div className="text-sm text-text-secondary">
-                                            {stat.correct}/{stat.attempts} correct • {stat.avgTime.toFixed(1)}s avg
+                                        
+                                        <div className="bg-green-900/20 border border-green-500/30 p-4 rounded-lg">
+                                            <h4 className="font-semibold text-green-300 mb-2 flex items-center">
+                                                <span className="mr-2">✅</span>
+                                                Strong Areas ({recommendations.maintenanceNotes.length})
+                                            </h4>
+                                            <div className="flex flex-wrap gap-2">
+                                                {recommendations.maintenanceNotes.map(note => (
+                                                    <span key={note} className="bg-green-500/20 border border-green-500/50 text-green-300 px-3 py-1 rounded-full text-sm font-medium">
+                                                        {note}
+                                                    </span>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
-                                ))}
-                        </div>
-                        
-                        {noteStats.every(s => s.attempts === 0) && (
-                            <div className="text-center p-8 text-text-secondary">
-                                <div className="text-4xl mb-4">🤔</div>
-                                <h3 className="text-lg font-bold mb-2">No Data Yet</h3>
                                 <p>Take a quiz to see your performance!</p>
                             </div>
                         )}
@@ -1105,23 +1070,6 @@ export const NoteFinder: React.FC = () => {
                             <p className="text-text-primary italic">"{theoryQuestion}"</p>
                         </div>
                         
-                        <div className="prose prose-invert max-w-none">
-                            <div className="whitespace-pre-line text-text-primary">{theoryAnswer}</div>
-                        </div>
-                        
-                        <div className="text-center">
-                            <button 
-                                onClick={() => {
-                                    setShowTheory(false);
-                                    setTheoryQuestion('');
-                                    setTheoryAnswer('');
-                                }}
-                                className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-6 rounded-lg"
-                            >
-                                Ask Another Question
-                            </button>
-                        </div>
-                    </div>
                 </Modal>
             )}
         </div>
