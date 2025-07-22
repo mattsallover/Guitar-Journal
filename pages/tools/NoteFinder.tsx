@@ -68,6 +68,7 @@ export const NoteFinder: React.FC = () => {
     const [intelligentMode, setIntelligentMode] = useState(false);
     const [aiCoaching, setAiCoaching] = useState<AICoachingResponse | null>(null);
     const [journalAnalysis, setJournalAnalysis] = useState<string>('');
+    const [aiPanelExpanded, setAiPanelExpanded] = useState(false);
     const [personalizedRoutine, setPersonalizedRoutine] = useState<AIExerciseRoutine | null>(null);
     const [theoryQuestion, setTheoryQuestion] = useState('');
     const [theoryAnswer, setTheoryAnswer] = useState('');
@@ -595,14 +596,6 @@ export const NoteFinder: React.FC = () => {
                                         <ul className="space-y-1">
                                             {aiCoaching.insights.map((insight, i) => (
                                                 <li key={i} className="text-sm text-text-secondary flex items-start">
-                                                    <span className="text-yellow-400 mr-2">•</span>
-                                                    {insight}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     )}
 
@@ -640,23 +633,11 @@ export const NoteFinder: React.FC = () => {
                                     disabled={aiLoading || recentAttempts.length < 5}
                                     className="bg-orange-600/20 hover:bg-orange-600/40 text-orange-300 font-bold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <div className="text-2xl mb-1">🏃</div>
+                        <div className="flex justify-between items-center mb-6">
                                     <div className="text-sm">Custom Routine</div>
                                     {recentAttempts.length < 5 && <div className="text-xs mt-1">Need 5+ attempts</div>}
                                 </button>
                                 
-                                <div className="bg-purple-600/20 text-purple-300 font-bold py-3 px-4 rounded-lg">
-                                    <div className="text-2xl mb-1">💬</div>
-                                    <div className="text-sm mb-2">Ask Theory</div>
-                                    <div className="flex">
-                                        <input
-                                            type="text"
-                                            value={theoryQuestion}
-                                            onChange={(e) => setTheoryQuestion(e.target.value)}
-                                            placeholder="What's a mode?"
-                                            className="flex-1 bg-background/50 text-xs p-1 rounded text-white"
-                                            onKeyPress={(e) => e.key === 'Enter' && askTheoryQuestion()}
-                                        />
                                         <button 
                                             onClick={askTheoryQuestion}
                                             disabled={aiLoading || !theoryQuestion.trim()}
