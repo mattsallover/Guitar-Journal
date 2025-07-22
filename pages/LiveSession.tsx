@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Metronome } from '../components/Metronome';
-import { GuitarRecorder } from '../components/GuitarRecorder';
+import { AudioPlayer } from '../components/AudioPlayer';
 import { supabase } from '../services/supabase';
 import { useAppContext } from '../context/AppContext';
 
@@ -22,7 +22,7 @@ export const LiveSession: React.FC = () => {
     const [notes, setNotes] = useState('');
     const [sessionLink, setSessionLink] = useState('');
     const [isPaused, setIsPaused] = useState(false);
-    const [recordingPath, setRecordingPath] = useState<string>('');
+    const [audioFile, setAudioFile] = useState<File | null>(null);
     
     // Google Doc Embedding
     const [googleDocUrl, setGoogleDocUrl] = useState('');
@@ -53,8 +53,7 @@ export const LiveSession: React.FC = () => {
                 topic: topic, 
                 duration: Math.max(1, Math.round(time / 60)),
                 notes: notes,
-                link: sessionLink,
-                recordingPath: recordingPath
+                link: sessionLink
             } 
         });
     };
@@ -137,13 +136,60 @@ export const LiveSession: React.FC = () => {
                 
                 <Metronome />
 
-                {/* Guitar Recorder */}
-                <GuitarRecorder 
-                    topic={topic}
-                    autoSave={false}
-                    onRecordingSaved={(path) => setRecordingPath(path)}
-                />
-                
+                {/* Audio Player Section */}
+                <div className="mt-8 bg-background p-4 rounded-lg border border-border">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center">
+                        <span className="mr-2">🎵</span>
+                        Practice Audio
+                    </h3>
+                    
+                    {!audioFile ? (
+                        <div className="text-center p-6 border-2 border-dashed border-border rounded-lg">
+                            <div className="mb-4">
+                                <svg className="mx-auto h-12 w-12 text-text-secondary" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </div>
+                            <p className="text-text-secondary mb-4">Upload backing track or song to practice with</p>
+                            <label className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md cursor-pointer">
+                                Choose Audio File
+                                <input
+                                    type="file"
+                                    accept="audio/*"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) setAudioFile(file);
+                                    }}
+                                    className="hidden"
+                                />
+                            </label>
+                            <p className="text-xs text-text-secondary mt-2">MP3, WAV, M4A, and other audio formats supported</p>
+                        </div>
+                    ) : (
+                        <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center space-x-3">
+                                    <span className="text-2xl">🎵</span>
+                                    <div>
+                                        <p className="font-medium text-text-primary truncate max-w-xs" title={audioFile.name}>
+                                            {audioFile.name}
+                                        </p>
+                                        <p className="text-xs text-text-secondary">
+                                            {(audioFile.size / (1024 * 1024)).toFixed(1)} MB
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setAudioFile(null)}
+                                    className="text-red-400 hover:text-red-300 text-sm"
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                            <AudioPlayer audioFile={audioFile} />
+                        </div>
+                    )}
+                </div>
                 <div className="mt-8 text-left space-y-4">
                     <label className="block text-sm font-medium text-text-secondary mb-2">Session Notes (optional)</label>
                     <textarea 
