@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { Goal, GoalStatus, GoalCategory } from '../types';
 import { Modal } from '../components/Modal';
+import { PracticeStartModal } from '../components/PracticeStartModal';
 import { GOAL_STATUS_OPTIONS, GOAL_CATEGORY_OPTIONS } from '../constants';
 import { supabase } from '../services/supabase';
 
@@ -17,6 +18,7 @@ export const Goals: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [currentGoal, setCurrentGoal] = useState<Partial<Goal> | null>(null);
     const [filterStatus, setFilterStatus] = useState<GoalStatus | 'all'>('all');
+    const [showPracticeModal, setShowPracticeModal] = useState(false);
 
     useEffect(() => {
         const navState = location.state;
@@ -36,6 +38,14 @@ export const Goals: React.FC = () => {
         }
     }, [location.state, navigate]);
 
+    const handleOpenPracticeModal = () => {
+        setShowPracticeModal(true);
+    };
+
+    const handleLogPastSession = () => {
+        setShowPracticeModal(false);
+        navigate('/log');
+    };
 
     const openModal = (goal: Partial<Goal> | null = null) => {
         setCurrentGoal(goal ? { ...goal } : { title: '', description: '', targetDate: new Date().toISOString().split('T')[0], status: GoalStatus.Active, progress: 0, category: GoalCategory.Technique });
@@ -106,9 +116,6 @@ export const Goals: React.FC = () => {
         navigate('/session/live', { state: { topic: title } });
     };
 
-    const handleQuickLogSession = () => {
-        navigate('/log');
-    };
 
     const filteredGoals = state.goals.filter(goal => filterStatus === 'all' || goal.status === filterStatus);
 
@@ -127,12 +134,12 @@ export const Goals: React.FC = () => {
                 </div>
                 <div className="flex space-x-3">
                     <button 
-                        onClick={handleQuickLogSession}
+                        onClick={handleOpenPracticeModal}
                         className="bg-secondary hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-md transition-all duration-200 hover:scale-105 flex items-center space-x-2"
-                        title="Log a practice session"
+                        title="Start or log a practice session"
                     >
-                        <span>📝</span>
-                        <span>Log Session</span>
+                        <span>🎸</span>
+                        <span>Start Practice</span>
                     </button>
                     <button 
                         onClick={() => openModal()} 
@@ -296,6 +303,13 @@ export const Goals: React.FC = () => {
                     </div>
                 </Modal>
             )}
+
+            {/* Practice Start Modal */}
+            <PracticeStartModal
+                isOpen={showPracticeModal}
+                onClose={() => setShowPracticeModal(false)}
+                onLogPastSession={handleLogPastSession}
+            />
         </div>
     );
 };

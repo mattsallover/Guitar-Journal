@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { RepertoireItem, Difficulty, GoalCategory } from '../types';
 import { Modal } from '../components/Modal';
+import { PracticeStartModal } from '../components/PracticeStartModal';
 import { DIFFICULTY_OPTIONS } from '../constants';
 import { supabase } from '../services/supabase';
 
@@ -81,6 +82,7 @@ export const Repertoire: React.FC = () => {
     const [sortKey, setSortKey] = useState<keyof RepertoireItem>('title');
     const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
     const [potentialDuplicates, setPotentialDuplicates] = useState<RepertoireItem[]>([]);
+    const [showPracticeModal, setShowPracticeModal] = useState(false);
 
     useEffect(() => {
         const navState = location.state;
@@ -90,6 +92,14 @@ export const Repertoire: React.FC = () => {
         }
     }, [location.state, navigate]);
 
+    const handleOpenPracticeModal = () => {
+        setShowPracticeModal(true);
+    };
+
+    const handleLogPastSession = () => {
+        setShowPracticeModal(false);
+        navigate('/log');
+    };
     const openModal = (item: Partial<RepertoireItem> | null = null) => {
         // Smart defaults: pre-fill with sensible values
         setCurrentItem(item ? { ...item } : { 
@@ -213,9 +223,6 @@ export const Repertoire: React.FC = () => {
         navigate('/session/live', { state: { topic: item.title } });
     };
 
-    const handleQuickLogSession = () => {
-        navigate('/log');
-    };
 
     const sortedRepertoire = [...state.repertoire]
         .filter(item => 
@@ -247,12 +254,12 @@ export const Repertoire: React.FC = () => {
                 </div>
                 <div className="flex space-x-3">
                     <button 
-                        onClick={handleQuickLogSession}
+                        onClick={handleOpenPracticeModal}
                         className="bg-secondary hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-md transition-all duration-200 hover:scale-105 flex items-center space-x-2"
-                        title="Log a practice session"
+                        title="Start or log a practice session"
                     >
-                        <span>📝</span>
-                        <span>Log Session</span>
+                        <span>🎸</span>
+                        <span>Start Practice</span>
                     </button>
                     <button 
                         onClick={() => openModal()} 
@@ -500,6 +507,13 @@ export const Repertoire: React.FC = () => {
                     </div>
                 </Modal>
             )}
+
+            {/* Practice Start Modal */}
+            <PracticeStartModal
+                isOpen={showPracticeModal}
+                onClose={() => setShowPracticeModal(false)}
+                onLogPastSession={handleLogPastSession}
+            />
         </div>
     );
 };
