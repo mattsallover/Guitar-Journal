@@ -58,6 +58,56 @@ export const GuitarRecorder: React.FC<GuitarRecorderProps> = ({
   const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
   const recordingPreviewRef = useRef<HTMLVideoElement | null>(null);
 
+  // Setup preview stream when devices or mode changes
+  useEffect(() => {
+    const setupPreviewStream = async () => {
+      try {
+        // Stop existing stream first
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+
+        const constraints: MediaStreamConstraints = {
+          audio: selectedAudioDevice ? {
+            deviceId: { exact: selectedAudioDevice },
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+            sampleRate: 48000,
+            channelCount: 2
+          } : false,
+          video: recordingMode === 'video' && selectedVideoDevice ? {
+            deviceId: { exact: selectedVideoDevice },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            frameRate: { ideal: 30 }
+          } : false
+        };
+
+        const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+        setStream(newStream);
+
+        // Show preview if video mode
+        if (recordingMode === 'video' && videoPreviewRef.current) {
+          videoPreviewRef.current.srcObject = newStream;
+        }
+      } catch (error) {
+        console.error('Error setting up preview stream:', error);
+      }
+    };
+
+    if (selectedAudioDevice || (recordingMode === 'video' && selectedVideoDevice)) {
+      setupPreviewStream();
+    }
+
+    // Cleanup function
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [selectedAudioDevice, selectedVideoDevice, recordingMode]); // Removed 'stream' from dependencies
+
   // Initialize devices
   useEffect(() => {
     const initializeDevices = async () => {
@@ -102,49 +152,6 @@ export const GuitarRecorder: React.FC<GuitarRecorderProps> = ({
     initializeDevices();
   }, []);
 
-  // Setup preview stream
-  const setupPreviewStream = useCallback(async () => {
-    try {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-
-      const constraints: MediaStreamConstraints = {
-        audio: selectedAudioDevice ? {
-          deviceId: { exact: selectedAudioDevice },
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-          sampleRate: 48000,
-          channelCount: 2
-        } : false,
-        video: recordingMode === 'video' && selectedVideoDevice ? {
-          deviceId: { exact: selectedVideoDevice },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: 30 }
-        } : false
-      };
-
-      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
-      setStream(newStream);
-
-      // Show preview if video mode
-      if (recordingMode === 'video' && videoPreviewRef.current) {
-        videoPreviewRef.current.srcObject = newStream;
-      }
-    } catch (error) {
-      console.error('Error setting up preview stream:', error);
-    }
-  }, [selectedAudioDevice, selectedVideoDevice, recordingMode, stream]);
-
-  // Setup preview when devices or mode changes
-  useEffect(() => {
-    if (selectedAudioDevice || (recordingMode === 'video' && selectedVideoDevice)) {
-      setupPreviewStream();
-    }
-  }, [setupPreviewStream]);
-
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -159,7 +166,7 @@ export const GuitarRecorder: React.FC<GuitarRecorderProps> = ({
 
   const startRecording = async () => {
     if (!stream) {
-      await setupPreviewStream();
+      console.error('No stream available for recording');
       return;
     }
 
