@@ -256,10 +256,10 @@ export const CagedExplorer: React.FC = () => {
         setCurrentSession(null);
         setSelectedFile(null);
         setMode('explore');
-    const handleQuickLogSession = () => {
-        navigate('/log');
     };
 
+    const handleQuickLogSession = () => {
+        navigate('/log');
     };
 
     const handleSaveSession = async () => {
