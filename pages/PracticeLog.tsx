@@ -415,9 +415,6 @@ export const PracticeLog: React.FC = () => {
                     ))}
                   </div>
                 )}
-                
-                  </div>
-                )}
 
                 {session.notes && (
                   <p className="text-text-primary mt-3 whitespace-pre-wrap">{session.notes}</p>
