@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { Goal, GoalStatus, RepertoireItem } from '../types';
+import { PracticeStartModal } from '../components/PracticeStartModal';
 
 interface FocusCardProps {
     type: 'goal' | 'repertoire' | 'technique';
@@ -38,13 +39,15 @@ export const Dashboard: React.FC = () => {
     const { state } = useAppContext();
     const navigate = useNavigate();
     const { goals, repertoire, practiceSessions } = state;
+    const [showPracticeModal, setShowPracticeModal] = React.useState(false);
+    const [showSessionModal, setShowSessionModal] = React.useState(false);
 
-    const handleQuickLogSession = () => {
-        navigate('/log');
+    const handleOpenPracticeModal = () => {
+        setShowPracticeModal(true);
     };
 
-    const handleStartLiveSession = () => {
-        navigate('/session/live', { state: { topic: 'Practice Session' } });
+    const handleLogPastSession = () => {
+        setShowSessionModal(true);
     };
 
     const focusSuggestions = useMemo(() => {
@@ -103,22 +106,15 @@ export const Dashboard: React.FC = () => {
                 <h2 className="text-2xl font-bold text-text-primary mb-4 text-center">Ready to Practice?</h2>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <button 
-                        onClick={handleStartLiveSession}
+                        onClick={handleOpenPracticeModal}
                         className="bg-primary hover:bg-primary-hover text-white font-bold py-4 px-8 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-xl flex items-center justify-center space-x-2 text-lg"
                     >
                         <span className="text-2xl">🎸</span>
-                        <span>Start Live Session</span>
-                    </button>
-                    <button 
-                        onClick={handleQuickLogSession}
-                        className="bg-secondary hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-xl flex items-center justify-center space-x-2 text-lg"
-                    >
-                        <span className="text-2xl">📝</span>
-                        <span>Log Past Session</span>
+                        <span>Start Practice</span>
                     </button>
                 </div>
                 <p className="text-center text-text-secondary mt-3 text-sm">
-                    Start practicing now or log a session you already completed
+                    Choose how you want to record your practice session
                 </p>
             </div>
             
@@ -139,10 +135,10 @@ export const Dashboard: React.FC = () => {
                         </p>
                         <div className="flex flex-col sm:flex-row gap-3 justify-center">
                             <button 
-                                onClick={() => navigate('/log')} 
+                                onClick={handleOpenPracticeModal} 
                                 className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105"
                             >
-                                Log Your First Session
+                                Start Your First Session
                             </button>
                             <button 
                                 onClick={() => navigate('/repertoire')} 
@@ -159,13 +155,13 @@ export const Dashboard: React.FC = () => {
                  <h2 className="text-2xl font-bold text-text-primary mb-6">Quick Actions</h2>
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                      <button 
-                        onClick={() => navigate('/log')} 
+                        onClick={handleOpenPracticeModal} 
                         className="bg-surface hover:bg-border p-6 rounded-lg text-center transition-all duration-300 hover:scale-105 hover:shadow-md group"
-                        title="Record details from a previous practice session"
+                        title="Start or record a practice session"
                      >
                         <span className="text-3xl mb-3 block group-hover:scale-110 transition-transform duration-200">📓</span>
-                        <p className="font-semibold text-lg">Log Past Session</p>
-                        <p className="text-sm text-text-secondary mt-1">Record what you practiced</p>
+                        <p className="font-semibold text-lg">Practice Session</p>
+                        <p className="text-sm text-text-secondary mt-1">Start live or log completed</p>
                     </button>
                     <button 
                         onClick={() => navigate('/repertoire')} 
@@ -188,6 +184,37 @@ export const Dashboard: React.FC = () => {
                  </div>
             </div>
 
+            {/* Practice Start Modal */}
+            <PracticeStartModal
+                isOpen={showPracticeModal}
+                onClose={() => setShowPracticeModal(false)}
+                onLogPastSession={handleLogPastSession}
+            />
+            
+            {/* Session Log Modal - This would need to be connected to your PracticeLog modal */}
+            {showSessionModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
+                    <div className="bg-surface rounded-lg shadow-xl p-6">
+                        <h3 className="text-lg font-bold mb-4">Quick Log Session</h3>
+                        <p className="text-text-secondary mb-4">This would open your practice session logging modal.</p>
+                        <button 
+                            onClick={() => {
+                                setShowSessionModal(false);
+                                navigate('/log');
+                            }}
+                            className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md"
+                        >
+                            Go to Practice Log
+                        </button>
+                        <button 
+                            onClick={() => setShowSessionModal(false)}
+                            className="ml-2 bg-surface hover:bg-border text-text-primary font-bold py-2 px-4 rounded-md"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

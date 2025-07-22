@@ -14,6 +14,7 @@ import { CoachIcon } from './icons/CoachIcon';
 export const Sidebar: React.FC = () => {
     const { state } = useAppContext();
     const navigate = useNavigate();
+    const [showPracticeModal, setShowPracticeModal] = React.useState(false);
     const [isJournalOpen, setIsJournalOpen] = useState(true); // Open by default
     const [isToolsOpen, setIsToolsOpen] = useState(false); // Closed by default
 
@@ -21,12 +22,21 @@ export const Sidebar: React.FC = () => {
         supabase.auth.signOut();
     };
 
-    const handleQuickLogSession = () => {
+    const handleOpenPracticeModal = () => {
+        setShowPracticeModal(true);
+    };
+
+    const handleLogPastSession = () => {
+        setShowPracticeModal(false);
         navigate('/log');
     };
 
-    const handleStartLiveSession = () => {
-        navigate('/session/live', { state: { topic: 'Practice Session' } });
+    const handleAddNewSong = () => {
+        navigate('/repertoire', { state: { openModal: true } });
+    };
+
+    const handleSetNewGoal = () => {
+        navigate('/goals', { state: { openModal: true } });
     };
 
     const navLinkClasses = "flex items-center px-4 py-3 text-text-secondary hover:bg-surface hover:text-text-primary rounded-md transition-all duration-300 hover:scale-[1.02]";
@@ -46,6 +56,8 @@ export const Sidebar: React.FC = () => {
         { to: "/tools/scale-practice", label: "Scale Practice", exact: false }
     ];
 
+    // Import the PracticeStartModal component
+    const PracticeStartModal = React.lazy(() => import('./PracticeStartModal').then(module => ({ default: module.PracticeStartModal })));
     return (
         <div className="bg-background-dark border-r border-border w-64 p-4 flex flex-col h-full fixed">
             <div className="flex items-center mb-8">
@@ -57,18 +69,25 @@ export const Sidebar: React.FC = () => {
                 <h3 className="text-sm font-semibold text-text-secondary mb-3 uppercase tracking-wide">Quick Actions</h3>
                 <div className="space-y-2">
                     <button 
-                        onClick={handleStartLiveSession}
-                        className="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-2 px-3 rounded-md transition-all duration-200 hover:scale-[1.02] flex items-center space-x-2 text-sm"
+                        onClick={handleOpenPracticeModal}
+                        className="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-3 px-3 rounded-md transition-all duration-200 hover:scale-[1.02] flex items-center space-x-2 text-sm"
                     >
                         <span>🎸</span>
-                        <span>Start Session</span>
+                        <span>Start Practice</span>
                     </button>
                     <button 
-                        onClick={handleQuickLogSession}
+                        onClick={handleAddNewSong}
                         className="w-full bg-secondary hover:bg-indigo-700 text-white font-semibold py-2 px-3 rounded-md transition-all duration-200 hover:scale-[1.02] flex items-center space-x-2 text-sm"
                     >
-                        <span>📝</span>
-                        <span>Log Session</span>
+                        <span>🎵</span>
+                        <span>Add Song</span>
+                    </button>
+                    <button 
+                        onClick={handleSetNewGoal}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-md transition-all duration-200 hover:scale-[1.02] flex items-center space-x-2 text-sm"
+                    >
+                        <span>🎯</span>
+                        <span>Set Goal</span>
                     </button>
                 </div>
             </div>
@@ -179,6 +198,15 @@ export const Sidebar: React.FC = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Practice Start Modal */}
+            <React.Suspense fallback={<div>Loading...</div>}>
+                <PracticeStartModal
+                    isOpen={showPracticeModal}
+                    onClose={() => setShowPracticeModal(false)}
+                    onLogPastSession={handleLogPastSession}
+                />
+            </React.Suspense>
         </div>
     );
 };

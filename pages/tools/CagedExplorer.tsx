@@ -390,14 +390,6 @@ export const CagedExplorer: React.FC = () => {
         <div className="p-8">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold">CAGED System Explorer & Practice</h1>
-                <button 
-                    onClick={handleQuickLogSession}
-                    className="bg-secondary hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition-all duration-200 hover:scale-105 flex items-center space-x-2"
-                    title="Log a practice session"
-                >
-                    <span>📝</span>
-                    <span>Log Session</span>
-                </button>
             </div>
             
             {/* Stats Overview */}
