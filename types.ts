@@ -55,6 +55,7 @@ export interface RepertoireItem {
   dateAdded: string;
   lastPracticed?: string;
   notes: string;
+  media: Recording[]; // Audio/video files for this song
 }
 
 export enum GoalStatus {

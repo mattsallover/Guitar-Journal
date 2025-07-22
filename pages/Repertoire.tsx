@@ -4,8 +4,11 @@ import { useAppContext } from '../context/AppContext';
 import { RepertoireItem, Difficulty, GoalCategory } from '../types';
 import { Modal } from '../components/Modal';
 import { PracticeStartModal } from '../components/PracticeStartModal';
+import { UploadProgress } from '../components/UploadProgress';
 import { DIFFICULTY_OPTIONS } from '../constants';
 import { supabase } from '../services/supabase';
+import { compressVideo, compressImage, formatFileSize } from '../utils/mediaUtils';
+import { Recording } from '../types';
 
 
 // Levenshtein distance algorithm for fuzzy matching
@@ -83,6 +86,16 @@ export const Repertoire: React.FC = () => {
     const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
     const [potentialDuplicates, setPotentialDuplicates] = useState<RepertoireItem[]>([]);
     const [showPracticeModal, setShowPracticeModal] = useState(false);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState<{
+        name: string;
+        progress: number;
+        status: 'uploading' | 'compressing' | 'completed' | 'error';
+        error?: string;
+        originalSize?: number;
+        compressedSize?: number;
+    }[]>([]);
 
     useEffect(() => {
         const navState = location.state;
@@ -107,14 +120,19 @@ export const Repertoire: React.FC = () => {
             artist: '', 
             difficulty: Difficulty.Intermediate, // Most users are intermediate
             mastery: 25, // Realistic starting mastery
-            notes: '' 
+            notes: '',
+            media: []
         });
+        setSelectedFiles([]);
+        setUploadProgress([]);
         setIsModalOpen(true);
     };
 
     const closeModal = () => {
         setIsModalOpen(false);
         setCurrentItem(null);
+        setSelectedFiles([]);
+        setUploadProgress([]);
     };
     
     const closeDuplicateModal = () => {
