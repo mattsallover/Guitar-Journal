@@ -1,6 +1,5 @@
-
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { RepertoireItem, Difficulty, GoalCategory } from '../types';
 import { Modal } from '../components/Modal';
@@ -74,6 +73,7 @@ const checkForDuplicates = (title: string, artist: string, repertoire: Repertoir
 export const Repertoire: React.FC = () => {
     const { state, refreshData } = useAppContext();
     const navigate = useNavigate();
+    const location = useLocation();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [currentItem, setCurrentItem] = useState<Partial<RepertoireItem> | null>(null);
@@ -81,6 +81,14 @@ export const Repertoire: React.FC = () => {
     const [sortKey, setSortKey] = useState<keyof RepertoireItem>('title');
     const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
     const [potentialDuplicates, setPotentialDuplicates] = useState<RepertoireItem[]>([]);
+
+    useEffect(() => {
+        const navState = location.state;
+        if (navState?.openModal) {
+            openModal();
+            navigate(location.pathname, { replace: true });
+        }
+    }, [location.state, navigate]);
 
     const openModal = (item: Partial<RepertoireItem> | null = null) => {
         // Smart defaults: pre-fill with sensible values

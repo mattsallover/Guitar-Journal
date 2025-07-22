@@ -20,7 +20,10 @@ export const Goals: React.FC = () => {
 
     useEffect(() => {
         const navState = location.state;
-        if (navState?.newGoalTitle) {
+        if (navState?.openModal) {
+            openModal();
+            navigate(location.pathname, { replace: true });
+        } else if (navState?.newGoalTitle) {
             openModal({
                 title: navState.newGoalTitle,
                 category: navState.newGoalCategory || GoalCategory.Song,
