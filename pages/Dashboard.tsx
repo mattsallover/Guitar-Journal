@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import { Goal, GoalStatus, RepertoireItem } from '../types';
+import { Goal, GoalStatus, RepertoireItem, CAGEDSession } from '../types';
 
 interface FocusCardProps {
     type: 'goal' | 'repertoire' | 'technique';
@@ -37,7 +37,7 @@ const FocusCard: React.FC<FocusCardProps> = ({ type, title, description, onStart
 export const Dashboard: React.FC = () => {
     const { state } = useAppContext();
     const navigate = useNavigate();
-    const { goals, repertoire, practiceSessions } = state;
+    const { goals, repertoire, practiceSessions, cagedSessions } = state;
 
     const focusSuggestions = useMemo(() => {
         const suggestions: FocusCardProps[] = [];
@@ -84,9 +84,29 @@ export const Dashboard: React.FC = () => {
             }
         }
         
+        // 4. Recent CAGED Practice
+        if (cagedSessions.length > 0) {
+            const lastCAGEDSession = cagedSessions.sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime())[0];
+            // Only suggest if it's more recent than the last practice session
+            const lastCAGEDDate = new Date(lastCAGEDSession.sessionDate);
+            const lastPracticeDate = practiceSessions.length > 0 
+                ? new Date(practiceSessions[0].date) 
+                : new Date(0);
+            
+            if (lastCAGEDDate > lastPracticeDate) {
+                const shapes = lastCAGEDSession.shapes.join(', ');
+                suggestions.push({
+                    type: 'technique',
+                    title: `CAGED Practice: ${shapes} shapes`,
+                    description: `You scored ${lastCAGEDSession.score}/100 in your last CAGED session. Keep building those chord connections!`,
+                    onStart: () => navigate('/tools/caged')
+                });
+            }
+        }
+        
         return suggestions.slice(0, 3); // Limit to 3 suggestions for a clean look
 
-    }, [goals, repertoire, practiceSessions, navigate]);
+    }, [goals, repertoire, practiceSessions, cagedSessions, navigate]);
 
     return (
         <div className="p-8 space-y-8">
