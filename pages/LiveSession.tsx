@@ -315,7 +315,7 @@ export const LiveSession: React.FC = () => {
         let recordings: Recording[] = [];
         
         // Upload recording if exists
-        if (recordedChunks.length > 0) {
+        if (previewUrl && recordedChunks.length > 0) {
             try {
                 recordings = await uploadRecording();
                 setSessionRecordings(recordings);
