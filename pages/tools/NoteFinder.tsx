@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { Fretboard } from '../../components/Fretboard';
 import { Modal } from '../../components/Modal';
+import { generateNoteRecommendations, generateAIQuizSequence, analyzeNotePerformance } from '../../utils/aiRecommendations';
 import { Note, NoteFinderAttempt } from '../../types';
 import { ALL_NOTES, GUITAR_TUNING } from '../../constants';
 import { supabase } from '../../services/supabase';
@@ -58,6 +59,10 @@ interface NoteStats {
 export const NoteFinder: React.FC = () => {
     const { state } = useAppContext();
     
+    // AI Recommendations State
+    const [aiRecommendations, setAiRecommendations] = useState<any>(null);
+    const [showAIInsights, setShowAIInsights] = useState(false);
+    
     // Quiz State
     const [mode, setMode] = useState<'menu' | 'quiz' | 'results'>('menu');
     const [quizSequence, setQuizSequence] = useState<QuizQuestion[]>([]);
@@ -99,6 +104,13 @@ export const NoteFinder: React.FC = () => {
             fetchNoteFinderData();
         }
     }, [state.user]);
+
+    useEffect(() => {
+        if (recentAttempts.length > 0) {
+            const recommendations = generateNoteRecommendations(recentAttempts);
+            setAiRecommendations(recommendations);
+        }
+    }, [recentAttempts]);
 
     const fetchNoteFinderData = async () => {
         if (!state.user) return;
@@ -163,45 +175,74 @@ export const NoteFinder: React.FC = () => {
     };
 
     const startQuiz = (mode: QuizModeType, numQuestions: number = 12) => {
-        let notes: Note[] = [];
+        // Use AI-generated sequence if we have enough data, otherwise fallback to random
         let sequence: QuizQuestion[] = [];
         
-        if (mode === 'combo') {
-            // Create varied quiz questions with mixed modes
-            notes = shuffle([...ALL_NOTES].slice(0, numQuestions)) as Note[];
-        } else {
-            // For specific modes, use all notes
-            notes = shuffle([...ALL_NOTES].slice(0, numQuestions)) as Note[];
-        }
-        
-        sequence = notes.map(note => {
-            let promptType: QuizPromptType;
+        if (recentAttempts.length >= 10) {
+            // Use AI recommendations
+            const aiSequence = generateAIQuizSequence(recentAttempts, numQuestions);
             
-            if (mode === 'combo') {
-                const promptTypes: QuizPromptType[] = ['find-all', 'find-any', 'find-on-string'];
-                promptType = promptTypes[Math.floor(Math.random() * promptTypes.length)];
-            } else {
-                promptType = mode as QuizPromptType;
-            }
-            
-            const question: QuizQuestion = { note, promptType };
-            
-            // For find-on-string mode, pick a random string that has this note
-            if (promptType === 'find-on-string') {
-                const availableStrings = [];
-                for (let stringIndex = 0; stringIndex < 6; stringIndex++) {
-                    for (let fret = 0; fret <= 15; fret++) {
-                        if (getNoteAt(stringIndex, fret) === note) {
-                            availableStrings.push(stringIndex);
-                            break; // Found this note on this string, move to next string
+            sequence = aiSequence.map(item => {
+                const question: QuizQuestion = { 
+                    note: item.note, 
+                    promptType: item.mode as QuizPromptType 
+                };
+                
+                // For find-on-string mode, pick a random string that has this note
+                if (item.mode === 'find-on-string') {
+                    const availableStrings = [];
+                    for (let stringIndex = 0; stringIndex < 6; stringIndex++) {
+                        for (let fret = 0; fret <= (aiRecommendations?.maxFrets || 15); fret++) {
+                            if (getNoteAt(stringIndex, fret) === item.note) {
+                                availableStrings.push(stringIndex);
+                                break;
+                            }
                         }
                     }
+                    question.targetString = availableStrings[Math.floor(Math.random() * availableStrings.length)];
                 }
-                question.targetString = availableStrings[Math.floor(Math.random() * availableStrings.length)];
+                
+                return question;
+            });
+        } else {
+            // Fallback to original random logic for new users
+            let notes: Note[] = [];
+            
+            if (mode === 'combo') {
+                notes = shuffle([...ALL_NOTES].slice(0, numQuestions)) as Note[];
+            } else {
+                notes = shuffle([...ALL_NOTES].slice(0, numQuestions)) as Note[];
             }
             
-            return question;
-        });
+            sequence = notes.map(note => {
+                let promptType: QuizPromptType;
+                
+                if (mode === 'combo') {
+                    const promptTypes: QuizPromptType[] = ['find-all', 'find-any', 'find-on-string'];
+                    promptType = promptTypes[Math.floor(Math.random() * promptTypes.length)];
+                } else {
+                    promptType = mode as QuizPromptType;
+                }
+                
+                const question: QuizQuestion = { note, promptType };
+                
+                // For find-on-string mode, pick a random string that has this note
+                if (promptType === 'find-on-string') {
+                    const availableStrings = [];
+                    for (let stringIndex = 0; stringIndex < 6; stringIndex++) {
+                        for (let fret = 0; fret <= 15; fret++) {
+                            if (getNoteAt(stringIndex, fret) === note) {
+                                availableStrings.push(stringIndex);
+                                break;
+                            }
+                        }
+                    }
+                    question.targetString = availableStrings[Math.floor(Math.random() * availableStrings.length)];
+                }
+                
+                return question;
+            });
+        }
         
         setQuizSequence(sequence);
         setCurrentIndex(0);
@@ -423,18 +464,53 @@ export const NoteFinder: React.FC = () => {
                 <div className="space-y-6">
                     {/* Quiz Mode Selection */}
                     <div className="bg-surface/80 backdrop-blur-sm border border-border/50 p-6 rounded-xl shadow-lg">
-                        <h2 className="text-xl font-bold mb-6 flex items-center">
-                            <span className="text-2xl mr-2">🎯</span>
-                            Choose Your Challenge
-                        </h2>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold flex items-center">
+                                <span className="text-2xl mr-2">🎯</span>
+                                Choose Your Challenge
+                            </h2>
+                            {aiRecommendations && (
+                                <button 
+                                    onClick={() => setShowAIInsights(true)}
+                                    className="text-sm bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 px-3 py-1 rounded-md transition-colors duration-200"
+                                >
+                                    🤖 AI Insights
+                                </button>
+                            )}
+                        </div>
+                        
+                        {/* AI Recommendation Banner */}
+                        {aiRecommendations && aiRecommendations.priorityNotes.length > 0 && (
+                            <div className="bg-blue-600/10 border border-blue-500/30 p-4 rounded-lg mb-6">
+                                <div className="flex items-center mb-2">
+                                    <span className="text-xl mr-2">🧠</span>
+                                    <strong className="text-blue-300">AI Recommendation</strong>
+                                </div>
+                                <p className="text-sm text-text-secondary mb-3">{aiRecommendations.reasoning}</p>
+                                <div className="flex flex-wrap gap-2">
+                                    <span className="text-xs text-text-secondary">Focus on:</span>
+                                    {aiRecommendations.priorityNotes.slice(0, 4).map((note: Note) => (
+                                        <span key={note} className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded-full">
+                                            {note}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                             <button 
                                 onClick={() => startQuiz('find-any', 12)}
-                                className="group bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-6 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl active:scale-[0.98] border border-blue-500/30"
+                                className={`group bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-6 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl active:scale-[0.98] border border-blue-500/30 ${
+                                    aiRecommendations && aiRecommendations.recommendedMode === 'find-any' ? 'ring-2 ring-yellow-400' : ''
+                                }`}
                             >
                                 <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-200">🚀</div>
                                 <div className="text-lg font-bold mb-1">Find Any Mode</div>
                                 <div className="text-sm opacity-90">Click one occurrence (speed mode)</div>
+                                {aiRecommendations && aiRecommendations.recommendedMode === 'find-any' && (
+                                    <div className="text-xs text-yellow-300 mt-1">🤖 AI Recommended</div>
+                                )}
                             </button>
                             <button 
                                 onClick={() => startQuiz('find-all', 12)}
@@ -578,6 +654,7 @@ export const NoteFinder: React.FC = () => {
                         highlightedNotes={getQuizHighlights()}
                         showFretNumbers={true}
                         allFretsClickable={true}
+                        fretCount={aiRecommendations?.maxFrets || 15}
                         targetString={currentQuestion.promptType === 'find-on-string' ? currentQuestion.targetString : undefined}
                     />
                     
@@ -693,6 +770,87 @@ export const NoteFinder: React.FC = () => {
                                 <p>Take a quiz to see your performance!</p>
                             </div>
                         )}
+                    </div>
+                </Modal>
+            )}
+            {showAIInsights && aiRecommendations && (
+                <Modal isOpen={showAIInsights} onClose={() => setShowAIInsights(false)} title="🤖 AI Performance Insights">
+                    <div className="space-y-6">
+                        <div className="text-center">
+                            <div className={`text-4xl mb-2 ${
+                                aiRecommendations.difficultyLevel === 'beginner' ? 'text-green-400' :
+                                aiRecommendations.difficultyLevel === 'intermediate' ? 'text-yellow-400' :
+                                'text-red-400'
+                            }`}>
+                                {aiRecommendations.difficultyLevel === 'beginner' ? '🌱' :
+                                 aiRecommendations.difficultyLevel === 'intermediate' ? '🌿' : '🌳'}
+                            </div>
+                            <h3 className="text-xl font-bold capitalize">{aiRecommendations.difficultyLevel} Level</h3>
+                            <p className="text-text-secondary mt-2">{aiRecommendations.reasoning}</p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Priority Notes */}
+                            <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-lg">
+                                <h4 className="font-bold text-red-300 mb-3 flex items-center">
+                                    <span className="mr-2">🎯</span>
+                                    Needs Practice
+                                </h4>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {aiRecommendations.priorityNotes.slice(0, 6).map((note: Note) => (
+                                        <div key={note} className="bg-red-500/20 text-red-200 text-center py-2 rounded font-bold">
+                                            {note}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            
+                            {/* Maintenance Notes */}
+                            <div className="bg-green-500/10 border border-green-500/30 p-4 rounded-lg">
+                                <h4 className="font-bold text-green-300 mb-3 flex items-center">
+                                    <span className="mr-2">✅</span>
+                                    Keep Sharp
+                                </h4>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {aiRecommendations.maintenanceNotes.slice(0, 6).map((note: Note) => (
+                                        <div key={note} className="bg-green-500/20 text-green-200 text-center py-2 rounded font-bold">
+                                            {note}
+                                        </div>
+                                    ))}
+                                </div>
+                                {aiRecommendations.maintenanceNotes.length === 0 && (
+                                    <p className="text-text-secondary text-sm text-center py-4">
+                                        Keep practicing to build your strengths! 💪
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        
+                        <div className="bg-background/50 p-4 rounded-lg">
+                            <h4 className="font-bold mb-2">Current Settings</h4>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span className="text-text-secondary">Fretboard Range:</span>
+                                    <span className="ml-2 font-bold">0-{aiRecommendations.maxFrets} frets</span>
+                                </div>
+                                <div>
+                                    <span className="text-text-secondary">Recommended Mode:</span>
+                                    <span className="ml-2 font-bold capitalize">{aiRecommendations.recommendedMode.replace('-', ' ')}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="text-center">
+                            <button 
+                                onClick={() => {
+                                    setShowAIInsights(false);
+                                    startQuiz(aiRecommendations.recommendedMode.replace('-', '_') as QuizModeType, 12);
+                                }}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300"
+                            >
+                                🎯 Start AI-Optimized Quiz
+                            </button>
+                        </div>
                     </div>
                 </Modal>
             )}
