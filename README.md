@@ -23,6 +23,5 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 # OpenAI Configuration (Optional - for Intelligent Mode)
 The app includes two modes:
 - **Standard Mode**: Uses algorithmic recommendations based on performance data
-- **Intelligent Mode**: Requires OpenAI API key for natural language coaching, practice journal analysis, and interactive theory explanations
-VITE_OPENAI_API_KEY=your_openai_api_key
-```
+- **Intelligent Mode**: Uses Supabase Edge Functions with OpenAI for natural language coaching, practice journal analysis, and interactive theory explanations
+The OpenAI API key is securely stored in Supabase Edge Functions.
