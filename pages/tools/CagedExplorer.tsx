@@ -49,11 +49,8 @@ export const CagedExplorer: React.FC = () => {
     
     // AI Mode State
     const [isAIMode, setIsAIMode] = useState(false);
-    const [aiCoaching, setAiCoaching] = useState<AICoachingResponse | null>(null);
-    const [isAILoading, setIsAILoading] = useState(false);
     const [showAIPanel, setShowAIPanel] = useState(false);
-    const [aiQuestion, setAiQuestion] = useState('');
-    const [aiAnswer, setAiAnswer] = useState('');
+    const [showAIUpgradeModal, setShowAIUpgradeModal] = useState(false);
 
 
     const hasEnoughDataForAI = state.cagedSessions.length >= 3;
@@ -63,12 +60,6 @@ export const CagedExplorer: React.FC = () => {
         }
     }, [state.user]);
 
-    // Load AI coaching when sessions change and AI mode is on
-    useEffect(() => {
-        if (isAIMode && sessions.length >= 3) {
-            loadAICoaching();
-        }
-    }, [isAIMode, sessions]);
     useEffect(() => {
         return () => {
             if (quizInterval) {
@@ -382,36 +373,10 @@ export const CagedExplorer: React.FC = () => {
         }
     };
 
-    const handleAIQuestion = async () => {
-        if (!aiQuestion.trim()) return;
-        
-        setIsAILoading(true);
-        try {
-            const answer = await aiService.answerMusicTheoryQuestion(aiQuestion, {
-                userLevel: sessions.length < 5 ? 'beginner' : sessions.length < 15 ? 'intermediate' : 'advanced'
-            });
-            setAiAnswer(answer);
-        } catch (error) {
-            console.error('Error getting AI answer:', error);
-            setAiAnswer('Sorry, I had trouble answering that question. Please try again later.');
-        } finally {
-            setIsAILoading(false);
-        }
+    const handleAIFeatureClick = () => {
+        setShowAIUpgradeModal(true);
     };
 
-    const loadAICoaching = async () => {
-        setIsAILoading(true);
-        try {
-            const coaching = await aiService.getCAGEDCoaching(sessions);
-            setAiCoaching(coaching);
-            setShowAIPanel(true);
-        } catch (error) {
-            console.error('Error loading AI coaching:', error);
-        } finally {
-            setIsAILoading(false);
-        }
-    };
-    
     const notesToDisplay = mode === 'explore' ? highlightedNotes : mode === 'quiz-answer' ? quizAnswerNotes : [];
 
     const formatTime = (seconds: number) => {
@@ -474,7 +439,7 @@ export const CagedExplorer: React.FC = () => {
                                     </div>
                                 </div>
                                 <button
-                                    onClick={() => setIsAIMode(true)}
+                                    onClick={handleAIFeatureClick}
                                     className="bg-blue-600/80 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 hover:scale-105"
                                 >
                                     Enable AI Coach
@@ -516,84 +481,32 @@ export const CagedExplorer: React.FC = () => {
                             
                             <div className={`transition-all duration-300 ${showAIPanel ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}>
                                 <div className="p-4 space-y-4">
-                                    {/* AI Coaching Content */}
-                                    {isAILoading && (
-                                        <div className="flex items-center justify-center p-8">
-                                            <div className="flex items-center space-x-3">
-                                                <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-                                                <span className="text-blue-200">AI Coach is analyzing your CAGED performance...</span>
-                                            </div>
-                                        </div>
-                                    )}
-                                    
-                                    {aiCoaching && !isAILoading && (
-                                        <div className="space-y-4">
-                                            {/* Main Coaching Message */}
-                                            <div className="bg-blue-950/50 border border-blue-400/20 p-4 rounded-lg">
-                                                <h4 className="text-blue-200 font-semibold mb-2 flex items-center">
-                                                    <span className="text-lg mr-2">💡</span>
-                                                    AI Insights
-                                                </h4>
-                                                <p className="text-blue-100 leading-relaxed">{aiCoaching.coaching}</p>
-                                            </div>
-                                            
-                                            {/* Recommendations */}
-                                            {aiCoaching.recommendations.length > 0 && (
-                                                <div className="bg-purple-950/50 border border-purple-400/20 p-4 rounded-lg">
-                                                    <h4 className="text-purple-200 font-semibold mb-3 flex items-center">
-                                                        <span className="text-lg mr-2">🎯</span>
-                                                        Practice Recommendations
-                                                    </h4>
-                                                    <ul className="space-y-2">
-                                                        {aiCoaching.recommendations.map((rec, index) => (
-                                                            <li key={index} className="text-purple-100 flex items-start">
-                                                                <span className="text-purple-300 mr-2">•</span>
-                                                                {rec}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            )}
-                                            
-                                            {/* Musical Insights */}
-                                            {aiCoaching.insights.length > 0 && (
-                                                <div className="bg-green-950/50 border border-green-400/20 p-4 rounded-lg">
-                                                    <h4 className="text-green-200 font-semibold mb-3 flex items-center">
-                                                        <span className="text-lg mr-2">🎵</span>
-                                                        Musical Insights
-                                                    </h4>
-                                                    <ul className="space-y-2">
-                                                        {aiCoaching.insights.map((insight, index) => (
-                                                            <li key={index} className="text-green-100 flex items-start">
-                                                                <span className="text-green-300 mr-2">•</span>
-                                                                {insight}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                    
-                                    {/* AI Answer Display */}
-                                    {aiAnswer && (
-                                        <div className="bg-yellow-950/50 border border-yellow-400/20 p-4 rounded-lg">
-                                            <h4 className="text-yellow-200 font-semibold mb-2 flex items-center">
-                                                <span className="text-lg mr-2">🤖</span>
-                                                AI Answer
+                                    {/* AI Marketing Content */}
+                                    <div className="space-y-4">
+                                        <div className="bg-blue-950/50 border border-blue-400/20 p-4 rounded-lg">
+                                            <h4 className="text-blue-200 font-semibold mb-2 flex items-center">
+                                                <span className="text-lg mr-2">💡</span>
+                                                AI Insights (Premium)
                                             </h4>
-                                            <p className="text-yellow-100 leading-relaxed whitespace-pre-wrap">{aiAnswer}</p>
-                                            <button
-                                                onClick={() => {
-                                                    setAiAnswer('');
-                                                    setAiQuestion('');
-                                                }}
-                                                className="mt-3 text-xs text-yellow-300 hover:text-yellow-200 underline"
-                                            >
-                                                Clear answer
-                                            </button>
+                                            <p className="text-blue-100 leading-relaxed">Get personalized insights about your CAGED performance, identify weak shapes, and receive tailored practice recommendations.</p>
                                         </div>
-                                    )}
+                                        
+                                        <div className="bg-purple-950/50 border border-purple-400/20 p-4 rounded-lg">
+                                            <h4 className="text-purple-200 font-semibold mb-3 flex items-center">
+                                                <span className="text-lg mr-2">🎯</span>
+                                                Smart Practice Plans (Premium)
+                                            </h4>
+                                            <p className="text-purple-100">AI-generated practice routines based on your performance data and learning goals.</p>
+                                        </div>
+                                        
+                                        <div className="bg-green-950/50 border border-green-400/20 p-4 rounded-lg">
+                                            <h4 className="text-green-200 font-semibold mb-3 flex items-center">
+                                                <span className="text-lg mr-2">🎵</span>
+                                                Music Theory Q&A (Premium)
+                                            </h4>
+                                            <p className="text-green-100">Ask questions about CAGED theory and get instant, personalized explanations.</p>
+                                        </div>
+                                    </div>
                                     
                                     {/* Music Theory Q&A */}
                                     <div className="bg-indigo-950/50 border border-indigo-400/20 p-4 rounded-lg">
@@ -604,17 +517,14 @@ export const CagedExplorer: React.FC = () => {
                                         <div className="flex space-x-2">
                                             <input
                                                 type="text"
-                                                value={aiQuestion}
-                                                onChange={(e) => setAiQuestion(e.target.value)}
+                                                value=""
                                                 placeholder="e.g., 'Why is the G shape harder than E shape?'"
                                                 className="flex-1 bg-indigo-900/30 border border-indigo-400/30 rounded-lg px-3 py-2 text-indigo-100 placeholder-indigo-300/50 focus:border-indigo-400 focus:outline-none"
-                                                onKeyPress={(e) => e.key === 'Enter' && handleAIQuestion()}
-                                                disabled={isAILoading}
+                                                disabled={true}
                                             />
                                             <button
-                                                onClick={handleAIQuestion}
-                                                disabled={isAILoading || !aiQuestion.trim()}
-                                                className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 hover:scale-105 disabled:cursor-not-allowed disabled:scale-100"
+                                                onClick={handleAIFeatureClick}
+                                                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 hover:scale-105"
                                             >
                                                 Ask
                                             </button>
@@ -624,9 +534,8 @@ export const CagedExplorer: React.FC = () => {
                                     {/* Quick Actions */}
                                     <div className="flex space-x-2 pt-2">
                                         <button
-                                            onClick={() => loadAICoaching()}
-                                            disabled={isAILoading}
-                                            className="flex-1 bg-blue-600/80 hover:bg-blue-600 disabled:bg-blue-800 text-white font-bold py-2 px-3 rounded-lg text-sm transition-all duration-200 hover:scale-105 disabled:cursor-not-allowed disabled:scale-100"
+                                            onClick={handleAIFeatureClick}
+                                            className="flex-1 bg-blue-600/80 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-sm transition-all duration-200 hover:scale-105"
                                         >
                                             🔄 Refresh Insights
                                         </button>
@@ -961,6 +870,77 @@ export const CagedExplorer: React.FC = () => {
                                 className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md disabled:opacity-50"
                             >
                                 {isSaving ? 'Saving...' : 'Save Session'}
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+            
+            {/* AI Upgrade Modal */}
+            {showAIUpgradeModal && (
+                <Modal 
+                    isOpen={showAIUpgradeModal} 
+                    onClose={() => setShowAIUpgradeModal(false)} 
+                    title="🚀 Upgrade to Premium"
+                >
+                    <div className="text-center space-y-6">
+                        <div className="text-6xl mb-4">🤖</div>
+                        <div>
+                            <h2 className="text-2xl font-bold text-text-primary mb-2">AI-Powered Practice Coming Soon!</h2>
+                            <p className="text-text-secondary text-lg">Unlock personalized coaching and intelligent practice recommendations</p>
+                        </div>
+                        
+                        <div className="bg-gradient-to-br from-blue-900/30 to-purple-900/30 border border-primary/30 p-6 rounded-xl">
+                            <h3 className="text-lg font-bold text-primary mb-4">Premium Features Include:</h3>
+                            <div className="space-y-3 text-left">
+                                <div className="flex items-start space-x-3">
+                                    <span className="text-blue-400 text-xl">🧠</span>
+                                    <div>
+                                        <p className="font-semibold text-text-primary">Smart Performance Analysis</p>
+                                        <p className="text-sm text-text-secondary">AI analyzes your CAGED sessions to identify strengths and weaknesses</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start space-x-3">
+                                    <span className="text-purple-400 text-xl">🎯</span>
+                                    <div>
+                                        <p className="font-semibold text-text-primary">Personalized Practice Plans</p>
+                                        <p className="text-sm text-text-secondary">Custom exercises generated based on your specific needs</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start space-x-3">
+                                    <span className="text-green-400 text-xl">❓</span>
+                                    <div>
+                                        <p className="font-semibold text-text-primary">Music Theory Q&A</p>
+                                        <p className="text-sm text-text-secondary">Ask questions and get instant, context-aware explanations</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start space-x-3">
+                                    <span className="text-yellow-400 text-xl">📈</span>
+                                    <div>
+                                        <p className="font-semibold text-text-primary">Progress Tracking</p>
+                                        <p className="text-sm text-text-secondary">Advanced analytics and learning insights</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="bg-surface/50 border border-border/50 p-4 rounded-lg">
+                            <p className="text-primary font-semibold">🎉 Early Access Preview</p>
+                            <p className="text-text-secondary text-sm mt-1">Be the first to experience AI-powered guitar practice when we launch!</p>
+                        </div>
+                        
+                        <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                            <button 
+                                onClick={() => setShowAIUpgradeModal(false)}
+                                className="flex-1 bg-surface hover:bg-border text-text-primary font-bold py-3 px-6 rounded-lg transition-all duration-200"
+                            >
+                                Maybe Later
+                            </button>
+                            <button 
+                                onClick={() => setShowAIUpgradeModal(false)}
+                                className="flex-1 bg-gradient-to-r from-primary to-blue-600 hover:from-primary-hover hover:to-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 hover:scale-105"
+                            >
+                                Get Early Access
                             </button>
                         </div>
                     </div>
