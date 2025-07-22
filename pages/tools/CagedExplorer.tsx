@@ -427,6 +427,174 @@ export const CagedExplorer: React.FC = () => {
                 </div>
             )}
             
+            {/* AI Assistant Panel - Only show if user has enough data */}
+            {hasEnoughDataForAI && (
+                <div className="mt-6">
+                    {!isAIMode && (
+                        <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-500/30 p-4 rounded-xl">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                    <div className="text-2xl">🤖</div>
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-blue-300">AI Coach Available</h3>
+                                        <p className="text-sm text-blue-200/80">Get personalized CAGED insights and coaching</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setIsAIMode(true)}
+                                    className="bg-blue-600/80 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 hover:scale-105"
+                                >
+                                    Enable AI Coach
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {isAIMode && (
+                        <div className="bg-gradient-to-br from-blue-900/40 to-purple-900/40 backdrop-blur-sm border border-blue-400/30 rounded-xl overflow-hidden">
+                            <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 p-4 border-b border-blue-400/20">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-2">
+                                        <span className="text-xl">🤖</span>
+                                        <h3 className="text-lg font-bold text-blue-100">AI CAGED Coach</h3>
+                                        <div className="flex items-center space-x-1">
+                                            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                                            <span className="text-xs text-green-300 font-medium">ACTIVE</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <button
+                                            onClick={() => setShowAIPanel(!showAIPanel)}
+                                            className="text-blue-200 hover:text-blue-100 transition-colors duration-200"
+                                        >
+                                            <span className={`transform transition-transform duration-200 ${showAIPanel ? 'rotate-180' : ''}`}>
+                                                ▼
+                                            </span>
+                                        </button>
+                                        <button
+                                            onClick={() => setIsAIMode(false)}
+                                            className="text-blue-200 hover:text-red-300 transition-colors duration-200"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className={`transition-all duration-300 ${showAIPanel ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}>
+                                <div className="p-4 space-y-4">
+                                    {/* AI Coaching Content */}
+                                    {isAILoading && (
+                                        <div className="flex items-center justify-center p-8">
+                                            <div className="flex items-center space-x-3">
+                                                <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                                                <span className="text-blue-200">AI Coach is analyzing your CAGED performance...</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {aiCoaching && !isAILoading && (
+                                        <div className="space-y-4">
+                                            {/* Main Coaching Message */}
+                                            <div className="bg-blue-950/50 border border-blue-400/20 p-4 rounded-lg">
+                                                <h4 className="text-blue-200 font-semibold mb-2 flex items-center">
+                                                    <span className="text-lg mr-2">💡</span>
+                                                    AI Insights
+                                                </h4>
+                                                <p className="text-blue-100 leading-relaxed">{aiCoaching.coaching}</p>
+                                            </div>
+                                            
+                                            {/* Recommendations */}
+                                            {aiCoaching.recommendations.length > 0 && (
+                                                <div className="bg-purple-950/50 border border-purple-400/20 p-4 rounded-lg">
+                                                    <h4 className="text-purple-200 font-semibold mb-3 flex items-center">
+                                                        <span className="text-lg mr-2">🎯</span>
+                                                        Practice Recommendations
+                                                    </h4>
+                                                    <ul className="space-y-2">
+                                                        {aiCoaching.recommendations.map((rec, index) => (
+                                                            <li key={index} className="text-purple-100 flex items-start">
+                                                                <span className="text-purple-300 mr-2">•</span>
+                                                                {rec}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            
+                                            {/* Musical Insights */}
+                                            {aiCoaching.insights.length > 0 && (
+                                                <div className="bg-green-950/50 border border-green-400/20 p-4 rounded-lg">
+                                                    <h4 className="text-green-200 font-semibold mb-3 flex items-center">
+                                                        <span className="text-lg mr-2">🎵</span>
+                                                        Musical Insights
+                                                    </h4>
+                                                    <ul className="space-y-2">
+                                                        {aiCoaching.insights.map((insight, index) => (
+                                                            <li key={index} className="text-green-100 flex items-start">
+                                                                <span className="text-green-300 mr-2">•</span>
+                                                                {insight}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    
+                                    {/* Music Theory Q&A */}
+                                    <div className="bg-indigo-950/50 border border-indigo-400/20 p-4 rounded-lg">
+                                        <h4 className="text-indigo-200 font-semibold mb-3 flex items-center">
+                                            <span className="text-lg mr-2">❓</span>
+                                            Ask About CAGED Theory
+                                        </h4>
+                                        <div className="flex space-x-2">
+                                            <input
+                                                type="text"
+                                                value={aiQuestion}
+                                                onChange={(e) => setAiQuestion(e.target.value)}
+                                                placeholder="e.g., 'Why is the G shape harder than E shape?'"
+                                                className="flex-1 bg-indigo-900/30 border border-indigo-400/30 rounded-lg px-3 py-2 text-indigo-100 placeholder-indigo-300/50 focus:border-indigo-400 focus:outline-none"
+                                                onKeyPress={(e) => e.key === 'Enter' && handleAIQuestion()}
+                                                disabled={isAILoading}
+                                            />
+                                            <button
+                                                onClick={handleAIQuestion}
+                                                disabled={isAILoading || !aiQuestion.trim()}
+                                                className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 hover:scale-105 disabled:cursor-not-allowed disabled:scale-100"
+                                            >
+                                                Ask
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Quick Actions */}
+                                    <div className="flex space-x-2 pt-2">
+                                        <button
+                                            onClick={() => loadAICoaching()}
+                                            disabled={isAILoading}
+                                            className="flex-1 bg-blue-600/80 hover:bg-blue-600 disabled:bg-blue-800 text-white font-bold py-2 px-3 rounded-lg text-sm transition-all duration-200 hover:scale-105 disabled:cursor-not-allowed disabled:scale-100"
+                                        >
+                                            🔄 Refresh Insights
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+            
+            {!hasEnoughDataForAI && (
+                <div className="mt-6 bg-gray-800/50 border border-gray-600/30 p-4 rounded-xl text-center">
+                    <div className="text-3xl mb-2">🎯</div>
+                    <h3 className="text-lg font-semibold text-gray-300 mb-1">AI Coach Coming Soon</h3>
+                    <p className="text-sm text-gray-400">
+                        Complete {3 - sessions.length} more CAGED session{3 - sessions.length !== 1 ? 's' : ''} to unlock personalized AI coaching
+                    </p>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
                 {/* Main Fretboard */}
                 <div className="xl:col-span-3 order-2 xl:order-1">
