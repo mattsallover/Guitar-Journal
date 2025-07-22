@@ -596,8 +596,8 @@ export const NoteFinder: React.FC = () => {
                                         <ul className="space-y-1">
                                             {aiCoaching.insights.map((insight, i) => (
                                                 <li key={i} className="text-sm text-text-secondary flex items-start">
-                                                    <span className="text-blue-400 mr-2">•</span>
-                                                    {insight}
+                                                    <span className="mr-2">•</span>
+                                                    <span>{insight}</span>
                                                 </li>
                                             ))}
                                         </ul>

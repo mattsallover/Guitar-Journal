@@ -54,6 +54,8 @@ export const CagedExplorer: React.FC = () => {
     const [showAIPanel, setShowAIPanel] = useState(false);
     const [aiQuestion, setAiQuestion] = useState('');
 
+
+    const hasEnoughDataForAI = state.cagedSessions.length >= 3;
     useEffect(() => {
         if (state.user) {
             fetchSessions();
