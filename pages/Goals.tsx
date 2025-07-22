@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
@@ -9,7 +8,7 @@ import { supabase } from '../services/supabase';
 
 
 export const Goals: React.FC = () => {
-    const { state } = useAppContext();
+    const { state, refreshData } = useAppContext();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -92,6 +91,7 @@ export const Goals: React.FC = () => {
                     .eq('id', id);
                 
                 if (error) throw error;
+                await refreshData();
             } catch (error) {
                 console.error("Error deleting goal:", error);
                 alert("Failed to delete goal. Please try again.");
