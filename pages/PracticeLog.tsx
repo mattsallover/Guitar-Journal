@@ -58,6 +58,17 @@ export const PracticeLog: React.FC = () => {
     const [uploadProgress, setUploadProgress] = useState<any[]>([]);
     const [showMasteryModal, setShowMasteryModal] = useState(false);
     const [showGoalModal, setShowGoalModal] = useState(false);
+    
+    // Post-save workflow state
+    const [showPostSave, setShowPostSave] = useState(false);
+    const [savedSession, setSavedSession] = useState<Partial<PracticeSession> | null>(null);
+    const [postSaveActions, setPostSaveActions] = useState<Array<{
+        id: string;
+        label: string;
+        icon: string;
+        action: () => void;
+        primary?: boolean;
+    }>>([]);
 
     // Pre-fill from navigation state
     useEffect(() => {
@@ -304,38 +315,139 @@ export const PracticeLog: React.FC = () => {
 
             await refreshData();
 
-            // Check for mastery and goal updates
+            // Prepare post-save actions
+            setSavedSession(currentSession);
+            const actions = [];
+            
+            // Check for mastery updates
             const practicedSongs = currentSession.songs || [];
             if (practicedSongs.length > 0) {
                 const relatedItems = state.repertoire.filter(item => 
                     practicedSongs.some(song => song.toLowerCase().includes(item.title.toLowerCase()))
                 );
-                if (relatedItems.length > 0) {
-                    setMasteryUpdateItems(relatedItems);
-                    setShowMasteryModal(true);
-                }
+                
+                relatedItems.forEach(item => {
+                    actions.push({
+                        id: `mastery-${item.id}`,
+                        label: `Update "${item.title}" Mastery`,
+                        icon: '🎵',
+                        action: () => {
+                            setMasteryUpdateItems([item]);
+                            setShowMasteryModal(true);
+                            setShowPostSave(false);
+                        }
+                    });
+                });
             }
 
             // Check for goal updates
             const allPracticedItems = [...(currentSession.techniques || []), ...(currentSession.songs || [])];
             if (allPracticedItems.length > 0) {
-                const relatedGoal = state.goals.find(goal => 
+                const relatedGoals = state.goals.filter(goal => 
                     goal.status === 'Active' && 
-                    allPracticedItems.some(item => item.toLowerCase().includes(goal.title.toLowerCase()))
+                    allPracticedItems.some(item => 
+                        item.toLowerCase().includes(goal.title.toLowerCase()) ||
+                        goal.title.toLowerCase().includes(item.toLowerCase())
+                    )
                 );
-                if (relatedGoal) {
-                    setGoalUpdateItem(relatedGoal);
-                    setShowGoalModal(true);
-                }
+                
+                relatedGoals.forEach(goal => {
+                    actions.push({
+                        id: `goal-${goal.id}`,
+                        label: `Update "${goal.title}" Progress`,
+                        icon: '🎯',
+                        action: () => {
+                            setGoalUpdateItem(goal);
+                            setShowGoalModal(true);
+                            setShowPostSave(false);
+                        }
+                    });
+                });
             }
 
-            closeSessionModal();
+            // Always add "View Session Details" action
+            actions.push({
+                id: 'view-details',
+                label: 'View Session in Log',
+                icon: '📋',
+                action: () => {
+                    setShowPostSave(false);
+                    closeSessionModal();
+                    // Navigate to log and potentially highlight the new session
+                    navigate('/log');
+                }
+            });
+
+            // Add "Start Another Session" if this was from a live session
+            if (location.state?.topic || navState?.topic) {
+                actions.push({
+                    id: 'start-another',
+                    label: 'Start Another Session',
+                    icon: '🎸',
+                    primary: true,
+                    action: () => {
+                        setShowPostSave(false);
+                        closeSessionModal();
+                        navigate('/session/live', { state: { topic: currentSession.songs?.[0] || currentSession.techniques?.[0] || 'Practice Session' } });
+                    }
+                });
+            }
+
+            setPostSaveActions(actions);
+            
+            // Show post-save confirmation instead of closing immediately
+            if (actions.length > 2) { // More than just "View Session Details"
+                setShowPostSave(true);
+            } else {
+                // If no contextual actions, close normally
+                closeSessionModal();
+            }
+
         } catch (error) {
             console.error('Error saving session:', error);
             alert('Failed to save session. Please try again.');
         } finally {
             setIsSaving(false);
             setUploadProgress([]);
+        }
+    };
+
+    const closePostSave = () => {
+        setShowPostSave(false);
+        setSavedSession(null);
+        setPostSaveActions([]);
+        closeSessionModal();
+    };
+
+    const handleQuickMasteryUpdate = () => {
+        const practicedSongs = savedSession?.songs || [];
+        if (practicedSongs.length > 0) {
+            const relatedItems = state.repertoire.filter(item => 
+                practicedSongs.some(song => song.toLowerCase().includes(item.title.toLowerCase()))
+            );
+            if (relatedItems.length > 0) {
+                setMasteryUpdateItems(relatedItems);
+                setShowMasteryModal(true);
+                setShowPostSave(false);
+            }
+        }
+    };
+
+    const handleQuickGoalUpdate = () => {
+        const allPracticedItems = [...(savedSession?.techniques || []), ...(savedSession?.songs || [])];
+        if (allPracticedItems.length > 0) {
+            const relatedGoal = state.goals.find(goal => 
+                goal.status === 'Active' && 
+                allPracticedItems.some(item => 
+                    item.toLowerCase().includes(goal.title.toLowerCase()) ||
+                    goal.title.toLowerCase().includes(item.toLowerCase())
+                )
+            );
+            if (relatedGoal) {
+                setGoalUpdateItem(relatedGoal);
+                setShowGoalModal(true);
+                setShowPostSave(false);
+            }
         }
     };
 
@@ -819,131 +931,174 @@ export const PracticeLog: React.FC = () => {
                     onClose={closeSessionModal} 
                     title={currentSession.id ? "Edit Practice Session" : "Log Practice Session"}
                 >
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {!showPostSave ? (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-text-secondary">Date</label>
+                                    <input 
+                                        type="date" 
+                                        value={currentSession.date} 
+                                        onChange={e => setCurrentSession({ ...currentSession, date: e.target.value })} 
+                                        className="w-full bg-background p-2 rounded-md border border-border"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-text-secondary">Duration (minutes)</label>
+                                    <input 
+                                        type="number" 
+                                        value={currentSession.duration} 
+                                        onChange={e => setCurrentSession({ ...currentSession, duration: parseInt(e.target.value) || 0 })} 
+                                        className="w-full bg-background p-2 rounded-md border border-border"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-text-secondary">Mood</label>
+                                    <select 
+                                        value={currentSession.mood} 
+                                        onChange={e => setCurrentSession({ ...currentSession, mood: e.target.value as Mood })} 
+                                        className="w-full bg-background p-2 rounded-md border border-border"
+                                    >
+                                        {MOOD_OPTIONS.map(mood => (
+                                            <option key={mood} value={mood}>
+                                                {moodIcons[mood as Mood]} {mood}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-text-secondary">Techniques</label>
+                                    <TagInput
+                                        values={currentSession.techniques || []}
+                                        onChange={(values) => setCurrentSession({ ...currentSession, techniques: values })}
+                                        suggestions={allTechniques}
+                                        placeholder="Add techniques..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-text-secondary">Songs</label>
+                                    <TagInput
+                                        values={currentSession.songs || []}
+                                        onChange={(values) => setCurrentSession({ ...currentSession, songs: values })}
+                                        suggestions={allSongs}
+                                        placeholder="Add songs..."
+                                    />
+                                </div>
+                            </div>
+
                             <div>
-                                <label className="block text-sm font-medium text-text-secondary">Date</label>
-                                <input 
-                                    type="date" 
-                                    value={currentSession.date} 
-                                    onChange={e => setCurrentSession({ ...currentSession, date: e.target.value })} 
-                                    className="w-full bg-background p-2 rounded-md border border-border"
+                                <label className="block text-sm font-medium text-text-secondary">Notes</label>
+                                <textarea 
+                                    value={currentSession.notes} 
+                                    onChange={e => setCurrentSession({ ...currentSession, notes: e.target.value })} 
+                                    className="w-full bg-background p-2 rounded-md border border-border h-20"
+                                    placeholder="What did you work on? How did it go?"
                                 />
                             </div>
+
                             <div>
-                                <label className="block text-sm font-medium text-text-secondary">Duration (minutes)</label>
-                                <input 
-                                    type="number" 
-                                    value={currentSession.duration} 
-                                    onChange={e => setCurrentSession({ ...currentSession, duration: parseInt(e.target.value) || 0 })} 
-                                    className="w-full bg-background p-2 rounded-md border border-border"
+                                <label className="block text-sm font-medium text-text-secondary">Tags</label>
+                                <TagInput
+                                    values={currentSession.tags || []}
+                                    onChange={(values) => setCurrentSession({ ...currentSession, tags: values })}
+                                    suggestions={allTags}
+                                    placeholder="Add tags..."
                                 />
                             </div>
+
                             <div>
-                                <label className="block text-sm font-medium text-text-secondary">Mood</label>
-                                <select 
-                                    value={currentSession.mood} 
-                                    onChange={e => setCurrentSession({ ...currentSession, mood: e.target.value as Mood })} 
+                                <label className="block text-sm font-medium text-text-secondary">Instructor Link (optional)</label>
+                                <input 
+                                    type="url"
+                                    value={currentSession.link || ''} 
+                                    onChange={e => setCurrentSession({ ...currentSession, link: e.target.value })} 
                                     className="w-full bg-background p-2 rounded-md border border-border"
+                                    placeholder="https://docs.google.com/..."
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-text-secondary">Recordings (optional)</label>
+                                <input 
+                                    type="file" 
+                                    accept="audio/*,video/*" 
+                                    multiple
+                                    onChange={e => setSelectedFiles(Array.from(e.target.files || []))}
+                                    className="w-full bg-background p-2 rounded-md border border-border"
+                                />
+                                {selectedFiles.length > 0 && (
+                                    <div className="mt-2 space-y-1">
+                                        {selectedFiles.map((file, idx) => (
+                                            <p key={idx} className="text-xs text-text-secondary">
+                                                {file.name} ({formatFileSize(file.size)})
+                                            </p>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex justify-end space-x-4 pt-4">
+                                <button 
+                                    onClick={closeSessionModal} 
+                                    disabled={isSaving}
+                                    className="bg-surface hover:bg-border text-text-primary font-bold py-2 px-4 rounded-md disabled:opacity-50"
                                 >
-                                    {MOOD_OPTIONS.map(mood => (
-                                        <option key={mood} value={mood}>
-                                            {moodIcons[mood as Mood]} {mood}
-                                        </option>
-                                    ))}
-                                </select>
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={handleSave} 
+                                    disabled={isSaving}
+                                    className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md disabled:opacity-50"
+                                >
+                                    {isSaving ? 'Saving...' : 'Save Session'}
+                                </button>
                             </div>
                         </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    ) : (
+                        <div className="text-center space-y-6">
+                            <div className="text-green-400 text-6xl mb-4">✅</div>
                             <div>
-                                <label className="block text-sm font-medium text-text-secondary">Techniques</label>
-                                <TagInput
-                                    values={currentSession.techniques || []}
-                                    onChange={(values) => setCurrentSession({ ...currentSession, techniques: values })}
-                                    suggestions={allTechniques}
-                                    placeholder="Add techniques..."
-                                />
+                                <h3 className="text-2xl font-bold text-text-primary mb-2">Session Saved!</h3>
+                                <p className="text-text-secondary">
+                                    Your {savedSession?.duration || 0} minute practice session has been logged successfully.
+                                </p>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-text-secondary">Songs</label>
-                                <TagInput
-                                    values={currentSession.songs || []}
-                                    onChange={(values) => setCurrentSession({ ...currentSession, songs: values })}
-                                    suggestions={allSongs}
-                                    placeholder="Add songs..."
-                                />
-                            </div>
-                        </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-text-secondary">Notes</label>
-                            <textarea 
-                                value={currentSession.notes} 
-                                onChange={e => setCurrentSession({ ...currentSession, notes: e.target.value })} 
-                                className="w-full bg-background p-2 rounded-md border border-border h-20"
-                                placeholder="What did you work on? How did it go?"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-text-secondary">Tags</label>
-                            <TagInput
-                                values={currentSession.tags || []}
-                                onChange={(values) => setCurrentSession({ ...currentSession, tags: values })}
-                                suggestions={allTags}
-                                placeholder="Add tags..."
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-text-secondary">Instructor Link (optional)</label>
-                            <input 
-                                type="url"
-                                value={currentSession.link || ''} 
-                                onChange={e => setCurrentSession({ ...currentSession, link: e.target.value })} 
-                                className="w-full bg-background p-2 rounded-md border border-border"
-                                placeholder="https://docs.google.com/..."
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-text-secondary">Recordings (optional)</label>
-                            <input 
-                                type="file" 
-                                accept="audio/*,video/*" 
-                                multiple
-                                onChange={e => setSelectedFiles(Array.from(e.target.files || []))}
-                                className="w-full bg-background p-2 rounded-md border border-border"
-                            />
-                            {selectedFiles.length > 0 && (
-                                <div className="mt-2 space-y-1">
-                                    {selectedFiles.map((file, idx) => (
-                                        <p key={idx} className="text-xs text-text-secondary">
-                                            {file.name} ({formatFileSize(file.size)})
-                                        </p>
-                                    ))}
+                            {postSaveActions.length > 0 && (
+                                <div className="space-y-3">
+                                    <h4 className="text-lg font-semibold text-text-primary">What would you like to do next?</h4>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {postSaveActions.map(action => (
+                                            <button
+                                                key={action.id}
+                                                onClick={action.action}
+                                                className={`flex items-center justify-center space-x-2 py-3 px-4 rounded-md font-semibold transition-all duration-200 hover:scale-[1.02] ${
+                                                    action.primary 
+                                                        ? 'bg-primary hover:bg-primary-hover text-white' 
+                                                        : 'bg-surface hover:bg-border text-text-primary'
+                                                }`}
+                                            >
+                                                <span className="text-xl">{action.icon}</span>
+                                                <span>{action.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
-                        </div>
 
-                        <div className="flex justify-end space-x-4 pt-4">
-                            <button 
-                                onClick={closeSessionModal} 
-                                disabled={isSaving}
-                                className="bg-surface hover:bg-border text-text-primary font-bold py-2 px-4 rounded-md disabled:opacity-50"
-                            >
-                                Cancel
-                            </button>
-                            <button 
-                                onClick={handleSave} 
-                                disabled={isSaving}
-                                className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md disabled:opacity-50"
-                            >
-                                {isSaving ? 'Saving...' : 'Save Session'}
-                            </button>
+                            <div className="pt-4 border-t border-border">
+                                <button 
+                                    onClick={closePostSave}
+                                    className="bg-surface hover:bg-border text-text-primary font-bold py-2 px-6 rounded-md"
+                                >
+                                    Close
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </Modal>
             )}
 
