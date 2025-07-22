@@ -136,6 +136,15 @@ export const Dashboard: React.FC = () => {
                         <p className="text-sm text-text-secondary mt-1">Record what you practiced</p>
                     </button>
                     <button 
+                        onClick={() => navigate('/session/live', { state: { topic: 'General Practice' } })} 
+                        className="bg-surface hover:bg-border p-6 rounded-lg text-center transition-all duration-300 hover:scale-105 hover:shadow-md group"
+                        title="Start a live practice session with timer and recording"
+                    >
+                        <span className="text-3xl mb-3 block group-hover:scale-110 transition-transform duration-200">🎸</span>
+                        <p className="font-semibold text-lg">Start Live Session</p>
+                        <p className="text-sm text-text-secondary mt-1">Practice with timer & recording</p>
+                    </button>
+                    <button 
                         onClick={() => navigate('/repertoire')} 
                         className="bg-surface hover:bg-border p-6 rounded-lg text-center transition-all duration-300 hover:scale-105 hover:shadow-md group"
                         title="Add songs you're learning or update your progress"

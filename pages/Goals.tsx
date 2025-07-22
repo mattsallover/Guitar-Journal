@@ -181,7 +181,7 @@ export const Goals: React.FC = () => {
                                {goal.status === GoalStatus.Active && (
                                    <button 
                                       onClick={() => handleStartPractice(goal.title)} 
-                                      className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-3 rounded-md text-sm whitespace-nowrap transition-all duration-200 hover:scale-105"
+                                     className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md text-sm whitespace-nowrap transition-all duration-200 hover:scale-105"
                                       title="Start practicing this goal"
                                    >
                                       🚀 Practice

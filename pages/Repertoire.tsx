@@ -201,6 +201,10 @@ export const Repertoire: React.FC = () => {
         });
     };
 
+    const handleStartPractice = (title: string) => {
+        navigate('/session/live', { state: { topic: title } });
+    };
+
     const sortedRepertoire = [...state.repertoire]
         .filter(item => 
             item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -280,6 +284,13 @@ export const Repertoire: React.FC = () => {
                                </div>
                             </Link>
                             <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                               <button 
+                                  onClick={() => handleStartPractice(item.title)} 
+                                  className="bg-green-600/20 hover:bg-green-600/40 text-green-300 font-bold py-2 px-3 rounded-md text-sm whitespace-nowrap transition-all duration-200 hover:scale-105"
+                                  title="Start practicing this song now"
+                               >
+                                  🎸 Practice
+                               </button>
                                <Link 
                                   to={`/progression?focus=${encodeURIComponent(item.title)}`} 
                                   className="text-sm text-secondary hover:underline transition-colors duration-200"
