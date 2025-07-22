@@ -7,7 +7,6 @@ import { LogIcon } from './icons/LogIcon';
 import { RepertoireIcon } from './icons/RepertoireIcon';
 import { GoalsIcon } from './icons/GoalsIcon';
 import { ToolsIcon } from './icons/ToolsIcon';
-import { ProgressionIcon } from './icons/ProgressionIcon';
 
 export const Sidebar: React.FC = () => {
     const { state } = useAppContext();

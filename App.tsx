@@ -4,7 +4,6 @@ import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AppProvider, useAppContext } from './context/AppContext';
 import { Sidebar } from './components/Sidebar';
 import { AuthPage } from './pages/Auth';
-import { Dashboard } from './pages/Dashboard';
 import { PracticeLog } from './pages/PracticeLog';
 import { Repertoire } from './pages/Repertoire';
 import { RepertoireDetail } from './pages/RepertoireDetail';
@@ -13,7 +12,6 @@ import { Progression } from './pages/Progression';
 import { CagedExplorer } from './pages/tools/CagedExplorer';
 import { NoteFinder } from './pages/tools/NoteFinder';
 import { ScalePractice } from './pages/tools/ScalePractice';
-import { Coach } from './pages/Coach';
 import { LiveSession } from './pages/LiveSession';
 import { FloatingCoach } from './components/FloatingCoach';
 
@@ -39,7 +37,6 @@ const AppContent: React.FC = () => {
                     <Route path="/tools/caged" element={<CagedExplorer />} />
                     <Route path="/tools/note-finder" element={<NoteFinder />} />
                     <Route path="/tools/scale-practice" element={<ScalePractice />} />
-                    <Route path="/coach" element={<Coach />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </main>
