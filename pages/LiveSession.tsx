@@ -1,9 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAppContext } from '../context/AppContext';
 import { Metronome } from '../components/Metronome';
 import { UploadProgress } from '../components/UploadProgress';
-import { Recording } from '../types';
+import { Recording, Mood } from '../types';
+import { TagInput } from '../components/TagInput';
+import { MOOD_OPTIONS } from '../constants';
 import { compressVideo, generateVideoThumbnail } from '../utils/mediaUtils';
 import { supabase } from '../services/supabase';
 
@@ -16,11 +19,20 @@ const formatTime = (seconds: number) => {
 export const LiveSession: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    const { state, refreshData } = useAppContext();
     
     const [topic, setTopic] = useState<string | null>(null);
     const [time, setTime] = useState(0);
     const [notes, setNotes] = useState('');
     const [isPaused, setIsPaused] = useState(false);
+    
+    // Practice session details
+    const [mood, setMood] = useState<Mood>(Mood.Good);
+    const [techniques, setTechniques] = useState<string[]>([]);
+    const [songs, setSongs] = useState<string[]>([]);
+    const [tags, setTags] = useState<string[]>([]);
+    const [link, setLink] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
     
     // Video recording state
     const [isRecording, setIsRecording] = useState(false);
@@ -312,6 +324,9 @@ export const LiveSession: React.FC = () => {
     };
 
     const handleFinishSession = async () => {
+        if (!state.user) return;
+        
+        setIsSaving(true);
         let recordings: Recording[] = [];
         
         // Upload recording if exists
@@ -321,6 +336,7 @@ export const LiveSession: React.FC = () => {
                 setSessionRecordings(recordings);
             } catch (error) {
                 if (!window.confirm('Failed to upload recording. Continue without saving the recording?')) {
+                    setIsSaving(false);
                     setUploadingFiles(false);
                     return;
                 }
@@ -329,14 +345,49 @@ export const LiveSession: React.FC = () => {
         
         setUploadingFiles(false);
         
-        navigate('/log', { 
-            state: { 
-                topic: topic, 
-                duration: Math.max(1, Math.round(time / 60)), // ensure duration is at least 1 minute
+        // Save practice session directly to database
+        try {
+            const sessionData = {
+                user_id: state.user.uid,
+                date: new Date().toISOString().split('T')[0],
+                duration: Math.max(1, Math.round(time / 60)),
+                mood: mood,
+                techniques: techniques,
+                songs: topic ? [topic, ...songs.filter(s => s !== topic)] : songs,
                 notes: notes,
-                recordings: recordings
-            } 
-        });
+                tags: tags,
+                recordings: recordings,
+                link: link
+            };
+            
+            const { error } = await supabase
+                .from('practice_sessions')
+                .insert([sessionData]);
+            
+            if (error) throw error;
+            
+            // Update repertoire last_practiced if this was a song
+            if (topic) {
+                const matchingSong = state.repertoire.find(item => 
+                    item.title.toLowerCase() === topic.toLowerCase()
+                );
+                
+                if (matchingSong) {
+                    await supabase
+                        .from('repertoire')
+                        .update({ last_practiced: new Date().toISOString() })
+                        .eq('id', matchingSong.id);
+                }
+            }
+            
+            await refreshData();
+            navigate('/');
+        } catch (error) {
+            console.error('Error saving practice session:', error);
+            alert('Failed to save practice session. Please try again.');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     if (!topic) {
@@ -365,9 +416,9 @@ export const LiveSession: React.FC = () => {
                         <button 
                             onClick={handleFinishSession}
                             className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-10 rounded-md w-36 sm:w-40"
-                            disabled={uploadingFiles}
+                            disabled={uploadingFiles || isSaving}
                         >
-                            {uploadingFiles ? 'Saving...' : 'Finish'}
+                            {uploadingFiles ? 'Uploading...' : isSaving ? 'Saving...' : 'Finish'}
                         </button>
                     </div>
                 </div>
@@ -465,6 +516,76 @@ export const LiveSession: React.FC = () => {
                 
                 <Metronome />
 
+                {/* Practice Session Details */}
+                <div className="mt-8 border-t border-border pt-6">
+                    <h3 className="text-lg font-semibold text-text-primary mb-4 text-center">📝 Session Details</h3>
+                    
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-text-secondary mb-2">Mood</label>
+                                <select 
+                                    value={mood} 
+                                    onChange={e => setMood(e.target.value as Mood)}
+                                    className="w-full bg-background p-2 rounded-md border border-border"
+                                >
+                                    {MOOD_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-medium text-text-secondary mb-2">Link (optional)</label>
+                                <input 
+                                    type="url" 
+                                    value={link}
+                                    onChange={(e) => setLink(e.target.value)}
+                                    placeholder="https://..."
+                                    className="w-full bg-background p-2 rounded-md border border-border"
+                                />
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-text-secondary mb-2">Techniques Practiced</label>
+                            <TagInput 
+                                values={techniques}
+                                onChange={setTechniques}
+                                suggestions={[
+                                    'Alternate Picking', 'Sweep Picking', 'Legato', 'Tapping',
+                                    'Bending', 'Vibrato', 'Slides', 'Hammer-ons', 'Pull-offs',
+                                    'Palm Muting', 'Fingerpicking', 'Tremolo', 'Harmonics'
+                                ]}
+                                placeholder="Add techniques (press Enter)"
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-text-secondary mb-2">
+                                Additional Songs {topic && <span className="text-xs">({topic} is already included)</span>}
+                            </label>
+                            <TagInput 
+                                values={songs}
+                                onChange={setSongs}
+                                suggestions={state.repertoire.map(r => r.title)}
+                                placeholder="Add other songs practiced (press Enter)"
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-text-secondary mb-2">Tags</label>
+                            <TagInput 
+                                values={tags}
+                                onChange={setTags}
+                                suggestions={[
+                                    'warmup', 'scales', 'chords', 'solo', 'rhythm', 'theory',
+                                    'improvisation', 'composition', 'recording', 'performance'
+                                ]}
+                                placeholder="Add tags (press Enter)"
+                            />
+                        </div>
+                    </div>
+                </div>
+                
                 <div className="mt-8 text-left">
                     <label className="block text-sm font-medium text-text-secondary mb-2">Session Notes (optional)</label>
                     <textarea 
