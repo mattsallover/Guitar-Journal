@@ -16,8 +16,11 @@ export const PracticeStartModal: React.FC<PracticeStartModalProps> = ({
   const navigate = useNavigate();
 
   const handleStartLive = () => {
+    // Close modal first, then navigate with a small delay to ensure smooth transition
     onClose();
-    navigate('/session/live', { state: { topic: 'Practice Session' } });
+    setTimeout(() => {
+      navigate('/session/live', { state: { topic: 'Practice Session' } });
+    }, 100);
   };
 
   const handleLogPast = () => {

@@ -73,7 +73,10 @@ export const PracticeLog: React.FC = () => {
     // Pre-fill from navigation state
     useEffect(() => {
         const navState = location.state;
+        console.log('PracticeLog received navigation state:', navState);
+        
         if (navState?.topic || navState?.duration) {
+            console.log('Opening modal with pre-filled data from live session');
             openSessionModal({
                 date: new Date().toISOString().split('T')[0],
                 duration: navState.duration || 30,

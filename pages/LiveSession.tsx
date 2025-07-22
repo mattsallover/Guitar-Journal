@@ -48,13 +48,23 @@ export const LiveSession: React.FC = () => {
     }, [isPaused]);
 
     const handleFinishSession = async () => {
+        // Ensure we have valid data before navigating
+        if (!topic) {
+            console.error('No topic available for session');
+            return;
+        }
+        
+        const sessionData = {
+            topic: topic, 
+            duration: Math.max(1, Math.round(time / 60)),
+            notes: notes,
+            link: sessionLink
+        };
+        
+        console.log('Finishing session with data:', sessionData);
+        
         navigate('/log', { 
-            state: { 
-                topic: topic, 
-                duration: Math.max(1, Math.round(time / 60)),
-                notes: notes,
-                link: sessionLink
-            } 
+            state: sessionData
         });
     };
 
