@@ -672,7 +672,7 @@ export const NoteFinder: React.FC = () => {
                                 .filter(s => s.attempts > 0)
                                 .sort((a, b) => b.accuracy - a.accuracy)
                                 .map(stat => (
-                                    <div key={note.note} className="bg-background/50 backdrop-blur-sm border border-border/30 p-4 rounded-lg hover:bg-background/80 transition-all duration-200">
+                                    <div key={stat.note} className="bg-background/50 backdrop-blur-sm border border-border/30 p-4 rounded-lg hover:bg-background/80 transition-all duration-200">
                                         <div className="flex justify-between items-center">
                                             <span className="font-bold text-lg">{stat.note}</span>
                                             <span className={`font-bold ${getAccuracyColor(stat.accuracy)}`}>
