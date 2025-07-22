@@ -533,5 +533,16 @@ export const Repertoire: React.FC = () => {
                 onLogPastSession={handleLogPastSession}
             />
         </div>
+        
+        {/* Upload Progress Modal */}
+        {isUploading && uploadProgress.length > 0 && (
+            <UploadProgress 
+                files={uploadProgress}
+                onCancel={() => {
+                    setIsUploading(false);
+                    setUploadProgress([]);
+                }}
+            />
+        )}
     );
 };

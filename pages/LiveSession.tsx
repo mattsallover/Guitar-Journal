@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Metronome } from '../components/Metronome';
 import { AudioPlayer } from '../components/AudioPlayer';
 import { supabase } from '../services/supabase';
+import { formatFileSize } from '../utils/mediaUtils';
 import { useAppContext } from '../context/AppContext';
 
 const formatTime = (seconds: number) => {

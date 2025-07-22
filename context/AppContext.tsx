@@ -1,4 +1,3 @@
-
 import React, { createContext, useReducer, useContext, ReactNode, useEffect } from 'react';
 import { User, PracticeSession, RepertoireItem, Goal, CAGEDSession, NoteFinderAttempt } from '../types';
 import { supabase } from '../services/supabase';
@@ -141,6 +140,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         dateAdded: row.date_added,
         lastPracticed: row.last_practiced,
         notes: row.notes,
+        media: row.media || [],
       }));
       dispatch({ type: 'SET_REPERTOIRE', payload: repertoire });
     }
