@@ -34,6 +34,9 @@ export const PracticeLog: React.FC = () => {
     compressedSize?: number;
   }>>([]);
   
+  // State for tracking expanded sessions
+  const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
+  
   // Modal states for updates
   const [showMasteryModal, setShowMasteryModal] = useState(false);
   const [masteryItems, setMasteryItems] = useState<any[]>([]);
@@ -354,6 +357,18 @@ export const PracticeLog: React.FC = () => {
     }
   };
 
+  const toggleSessionExpansion = (sessionId: string) => {
+    setExpandedSessions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sessionId)) {
+        newSet.delete(sessionId);
+      } else {
+        newSet.add(sessionId);
+      }
+      return newSet;
+    });
+  };
+
   const handleGoalUpdate = async (goal: any, newProgress: number) => {
     try {
       const status = newProgress >= 100 ? 'Completed' : 'Active';
@@ -396,55 +411,154 @@ export const PracticeLog: React.FC = () => {
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-2">
         {state.practiceSessions.map(session => (
-          <div key={session.id} className="bg-surface p-6 rounded-lg transition-all duration-300 hover:shadow-lg hover:scale-[1.01] group">
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-              <div className="flex-1">
-                <div className="flex items-center space-x-4 mb-2">
-                  <h3 className="text-xl font-semibold text-primary">
-                    {new Date(session.date).toLocaleDateString()}
-                  </h3>
-                  <span className="text-text-secondary">
-                    {session.duration} min
-                  </span>
+          <div key={session.id} className="bg-surface rounded-lg transition-all duration-200 hover:shadow-md group border border-border/50">
+            {/* Condensed Header - Always Visible */}
+            <div className="p-4 flex flex-col sm:flex-row justify-between items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-3">
+                    <h3 className="text-lg font-semibold text-primary">
+                      {new Date(session.date).toLocaleDateString()}
+                    </h3>
+                    <span className="text-sm text-text-secondary bg-background px-2 py-1 rounded-full">
+                      {session.duration} min
+                    </span>
+                    {session.recordings.length > 0 && (
+                      <span className="text-xs bg-blue-600/20 text-blue-300 px-2 py-1 rounded-full">
+                        📹 {session.recordings.length}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => toggleSessionExpansion(session.id)}
+                    className="text-text-secondary hover:text-text-primary transition-colors flex items-center space-x-1"
+                    title={expandedSessions.has(session.id) ? "Collapse details" : "Expand details"}
+                  >
+                    <span className="text-xs">Details</span>
+                    <svg 
+                      className={`w-4 h-4 transition-transform duration-200 ${expandedSessions.has(session.id) ? 'rotate-180' : ''}`} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
                 </div>
                 
+                {/* Practice Topics - Always Visible */}
                 {(session.songs.length > 0 || session.techniques.length > 0) && (
-                  <div className="mb-2">
-                    <span className="text-sm text-text-secondary">Practiced: </span>
-                    {session.songs.map(song => (
-                      <span key={song} className="inline-block bg-primary/20 text-primary px-2 py-1 rounded-full text-sm mr-2">
-                        {song}
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {session.songs.slice(0, 3).map(song => (
+                      <span key={song} className="inline-block bg-primary/15 text-primary px-2 py-1 rounded-full text-xs">
+                        🎵 {song}
                       </span>
                     ))}
-                    {session.techniques.map(technique => (
-                      <span key={technique} className="inline-block bg-secondary/20 text-secondary-300 px-2 py-1 rounded-full text-sm mr-2">
-                        {technique}
+                    {session.techniques.slice(0, 3).map(technique => (
+                      <span key={technique} className="inline-block bg-secondary/15 text-secondary-300 px-2 py-1 rounded-full text-xs">
+                        🎸 {technique}
                       </span>
                     ))}
+                    {(session.songs.length > 3 || session.techniques.length > 3) && (
+                      <span className="inline-block bg-surface text-text-secondary px-2 py-1 rounded-full text-xs">
+                        +{(session.songs.length + session.techniques.length) - 6} more
+                      </span>
+                    )}
+                  </div>
+                )}
+                
+                {/* Quick preview of notes - Always Visible */}
+                {session.notes && (
+                  <p className="text-sm text-text-secondary line-clamp-2 mt-2">
+                    {session.notes.length > 100 ? `${session.notes.substring(0, 100)}...` : session.notes}
+                  </p>
+                )}
+              </div>
+              
+              {/* Action Buttons - Always Visible on Hover */}
+              <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shrink-0">
+                <button 
+                  onClick={() => openModal(session)}
+                  className="text-sm text-primary hover:text-primary-hover transition-colors px-2 py-1 hover:bg-primary/10 rounded"
+                >
+                  Edit
+                </button>
+                <button 
+                  onClick={() => handleDelete(session.id)}
+                  className="text-sm text-red-400 hover:text-red-300 transition-colors px-2 py-1 hover:bg-red-500/10 rounded"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+            
+            {/* Expanded Details - Only when expanded */}
+            {expandedSessions.has(session.id) && (
+              <div className="border-t border-border/30 p-4 pt-3 bg-background/30">
+                {/* Full Practice Topics */}
+                {(session.songs.length > 0 || session.techniques.length > 0) && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-text-secondary mb-2">Practice Topics</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {session.songs.map(song => (
+                        <span key={song} className="inline-block bg-primary/20 text-primary px-3 py-1 rounded-full text-sm">
+                          🎵 {song}
+                        </span>
+                      ))}
+                      {session.techniques.map(technique => (
+                        <span key={technique} className="inline-block bg-secondary/20 text-secondary-300 px-3 py-1 rounded-full text-sm">
+                          🎸 {technique}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
 
+                {/* Full Notes */}
                 {session.notes && (
-                  <p className="text-text-primary mt-3 whitespace-pre-wrap">{session.notes}</p>
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-text-secondary mb-2">Session Notes</h4>
+                    <p className="text-text-primary whitespace-pre-wrap bg-surface p-3 rounded-md text-sm">
+                      {session.notes}
+                    </p>
+                  </div>
                 )}
 
+                {/* Recordings - Lazy Loaded */}
                 {session.recordings.length > 0 && (
-                  <div className="mt-3 border-t border-border pt-3">
-                    <h4 className="font-semibold text-text-secondary text-sm mb-2">Recordings:</h4>
-                    <div className="space-y-2">
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-text-secondary mb-2">
+                      📹 Recordings ({session.recordings.length})
+                    </h4>
+                    <div className="space-y-3">
                       {session.recordings.map(recording => (
-                        <div key={recording.id} className="flex items-center space-x-2">
-                          <span className="text-sm text-text-primary">{recording.name}</span>
+                        <div key={recording.id} className="bg-surface p-3 rounded-md">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-text-primary">{recording.name}</span>
+                            {recording.originalSize && recording.compressedSize && (
+                              <span className="text-xs text-text-secondary">
+                                {formatFileSize(recording.compressedSize)}
+                              </span>
+                            )}
+                          </div>
                           {recording.type === 'video' ? (
-                            <video controls className="max-w-xs rounded border border-border">
+                            <video 
+                              controls 
+                              className="w-full max-w-md rounded border border-border"
+                              preload="metadata"
+                            >
                               <source src={recording.url} type="video/webm" />
                               <source src={recording.url} type="video/mp4" />
                               Your browser does not support video playback.
                             </video>
                           ) : (
-                            <audio controls className="max-w-xs">
+                            <audio 
+                              controls 
+                              className="w-full max-w-md"
+                              preload="metadata"
+                            >
                               <source src={recording.url} type="audio/webm" />
                               <source src={recording.url} type="audio/mp4" />
                               Your browser does not support audio playback.
@@ -456,31 +570,22 @@ export const PracticeLog: React.FC = () => {
                   </div>
                 )}
 
+                {/* Reference Link */}
                 {session.link && (
-                  <div className="mt-2">
-                    <a href={session.link} target="_blank" rel="noopener noreferrer" 
-                       className="text-primary hover:underline text-sm">
-                      🔗 Reference Link
+                  <div className="mb-2">
+                    <a 
+                      href={session.link} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-primary hover:text-primary-hover text-sm flex items-center space-x-1 hover:underline"
+                    >
+                      <span>🔗</span>
+                      <span>Reference Link</span>
                     </a>
                   </div>
                 )}
               </div>
-              
-              <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <button 
-                  onClick={() => openModal(session)}
-                  className="text-sm text-primary hover:underline"
-                >
-                  Edit
-                </button>
-                <button 
-                  onClick={() => handleDelete(session.id)}
-                  className="text-sm text-red-400 hover:underline"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
+            )}
           </div>
         ))}
 
