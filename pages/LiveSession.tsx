@@ -4,6 +4,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { Metronome } from '../components/Metronome';
 import { UploadProgress } from '../components/UploadProgress';
+import { MasteryUpdateModal } from '../components/MasteryUpdateModal';
+import { GoalUpdateModal } from '../components/GoalUpdateModal';
 import { Recording, Mood } from '../types';
 import { TagInput } from '../components/TagInput';
 import { MOOD_OPTIONS } from '../constants';

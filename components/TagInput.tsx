@@ -4,10 +4,21 @@ interface TagInputProps {
   values: string[];
   onChange: (values: string[]) => void;
   suggestions?: string[];
+  prioritizedSuggestions?: {
+    repertoire: string[];
+    goals: string[];
+    techniques: string[];
+  };
   placeholder?: string;
 }
 
-export const TagInput: React.FC<TagInputProps> = ({ values, onChange, suggestions = [], placeholder }) => {
+export const TagInput: React.FC<TagInputProps> = ({ 
+  values, 
+  onChange, 
+  suggestions = [], 
+  prioritizedSuggestions,
+  placeholder 
+}) => {
   const [inputValue, setInputValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,10 +58,34 @@ export const TagInput: React.FC<TagInputProps> = ({ values, onChange, suggestion
     }
   };
   
-  const filteredSuggestions = suggestions.filter(suggestion =>
-    suggestion.toLowerCase().includes(inputValue.toLowerCase()) &&
-    !values.includes(suggestion)
-  ).slice(0, 5);
+  const filteredSuggestions = (() => {
+    if (!inputValue.trim()) return [];
+    
+    const searchTerm = inputValue.toLowerCase();
+    const available = (items: string[]) => items.filter(item =>
+      item.toLowerCase().includes(searchTerm) && !values.includes(item)
+    );
+    
+    if (prioritizedSuggestions) {
+      // Prioritize: repertoire -> goals -> techniques -> general
+      const repertoire = available(prioritizedSuggestions.repertoire);
+      const goals = available(prioritizedSuggestions.goals);
+      const techniques = available(prioritizedSuggestions.techniques);
+      const general = available(suggestions);
+      
+      return [...repertoire, ...goals, ...techniques, ...general].slice(0, 8);
+    }
+    
+    return available(suggestions).slice(0, 5);
+  })();
+  
+  const getSuggestionCategory = (suggestion: string) => {
+    if (!prioritizedSuggestions) return '';
+    if (prioritizedSuggestions.repertoire.includes(suggestion)) return '🎵';
+    if (prioritizedSuggestions.goals.includes(suggestion)) return '🎯';
+    if (prioritizedSuggestions.techniques.includes(suggestion)) return '🎸';
+    return '';
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -94,9 +129,10 @@ export const TagInput: React.FC<TagInputProps> = ({ values, onChange, suggestion
             <li
               key={suggestion}
               onClick={() => addValue(suggestion)}
-              className="px-4 py-2 cursor-pointer hover:bg-primary/20"
+              className="px-4 py-2 cursor-pointer hover:bg-primary/20 flex items-center space-x-2"
             >
-              {suggestion}
+              <span className="text-sm">{getSuggestionCategory(suggestion)}</span>
+              <span>{suggestion}</span>
             </li>
           ))}
         </ul>

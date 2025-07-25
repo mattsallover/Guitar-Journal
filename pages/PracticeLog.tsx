@@ -274,28 +274,33 @@ export const PracticeLog: React.FC = () => {
         if (songsToUpdate.length > 0) {
           setMasteryItems(songsToUpdate);
           setShowMasteryModal(true);
+          return; // Wait for mastery modal to close before showing goal modal
         }
       }
 
       // Check for goal updates
-      const relatedGoals = state.goals.filter(goal => 
-        goal.status === 'Active' && (
-          (currentSession.topics && currentSession.topics.some(topic => 
-            topic.toLowerCase().includes(goal.title.toLowerCase())
-          ))
-        )
-      );
-      
-      if (relatedGoals.length > 0) {
-        setRelatedGoal(relatedGoals[0]);
-        setShowGoalModal(true);
-      }
+      this.checkForGoalUpdates();
 
     } catch (error) {
       console.error('Error saving practice session:', error);
       alert('Failed to save practice session. Please try again.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const checkForGoalUpdates = () => {
+    const relatedGoals = state.goals.filter(goal => 
+      goal.status === 'Active' && (
+        (currentSession?.topics && currentSession.topics.some(topic => 
+          topic.toLowerCase().includes(goal.title.toLowerCase())
+        ))
+      )
+    );
+    
+    if (relatedGoals.length > 0) {
+      setRelatedGoal(relatedGoals[0]);
+      setShowGoalModal(true);
     }
   };
 
@@ -339,6 +344,11 @@ export const PracticeLog: React.FC = () => {
       }
       await refreshData();
       setShowMasteryModal(false);
+      
+      // Check for goal updates after mastery update
+      setTimeout(() => {
+        checkForGoalUpdates();
+      }, 100);
     } catch (error) {
       console.error('Error updating mastery:', error);
     }
@@ -530,15 +540,16 @@ export const PracticeLog: React.FC = () => {
               <TagInput 
                 values={currentSession.topics || []}
                 onChange={topics => setCurrentSession({ ...currentSession, topics })}
-                suggestions={[
-                  ...state.repertoire.map(r => r.title),
-                  'Alternate Picking', 'Sweep Picking', 'Legato', 'Tapping',
-                  'Bending', 'Vibrato', 'Slides', 'Hammer-ons', 'Pull-offs',
-                  'Palm Muting', 'Fingerpicking', 'Tremolo', 'Harmonics',
-                  'Scales', 'Chords', 'Arpeggios', 'Rhythm', 'Lead'
-                ]}
-
-
+                prioritizedSuggestions={{
+                  repertoire: state.repertoire.map(r => r.title),
+                  goals: state.goals.filter(g => g.status === 'Active').map(g => g.title),
+                  techniques: [
+                    'Alternate Picking', 'Sweep Picking', 'Legato', 'Tapping',
+                    'Bending', 'Vibrato', 'Slides', 'Hammer-ons', 'Pull-offs',
+                    'Palm Muting', 'Fingerpicking', 'Tremolo', 'Harmonics',
+                    'Scales', 'Chords', 'Arpeggios', 'Rhythm', 'Lead'
+                  ]
+                }}
                 placeholder="Add songs, techniques, concepts (press Enter)"
               />
             </div>
