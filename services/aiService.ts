@@ -50,7 +50,6 @@ export interface AIQuestionContext {
   totalSongs: number;
   activeGoals: number;
 }
-</action>
 import { supabase } from './supabase';
 
 export interface AICoachingResponse {
