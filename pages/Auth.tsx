@@ -80,7 +80,9 @@ export const AuthPage: React.FC = () => {
       console.error("Authentication failed:", err);
       
       // Handle specific error messages
-      if (err.message.includes('Invalid login credentials')) {
+      if (err.message.includes('Invalid API key')) {
+        setError('Configuration Error: Invalid Supabase API key. Please check your .env file and ensure VITE_SUPABASE_ANON_KEY is correct. Restart the development server after making changes.');
+      } else if (err.message.includes('Invalid login credentials')) {
         setError('Invalid email or password. Please check your credentials.');
       } else if (err.message.includes('Email not confirmed')) {
         setError('Please check your email and click the confirmation link before signing in.');
@@ -105,7 +107,11 @@ export const AuthPage: React.FC = () => {
       // onAuthStateChanged in AppContext will handle navigating away
     } catch (err: any) {
       console.error("Anonymous sign-in failed:", err);
-      setError('Failed to sign in anonymously. Please check your internet connection.');
+      if (err.message.includes('Invalid API key')) {
+        setError('Configuration Error: Invalid Supabase API key. Please check your .env file and ensure VITE_SUPABASE_ANON_KEY is correct. Restart the development server after making changes.');
+      } else {
+        setError('Failed to sign in anonymously. Please check your internet connection.');
+      }
       setIsLoading(false);
     }
   };
