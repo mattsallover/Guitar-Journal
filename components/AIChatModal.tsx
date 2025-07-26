@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Modal } from './Modal';
-import { aiService } from '../services/aiService';
+import { aiService, AIQuestionContext } from '../services/aiService';
 
 export const AIChatModal: React.FC = () => {
   const { state, closeChatModal, addChatMessage, clearChatMessages } = useAppContext();
@@ -28,9 +28,23 @@ export const AIChatModal: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Prepare context for AI
-      const context = {
-        attempts: state.noteFinderAttempts,
+      // Prepare comprehensive context for AI
+      const context: AIQuestionContext = {
+        // Current chat session history
+        chatHistory: state.chatMessages.map(msg => ({
+          sender: msg.sender,
+          text: msg.text,
+          timestamp: msg.timestamp
+        })),
+        
+        // Recent activity (last 2 weeks)
+        recentPracticeSessions: state.recentPracticeSessions,
+        recentRepertoire: state.recentRepertoire,
+        recentGoals: state.recentGoals,
+        recentCAGEDSessions: state.recentCAGEDSessions,
+        recentNoteFinderAttempts: state.recentNoteFinderAttempts,
+        
+        // User skill level
         userLevel: state.noteFinderAttempts.length < 50 ? 'beginner' : 
                   state.noteFinderAttempts.length < 200 ? 'intermediate' : 'advanced'
       };

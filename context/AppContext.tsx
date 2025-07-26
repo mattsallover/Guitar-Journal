@@ -18,6 +18,11 @@ interface AppState {
   goals: Goal[];
   cagedSessions: CAGEDSession[];
   noteFinderAttempts: NoteFinderAttempt[];
+  recentPracticeSessions: PracticeSession[];
+  recentRepertoire: RepertoireItem[];
+  recentGoals: Goal[];
+  recentCAGEDSessions: CAGEDSession[];
+  recentNoteFinderAttempts: NoteFinderAttempt[];
   isChatModalOpen: boolean;
   chatMessages: ChatMessage[];
   loading: boolean;
@@ -31,6 +36,11 @@ type Action =
   | { type: 'SET_GOALS'; payload: Goal[] }
   | { type: 'SET_CAGED_SESSIONS'; payload: CAGEDSession[] }
   | { type: 'SET_NOTE_FINDER_ATTEMPTS'; payload: NoteFinderAttempt[] }
+  | { type: 'SET_RECENT_PRACTICE_SESSIONS'; payload: PracticeSession[] }
+  | { type: 'SET_RECENT_REPERTOIRE'; payload: RepertoireItem[] }
+  | { type: 'SET_RECENT_GOALS'; payload: Goal[] }
+  | { type: 'SET_RECENT_CAGED_SESSIONS'; payload: CAGEDSession[] }
+  | { type: 'SET_RECENT_NOTE_FINDER_ATTEMPTS'; payload: NoteFinderAttempt[] }
   | { type: 'TOGGLE_CHAT_MODAL'; payload: boolean }
   | { type: 'ADD_CHAT_MESSAGE'; payload: ChatMessage }
   | { type: 'CLEAR_CHAT_MESSAGES' };
@@ -43,6 +53,11 @@ const initialState: AppState = {
   goals: [],
   cagedSessions: [],
   noteFinderAttempts: [],
+  recentPracticeSessions: [],
+  recentRepertoire: [],
+  recentGoals: [],
+  recentCAGEDSessions: [],
+  recentNoteFinderAttempts: [],
   isChatModalOpen: false,
   chatMessages: [],
   loading: true,
@@ -64,6 +79,16 @@ const appReducer = (state: AppState, action: Action): AppState => {
       return { ...state, cagedSessions: action.payload };
     case 'SET_NOTE_FINDER_ATTEMPTS':
       return { ...state, noteFinderAttempts: action.payload };
+    case 'SET_RECENT_PRACTICE_SESSIONS':
+      return { ...state, recentPracticeSessions: action.payload };
+    case 'SET_RECENT_REPERTOIRE':
+      return { ...state, recentRepertoire: action.payload };
+    case 'SET_RECENT_GOALS':
+      return { ...state, recentGoals: action.payload };
+    case 'SET_RECENT_CAGED_SESSIONS':
+      return { ...state, recentCAGEDSessions: action.payload };
+    case 'SET_RECENT_NOTE_FINDER_ATTEMPTS':
+      return { ...state, recentNoteFinderAttempts: action.payload };
     case 'TOGGLE_CHAT_MODAL':
       return { ...state, isChatModalOpen: action.payload };
     case 'ADD_CHAT_MESSAGE':
@@ -119,13 +144,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const fetchPracticeSessions = async (user: User) => {
+  const fetchPracticeSessions = async (user: User, startDate?: string) => {
     console.log('Fetching practice sessions for user:', user.uid);
-    const { data, error } = await supabase
+    let query = supabase
       .from('practice_sessions')
       .select('*')
-      .eq('user_id', user.uid)
-      .order('date', { ascending: false });
+      .eq('user_id', user.uid);
+    
+    if (startDate) {
+      query = query.gte('created_at', startDate);
+    }
+    
+    const { data, error } = await query.order('date', { ascending: false });
     
     if (error) {
       console.error('Error fetching practice sessions:', error);
@@ -145,16 +175,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         link: row.link || '',
       }));
       console.log('Mapped practice sessions:', sessions);
-      dispatch({ type: 'SET_PRACTICE_SESSIONS', payload: sessions });
+      if (startDate) {
+        dispatch({ type: 'SET_RECENT_PRACTICE_SESSIONS', payload: sessions });
+      } else {
+        dispatch({ type: 'SET_PRACTICE_SESSIONS', payload: sessions });
+      }
     }
   };
 
-  const fetchRepertoire = async (user: User) => {
-    const { data, error } = await supabase
+  const fetchRepertoire = async (user: User, startDate?: string) => {
+    let query = supabase
       .from('repertoire')
       .select('*')
-      .eq('user_id', user.uid)
-      .order('title');
+      .eq('user_id', user.uid);
+    
+    if (startDate) {
+      query = query.gte('created_at', startDate);
+    }
+    
+    const { data, error } = await query.order('title');
     
     if (error) {
       console.error('Error fetching repertoire:', error);
@@ -170,16 +209,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         lastPracticed: row.last_practiced,
         notes: row.notes,
       }));
-      dispatch({ type: 'SET_REPERTOIRE', payload: repertoire });
+      if (startDate) {
+        dispatch({ type: 'SET_RECENT_REPERTOIRE', payload: repertoire });
+      } else {
+        dispatch({ type: 'SET_REPERTOIRE', payload: repertoire });
+      }
     }
   };
   
-  const fetchCAGEDSessions = async (user: User) => {
-    const { data, error } = await supabase
+  const fetchCAGEDSessions = async (user: User, startDate?: string) => {
+    let query = supabase
       .from('caged_sessions')
       .select('*')
-      .eq('user_id', user.uid)
-      .order('session_date', { ascending: false });
+      .eq('user_id', user.uid);
+    
+    if (startDate) {
+      query = query.gte('created_at', startDate);
+    }
+    
+    const { data, error } = await query.order('session_date', { ascending: false });
     
     if (error) {
       console.error('Error fetching CAGED sessions:', error);
@@ -196,16 +244,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         recording: row.recording || '',
         createdAt: row.created_at,
       }));
-      dispatch({ type: 'SET_CAGED_SESSIONS', payload: sessions });
+      if (startDate) {
+        dispatch({ type: 'SET_RECENT_CAGED_SESSIONS', payload: sessions });
+      } else {
+        dispatch({ type: 'SET_CAGED_SESSIONS', payload: sessions });
+      }
     }
   };
 
-  const fetchNoteFinderAttempts = async (user: User) => {
-    const { data, error } = await supabase
+  const fetchNoteFinderAttempts = async (user: User, startDate?: string) => {
+    let query = supabase
       .from('note_finder_practice')
       .select('*')
-      .eq('user_id', user.uid)
-      .order('created_at', { ascending: false });
+      .eq('user_id', user.uid);
+    
+    if (startDate) {
+      query = query.gte('created_at', startDate);
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false });
     
     if (error) {
       console.error('Error fetching note finder attempts:', error);
@@ -221,15 +278,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         timeSeconds: row.time_seconds,
         createdAt: row.created_at,
       }));
-      dispatch({ type: 'SET_NOTE_FINDER_ATTEMPTS', payload: attempts });
+      if (startDate) {
+        dispatch({ type: 'SET_RECENT_NOTE_FINDER_ATTEMPTS', payload: attempts });
+      } else {
+        dispatch({ type: 'SET_NOTE_FINDER_ATTEMPTS', payload: attempts });
+      }
     }
   };
-  const fetchGoals = async (user: User) => {
-    const { data, error } = await supabase
+  
+  const fetchGoals = async (user: User, startDate?: string) => {
+    let query = supabase
       .from('goals')
       .select('*')
-      .eq('user_id', user.uid)
-      .order('created_at', { ascending: false });
+      .eq('user_id', user.uid);
+    
+    if (startDate) {
+      query = query.gte('created_at', startDate);
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false });
     
     if (error) {
       console.error('Error fetching goals:', error);
@@ -244,7 +311,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         progress: row.progress,
         category: row.category,
       }));
-      dispatch({ type: 'SET_GOALS', payload: goals });
+      if (startDate) {
+        dispatch({ type: 'SET_RECENT_GOALS', payload: goals });
+      } else {
+        dispatch({ type: 'SET_GOALS', payload: goals });
+      }
     }
   };
 
@@ -253,12 +324,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!state.user) return;
     
     try {
+      const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+      
       await Promise.all([
         fetchPracticeSessions(state.user),
         fetchRepertoire(state.user),
         fetchGoals(state.user),
         fetchCAGEDSessions(state.user),
-        fetchNoteFinderAttempts(state.user)
+        fetchNoteFinderAttempts(state.user),
+        // Fetch recent data for AI context
+        fetchPracticeSessions(state.user, twoWeeksAgo),
+        fetchRepertoire(state.user, twoWeeksAgo),
+        fetchGoals(state.user, twoWeeksAgo),
+        fetchCAGEDSessions(state.user, twoWeeksAgo),
+        fetchNoteFinderAttempts(state.user, twoWeeksAgo)
       ]);
     } catch (error) {
       console.error('Error refreshing data:', error);
@@ -333,10 +412,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       dispatch({ type: 'SET_GOALS', payload: [] });
       dispatch({ type: 'SET_CAGED_SESSIONS', payload: [] });
       dispatch({ type: 'SET_NOTE_FINDER_ATTEMPTS', payload: [] });
+      dispatch({ type: 'SET_RECENT_PRACTICE_SESSIONS', payload: [] });
+      dispatch({ type: 'SET_RECENT_REPERTOIRE', payload: [] });
+      dispatch({ type: 'SET_RECENT_GOALS', payload: [] });
+      dispatch({ type: 'SET_RECENT_CAGED_SESSIONS', payload: [] });
+      dispatch({ type: 'SET_RECENT_NOTE_FINDER_ATTEMPTS', payload: [] });
       return;
     }
 
     dispatch({ type: 'SET_LOADING', payload: true });
+
+    const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
 
     // Fetch all data
     Promise.all([
@@ -345,7 +431,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       fetchRepertoire(state.user),
       fetchGoals(state.user),
       fetchCAGEDSessions(state.user),
-      fetchNoteFinderAttempts(state.user)
+      fetchNoteFinderAttempts(state.user),
+      // Fetch recent data for AI context
+      fetchPracticeSessions(state.user, twoWeeksAgo),
+      fetchRepertoire(state.user, twoWeeksAgo),
+      fetchGoals(state.user, twoWeeksAgo),
+      fetchCAGEDSessions(state.user, twoWeeksAgo),
+      fetchNoteFinderAttempts(state.user, twoWeeksAgo)
     ]).then(() => {
       dispatch({ type: 'SET_LOADING', payload: false });
     });

@@ -20,6 +20,26 @@ export interface AIExerciseRoutine {
   estimatedTime: string;
 }
 
+export interface AIQuestionContext {
+  // Current session chat history
+  chatHistory: Array<{
+    sender: 'user' | 'ai';
+    text: string;
+    timestamp: Date;
+  }>;
+  
+  // Recent activity (last 2 weeks)
+  recentPracticeSessions: PracticeSession[];
+  recentRepertoire: any[];
+  recentGoals: Goal[];
+  recentCAGEDSessions: any[];
+  recentNoteFinderAttempts: NoteFinderAttempt[];
+  
+  // User skill indicators
+  userLevel?: string;
+  currentNote?: Note;
+}
+
 class AIService {
   async generateNaturalLanguageCoaching(
     attempts: NoteFinderAttempt[], 
@@ -176,11 +196,7 @@ class AIService {
     }
   }
 
-  async answerMusicTheoryQuestion(question: string, context?: {
-    attempts?: NoteFinderAttempt[];
-    currentNote?: Note;
-    userLevel?: string;
-  }): Promise<string> {
+  async answerMusicTheoryQuestion(question: string, context?: AIQuestionContext): Promise<string> {
     try {
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-theory-qa`;
       
@@ -194,14 +210,7 @@ class AIService {
         headers,
         body: JSON.stringify({
           question,
-          context: context ? {
-            attempts: context.attempts?.map(a => ({
-              noteName: a.noteName,
-              correct: a.correct
-            })),
-            currentNote: context.currentNote,
-            userLevel: context.userLevel
-          } : undefined
+          context
         })
       });
 
