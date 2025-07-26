@@ -29,60 +29,14 @@ export const AIChatModal: React.FC = () => {
 
     try {
       // Prepare context for AI
-      const comprehensiveContext = {
-        // Recent activity (last 2 weeks)
-        recentPracticeSessions: state.recentPracticeSessions.map(session => ({
-          date: session.date,
-          duration: session.duration,
-          techniques: session.techniques,
-          songs: session.songs,
-          notes: session.notes,
-          mood: session.mood
-        })),
-        recentRepertoire: state.recentRepertoire.map(item => ({
-          title: item.title,
-          artist: item.artist,
-          difficulty: item.difficulty,
-          mastery: item.mastery,
-          lastPracticed: item.lastPracticed
-        })),
-        recentGoals: state.recentGoals.map(goal => ({
-          title: goal.title,
-          description: goal.description,
-          progress: goal.progress,
-          status: goal.status,
-          category: goal.category
-        })),
-        recentCAGEDSessions: state.recentCAGEDSessions.map(session => ({
-          sessionDate: session.sessionDate,
-          shapes: session.shapes,
-          accuracy: session.accuracy,
-          score: session.score
-        })),
-        recentNoteFinderAttempts: state.recentNoteFinderAttempts.map(attempt => ({
-          noteName: attempt.noteName,
-          correct: attempt.correct,
-          timeSeconds: attempt.timeSeconds,
-          createdAt: attempt.createdAt
-        })),
-        
-        // Current conversation history
-        chatHistory: state.chatMessages.map(msg => ({
-          sender: msg.sender,
-          text: msg.text,
-          timestamp: msg.timestamp
-        })),
-        
-        // User profile
+      const context = {
+        attempts: state.noteFinderAttempts,
         userLevel: state.noteFinderAttempts.length < 50 ? 'beginner' : 
-                  state.noteFinderAttempts.length < 200 ? 'intermediate' : 'advanced',
-        totalPracticeTime: state.practiceSessions.reduce((sum, s) => sum + s.duration, 0),
-        totalSongs: state.repertoire.length,
-        activeGoals: state.goals.filter(g => g.status === 'Active').length
+                  state.noteFinderAttempts.length < 200 ? 'intermediate' : 'advanced'
       };
 
       // Get AI response
-      const aiResponse = await aiService.answerMusicTheoryQuestion(userMessage, comprehensiveContext);
+      const aiResponse = await aiService.answerMusicTheoryQuestion(userMessage, context);
       
       // Add AI response
       addChatMessage('ai', aiResponse);
