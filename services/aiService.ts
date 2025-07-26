@@ -1,5 +1,56 @@
 import { NoteFinderAttempt, Note, PracticeSession, Goal } from '../types';
 import { analyzeNotePerformance, generateNoteRecommendations } from '../utils/aiRecommendations';
+export interface AIQuestionContext {
+  // Recent activity (last 2 weeks)
+  recentPracticeSessions: Array<{
+    date: string;
+    duration: number;
+    techniques: string[];
+    songs: string[];
+    notes: string;
+    mood: string;
+  }>;
+  recentRepertoire: Array<{
+    title: string;
+    artist: string;
+    difficulty: string;
+    mastery: number;
+    lastPracticed?: string;
+  }>;
+  recentGoals: Array<{
+    title: string;
+    description: string;
+    progress: number;
+    status: string;
+    category: string;
+  }>;
+  recentCAGEDSessions: Array<{
+    sessionDate: string;
+    shapes: string[];
+    accuracy: number;
+    score: number;
+  }>;
+  recentNoteFinderAttempts: Array<{
+    noteName: string;
+    correct: boolean;
+    timeSeconds: number;
+    createdAt: string;
+  }>;
+  
+  // Current conversation
+  chatHistory: Array<{
+    sender: 'user' | 'ai';
+    text: string;
+    timestamp: Date;
+  }>;
+  
+  // User profile
+  userLevel: string;
+  totalPracticeTime: number;
+  totalSongs: number;
+  activeGoals: number;
+}
+</action>
 import { supabase } from './supabase';
 
 export interface AICoachingResponse {
@@ -177,10 +228,10 @@ class AIService {
   }
 
   async answerMusicTheoryQuestion(question: string, context?: {
-    attempts?: NoteFinderAttempt[];
-    currentNote?: Note;
-    userLevel?: string;
-  }): Promise<string> {
+  async answerMusicTheoryQuestion(
+    question: string, 
+    context?: AIQuestionContext
+  ): Promise<string> {</action>
     try {
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-theory-qa`;
       
@@ -194,14 +245,7 @@ class AIService {
         headers,
         body: JSON.stringify({
           question,
-          context: context ? {
-            attempts: context.attempts?.map(a => ({
-              noteName: a.noteName,
-              correct: a.correct
-            })),
-            currentNote: context.currentNote,
-            userLevel: context.userLevel
-          } : undefined
+          context
         })
       });
 
