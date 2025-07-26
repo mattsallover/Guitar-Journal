@@ -117,7 +117,7 @@ RECENT CONVERSATION:`;
 ${msg.sender.toUpperCase()}: ${msg.text.substring(0, 100)}${msg.text.length > 100 ? '...' : ''}`;
         });
       }
-    }</action>
+    }
 
     const prompt = `You are an expert guitar instructor answering a music theory question. Be clear, practical, and educational.
 

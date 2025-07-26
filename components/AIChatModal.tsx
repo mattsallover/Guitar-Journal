@@ -82,7 +82,7 @@ export const AIChatModal: React.FC = () => {
       };
 
       // Get AI response
-      const aiResponse = await aiService.answerMusicTheoryQuestion(userMessage, comprehensiveContext);</action>
+      const aiResponse = await aiService.answerMusicTheoryQuestion(userMessage, comprehensiveContext);
       
       // Add AI response
       addChatMessage('ai', aiResponse);
