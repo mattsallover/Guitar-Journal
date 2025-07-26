@@ -368,18 +368,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   useEffect(() => {
-    dispatch({ type: 'SET_LOADING', payload: true });
-    
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         const appUser: User = {
           uid: session.user.id,
           isAnonymous: session.user.is_anonymous || false,
-          name: session.user.user_metadata?.name || 'Practice Hero',
+          name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Practice Hero',
           email: session.user.email || null,
         };
         dispatch({ type: 'SET_USER', payload: appUser });
+        dispatch({ type: 'SET_LOADING', payload: false });
       } else {
         dispatch({ type: 'SET_USER', payload: null });
         dispatch({ type: 'SET_LOADING', payload: false });
@@ -388,14 +387,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state change:', event, session?.user);
+      
       if (session?.user) {
         const appUser: User = {
           uid: session.user.id,
           isAnonymous: session.user.is_anonymous || false,
-          name: session.user.user_metadata?.name || 'Practice Hero',
+          name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Practice Hero',
           email: session.user.email || null,
         };
         dispatch({ type: 'SET_USER', payload: appUser });
+        dispatch({ type: 'SET_LOADING', payload: false });
       } else {
         dispatch({ type: 'SET_USER', payload: null });
         dispatch({ type: 'SET_LOADING', payload: false });
