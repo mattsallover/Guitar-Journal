@@ -228,6 +228,8 @@ class AIService {
   }
 
   async answerMusicTheoryQuestion(question: string, context?: {
+  }
+  )
   async answerMusicTheoryQuestion(
     question: string, 
     context?: AIQuestionContext
