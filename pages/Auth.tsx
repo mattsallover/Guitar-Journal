@@ -4,6 +4,10 @@ import { useAppContext } from '../context/AppContext';
 
 export const AuthPage: React.FC = () => {
   const { state } = useAppContext();
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -20,30 +24,71 @@ export const AuthPage: React.FC = () => {
     checkExistingSession();
   }, []);
 
-  const handleGoogleSignIn = async () => {
+  const handleEmailAuth = async () => {
+    if (!email.trim() || !password.trim()) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    if (isSignUp && password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
     
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
+      let data, error;
+      
+      if (isSignUp) {
+        ({ data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password: password,
+          options: {
+            emailRedirectTo: window.location.origin
           }
+        }));
+        
+        if (!error && data.user && !data.user.email_confirmed_at) {
+          setError('Success! Please check your email to verify your account before signing in.');
+          setIsSignUp(false);
+          setEmail('');
+          setPassword('');
+          setConfirmPassword('');
+          setIsLoading(false);
+          return;
         }
-      });
+      } else {
+        ({ data, error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password: password
+        }));
+      }
 
       if (error) {
         throw error;
       }
 
-      // The redirect will happen automatically
+      // The auth state change will be handled by AppContext
     } catch (err: any) {
-      console.error("Google sign-in failed:", err);
-      setError('Failed to sign in with Google. Please try again.');
+      console.error("Authentication failed:", err);
+      
+      // Handle specific error messages
+      if (err.message.includes('Invalid login credentials')) {
+        setError('Invalid email or password. Please check your credentials.');
+      } else if (err.message.includes('Email not confirmed')) {
+        setError('Please check your email and click the confirmation link before signing in.');
+      } else if (err.message.includes('User already registered')) {
+        setError('An account with this email already exists. Try signing in instead.');
+      } else {
+        setError(err.message || `Failed to ${isSignUp ? 'sign up' : 'sign in'}. Please try again.`);
+      }
       setIsLoading(false);
     }
   };
@@ -63,6 +108,14 @@ export const AuthPage: React.FC = () => {
       setError('Failed to sign in anonymously. Please check your internet connection.');
       setIsLoading(false);
     }
+  };
+
+  const toggleAuthMode = () => {
+    setIsSignUp(!isSignUp);
+    setError('');
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
   };
 
   if (state.loading) {
@@ -89,20 +142,84 @@ export const AuthPage: React.FC = () => {
 
         {/* Sign-in Options */}
         <div className="space-y-4">
-          {/* Google Sign-in */}
+          {/* Email/Password Form */}
+          <div className="space-y-3">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-text-secondary mb-1">
+                Email Address
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                disabled={isLoading}
+                className="w-full px-4 py-3 border border-border rounded-lg bg-background text-text-primary placeholder-text-secondary focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 disabled:opacity-50"
+                autoComplete="email"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-text-secondary mb-1">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={isSignUp ? "Create a password (min 6 characters)" : "Enter your password"}
+                disabled={isLoading}
+                className="w-full px-4 py-3 border border-border rounded-lg bg-background text-text-primary placeholder-text-secondary focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 disabled:opacity-50"
+                autoComplete={isSignUp ? "new-password" : "current-password"}
+              />
+            </div>
+            
+            {isSignUp && (
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-text-secondary mb-1">
+                  Confirm Password
+                </label>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm your password"
+                  disabled={isLoading}
+                  className="w-full px-4 py-3 border border-border rounded-lg bg-background text-text-primary placeholder-text-secondary focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 disabled:opacity-50"
+                  autoComplete="new-password"
+                />
+              </div>
+            )}
+          </div>
+          
+          {/* Auth Button */}
           <button
-            onClick={handleGoogleSignIn}
+            onClick={handleEmailAuth}
             disabled={isLoading}
-            className="w-full flex items-center justify-center px-4 py-3 border border-border rounded-lg bg-white hover:bg-gray-50 text-gray-900 font-medium transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-primary hover:bg-primary-hover text-white font-medium transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
-            <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
             </svg>
-            {isLoading ? 'Signing in...' : 'Continue with Google'}
+            {isLoading ? 
+              (isSignUp ? 'Creating Account...' : 'Signing In...') : 
+              (isSignUp ? 'Create Account' : 'Sign In')
+            }
           </button>
+          
+          {/* Toggle Auth Mode */}
+          <div className="text-center">
+            <button
+              onClick={toggleAuthMode}
+              disabled={isLoading}
+              className="text-sm text-primary hover:text-primary-hover transition-colors disabled:opacity-50"
+            >
+              {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+            </button>
+          </div>
 
           {/* Divider */}
           <div className="relative">
@@ -145,7 +262,7 @@ export const AuthPage: React.FC = () => {
         {/* Privacy Note */}
         <div className="mt-6 text-xs text-text-secondary text-center">
           <p>
-            Your practice data is private and secure. 
+            Your practice data is private and secure. Create an account to sync across devices.
             {' '}
             <span className="text-primary">Anonymous mode</span> lets you try the app without creating an account.
           </p>
