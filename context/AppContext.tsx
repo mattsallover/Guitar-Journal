@@ -4,6 +4,13 @@ import { User, PracticeSession, RepertoireItem, Goal, CAGEDSession, NoteFinderAt
 import { supabase } from '../services/supabase';
 import { AuthSession } from '@supabase/supabase-js';
 
+interface ChatMessage {
+  id: string;
+  sender: 'user' | 'ai';
+  text: string;
+  timestamp: Date;
+}
+
 interface AppState {
   user: User | null;
   practiceSessions: PracticeSession[];
@@ -11,6 +18,8 @@ interface AppState {
   goals: Goal[];
   cagedSessions: CAGEDSession[];
   noteFinderAttempts: NoteFinderAttempt[];
+  isChatModalOpen: boolean;
+  chatMessages: ChatMessage[];
   loading: boolean;
 }
 
@@ -21,7 +30,10 @@ type Action =
   | { type: 'SET_REPERTOIRE'; payload: RepertoireItem[] }
   | { type: 'SET_GOALS'; payload: Goal[] }
   | { type: 'SET_CAGED_SESSIONS'; payload: CAGEDSession[] }
-  | { type: 'SET_NOTE_FINDER_ATTEMPTS'; payload: NoteFinderAttempt[] };
+  | { type: 'SET_NOTE_FINDER_ATTEMPTS'; payload: NoteFinderAttempt[] }
+  | { type: 'TOGGLE_CHAT_MODAL'; payload: boolean }
+  | { type: 'ADD_CHAT_MESSAGE'; payload: ChatMessage }
+  | { type: 'CLEAR_CHAT_MESSAGES' };
 
 
 const initialState: AppState = {
@@ -31,6 +43,8 @@ const initialState: AppState = {
   goals: [],
   cagedSessions: [],
   noteFinderAttempts: [],
+  isChatModalOpen: false,
+  chatMessages: [],
   loading: true,
 };
 
@@ -50,12 +64,26 @@ const appReducer = (state: AppState, action: Action): AppState => {
       return { ...state, cagedSessions: action.payload };
     case 'SET_NOTE_FINDER_ATTEMPTS':
       return { ...state, noteFinderAttempts: action.payload };
+    case 'TOGGLE_CHAT_MODAL':
+      return { ...state, isChatModalOpen: action.payload };
+    case 'ADD_CHAT_MESSAGE':
+      return { ...state, chatMessages: [...state.chatMessages, action.payload] };
+    case 'CLEAR_CHAT_MESSAGES':
+      return { ...state, chatMessages: [] };
     default:
       return state;
   }
 };
 
-const AppContext = createContext<{ state: AppState; dispatch: React.Dispatch<Action>; refreshData: () => Promise<void> } | undefined>(undefined);
+const AppContext = createContext<{ 
+  state: AppState; 
+  dispatch: React.Dispatch<Action>; 
+  refreshData: () => Promise<void>;
+  openChatModal: () => void;
+  closeChatModal: () => void;
+  addChatMessage: (sender: 'user' | 'ai', text: string) => void;
+  clearChatMessages: () => void;
+} | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
@@ -237,6 +265,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  // Chat functions
+  const openChatModal = () => {
+    dispatch({ type: 'TOGGLE_CHAT_MODAL', payload: true });
+  };
+
+  const closeChatModal = () => {
+    dispatch({ type: 'TOGGLE_CHAT_MODAL', payload: false });
+  };
+
+  const addChatMessage = (sender: 'user' | 'ai', text: string) => {
+    const message: ChatMessage = {
+      id: Date.now().toString(),
+      sender,
+      text,
+      timestamp: new Date()
+    };
+    dispatch({ type: 'ADD_CHAT_MESSAGE', payload: message });
+  };
+
+  const clearChatMessages = () => {
+    dispatch({ type: 'CLEAR_CHAT_MESSAGES' });
+  };
+
   useEffect(() => {
     dispatch({ type: 'SET_LOADING', payload: true });
     
@@ -301,13 +352,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [state.user]);
 
   return (
-    <AppContext.Provider value={{ state, dispatch, refreshData }}>
+    <AppContext.Provider value={{ 
+      state, 
+      dispatch, 
+      refreshData, 
+      openChatModal, 
+      closeChatModal, 
+      addChatMessage, 
+      clearChatMessages 
+    }}>
       {children}
     </AppContext.Provider>
   );
 };
 
-export const useAppContext = (): { state: AppState; dispatch: React.Dispatch<Action>; refreshData: () => Promise<void> } => {
+export const useAppContext = (): { 
+  state: AppState; 
+  dispatch: React.Dispatch<Action>; 
+  refreshData: () => Promise<void>;
+  openChatModal: () => void;
+  closeChatModal: () => void;
+  addChatMessage: (sender: 'user' | 'ai', text: string) => void;
+  clearChatMessages: () => void;
+} => {
   const context = useContext(AppContext);
   if (context === undefined) {
     throw new Error('useAppContext must be used within an AppProvider');

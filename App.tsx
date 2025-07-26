@@ -3,6 +3,8 @@ import React from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { Sidebar } from './components/Sidebar';
+import { FloatingChatButton } from './components/FloatingChatButton';
+import { AIChatModal } from './components/AIChatModal';
 import { AuthPage } from './pages/Auth';
 import { Dashboard } from './pages/Dashboard';
 import { PracticeLog } from './pages/PracticeLog';
@@ -40,6 +42,8 @@ const AppContent: React.FC = () => {
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </main>
+            <FloatingChatButton />
+            <AIChatModal />
         </div>
     );
 }
