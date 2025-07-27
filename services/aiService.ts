@@ -159,10 +159,12 @@ class AIService {
   }
 
   async suggestGoals(
-    practiceSessions: PracticeSession[],
-    repertoire: RepertoireItem[],
-    goals: Goal[],
-    noteFinderAttempts: NoteFinderAttempt[]
+    data: {
+      practiceSessions: PracticeSession[];
+      repertoire: RepertoireItem[];
+      goals: Goal[];
+      noteFinderAttempts: NoteFinderAttempt[];
+    }
   ): Promise<Array<{
     title: string;
     category: string;
@@ -171,6 +173,8 @@ class AIService {
     targetDate: string;
     priority: 'high' | 'medium' | 'low';
   }>> {
+    const { practiceSessions, repertoire, goals, noteFinderAttempts } = data;
+    
     try {
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-goal-suggestions`;
       

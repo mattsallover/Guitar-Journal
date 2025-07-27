@@ -112,7 +112,7 @@ export const Goals: React.FC = () => {
                 practiceSessions: state.practiceSessions.slice(-30),
                 repertoire: state.repertoire,
                 goals: state.goals,
-                noteFinder: [], // Add note finder data if available
+                noteFinderAttempts: [], // Add note finder data if available
             });
             
             setGoalSuggestions(suggestions);
