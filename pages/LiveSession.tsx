@@ -40,6 +40,16 @@ export const LiveSession: React.FC = () => {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
     const [showPreviewModal, setShowPreviewModal] = useState(false);
+    const [availableDevices, setAvailableDevices] = useState<{
+        videoInputs: MediaDeviceInfo[];
+        audioInputs: MediaDeviceInfo[];
+        audioOutputs: MediaDeviceInfo[];
+    }>({ videoInputs: [], audioInputs: [], audioOutputs: [] });
+    const [selectedVideoInput, setSelectedVideoInput] = useState<string>('');
+    const [selectedAudioInput, setSelectedAudioInput] = useState<string>('');
+    const [selectedAudioOutput, setSelectedAudioOutput] = useState<string>('');
+    const [videoQuality, setVideoQuality] = useState<'480p' | '720p' | '1080p'>('720p');
+    const [frameRate, setFrameRate] = useState<number>(30);
     const [uploadingFiles, setUploadingFiles] = useState(false);
     const [uploadProgressData, setUploadProgressData] = useState<Array<{
         name: string;
@@ -51,12 +61,6 @@ export const LiveSession: React.FC = () => {
     }>>([]);
     const [sessionRecordings, setSessionRecordings] = useState<Recording[]>([]);
     
-    // Audio level monitoring
-    const [audioLevel, setAudioLevel] = useState(0);
-    const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-    const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
-    const [animationFrame, setAnimationFrame] = useState<number | null>(null);
-    
     useEffect(() => {
         if (location.state?.topic) {
             setTopic(location.state.topic);
@@ -65,6 +69,37 @@ export const LiveSession: React.FC = () => {
             navigate('/');
         }
     }, [location.state, navigate]);
+
+    // Load available media devices
+    useEffect(() => {
+        const loadDevices = async () => {
+            try {
+                // Request permissions first
+                await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoInputs = devices.filter(device => device.kind === 'videoinput');
+                const audioInputs = devices.filter(device => device.kind === 'audioinput');
+                const audioOutputs = devices.filter(device => device.kind === 'audiooutput');
+                
+                setAvailableDevices({ videoInputs, audioInputs, audioOutputs });
+                
+                // Set default selections
+                if (videoInputs.length > 0) setSelectedVideoInput(videoInputs[0].deviceId);
+                if (audioInputs.length > 0) setSelectedAudioInput(audioInputs[0].deviceId);
+                if (audioOutputs.length > 0) setSelectedAudioOutput(audioOutputs[0].deviceId);
+                
+            } catch (error) {
+                console.error('Error accessing media devices:', error);
+            }
+        };
+        
+        loadDevices();
+        
+        // Listen for device changes
+        navigator.mediaDevices.addEventListener('devicechange', loadDevices);
+        return () => navigator.mediaDevices.removeEventListener('devicechange', loadDevices);
+    }, []);
 
     useEffect(() => {
         let timer: number | undefined;
@@ -85,55 +120,45 @@ export const LiveSession: React.FC = () => {
             if (mediaStream) {
                 mediaStream.getTracks().forEach(track => track.stop());
             }
-            if (audioContext) {
-                audioContext.close();
-            }
-            if (animationFrame) {
-                cancelAnimationFrame(animationFrame);
-            }
         };
     }, [previewUrl, mediaStream]);
 
-    // Audio level monitoring function
-    const updateAudioLevel = () => {
-        if (!analyser) return;
+    const getVideoConstraints = () => {
+        const constraints: MediaTrackConstraints = {
+            deviceId: selectedVideoInput ? { exact: selectedVideoInput } : undefined,
+            frameRate: frameRate
+        };
         
-        const bufferLength = analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-        analyser.getByteFrequencyData(dataArray);
-        
-        // Calculate average volume
-        let sum = 0;
-        for (let i = 0; i < bufferLength; i++) {
-            sum += dataArray[i];
+        switch (videoQuality) {
+            case '480p':
+                constraints.width = { ideal: 640 };
+                constraints.height = { ideal: 480 };
+                break;
+            case '720p':
+                constraints.width = { ideal: 1280 };
+                constraints.height = { ideal: 720 };
+                break;
+            case '1080p':
+                constraints.width = { ideal: 1920 };
+                constraints.height = { ideal: 1080 };
+                break;
         }
-        const average = sum / bufferLength;
-        const level = (average / 255) * 100; // Convert to percentage
         
-        setAudioLevel(level);
-        
-        if (isRecording) {
-            const frame = requestAnimationFrame(updateAudioLevel);
-            setAnimationFrame(frame);
-        }
+        return constraints;
     };
+
     const startRecording = async () => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: true, 
-                audio: true 
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: getVideoConstraints(),
+                audio: {
+                    deviceId: selectedAudioInput ? { exact: selectedAudioInput } : undefined,
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                }
             });
             setMediaStream(stream);
-            
-            // Set up audio monitoring
-            const audioCtx = new AudioContext();
-            const source = audioCtx.createMediaStreamSource(stream);
-            const analyserNode = audioCtx.createAnalyser();
-            analyserNode.fftSize = 256;
-            source.connect(analyserNode);
-            
-            setAudioContext(audioCtx);
-            setAnalyser(analyserNode);
             
             const recorder = new MediaRecorder(stream, {
                 mimeType: 'video/webm;codecs=vp9,opus'
@@ -157,21 +182,11 @@ export const LiveSession: React.FC = () => {
                 // Stop the stream
                 stream.getTracks().forEach(track => track.stop());
                 setMediaStream(null);
-                
-                // Stop audio monitoring
-                if (animationFrame) {
-                    cancelAnimationFrame(animationFrame);
-                    setAnimationFrame(null);
-                }
-                setAudioLevel(0);
             };
             
             recorder.start();
             setMediaRecorder(recorder);
             setIsRecording(true);
-            
-            // Start audio level monitoring
-            updateAudioLevel();
             
             // Show live preview
             const videoElement = document.getElementById('recordingVideo') as HTMLVideoElement;
@@ -435,6 +450,91 @@ export const LiveSession: React.FC = () => {
                 <div className="mt-8 border-t border-border pt-6">
                     <h3 className="text-lg font-semibold text-text-primary mb-4 text-center">📹 Practice Recording</h3>
                     
+                    {/* Recording Settings */}
+                    {!isRecording && (
+                        <div className="mb-6 bg-background p-4 rounded-lg">
+                            <h4 className="text-sm font-medium text-text-secondary mb-3">Recording Settings</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {/* Video Input */}
+                                <div>
+                                    <label className="block text-xs font-medium text-text-secondary mb-1">Camera</label>
+                                    <select 
+                                        value={selectedVideoInput}
+                                        onChange={(e) => setSelectedVideoInput(e.target.value)}
+                                        className="w-full bg-surface p-2 rounded text-xs border border-border"
+                                    >
+                                        {availableDevices.videoInputs.map(device => (
+                                            <option key={device.deviceId} value={device.deviceId}>
+                                                {device.label || `Camera ${device.deviceId.slice(0, 8)}...`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                
+                                {/* Audio Input */}
+                                <div>
+                                    <label className="block text-xs font-medium text-text-secondary mb-1">Microphone</label>
+                                    <select 
+                                        value={selectedAudioInput}
+                                        onChange={(e) => setSelectedAudioInput(e.target.value)}
+                                        className="w-full bg-surface p-2 rounded text-xs border border-border"
+                                    >
+                                        {availableDevices.audioInputs.map(device => (
+                                            <option key={device.deviceId} value={device.deviceId}>
+                                                {device.label || `Microphone ${device.deviceId.slice(0, 8)}...`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                
+                                {/* Video Quality */}
+                                <div>
+                                    <label className="block text-xs font-medium text-text-secondary mb-1">Quality</label>
+                                    <select 
+                                        value={videoQuality}
+                                        onChange={(e) => setVideoQuality(e.target.value as '480p' | '720p' | '1080p')}
+                                        className="w-full bg-surface p-2 rounded text-xs border border-border"
+                                    >
+                                        <option value="480p">480p (640x480)</option>
+                                        <option value="720p">720p (1280x720)</option>
+                                        <option value="1080p">1080p (1920x1080)</option>
+                                    </select>
+                                </div>
+                                
+                                {/* Frame Rate */}
+                                <div>
+                                    <label className="block text-xs font-medium text-text-secondary mb-1">Frame Rate</label>
+                                    <select 
+                                        value={frameRate}
+                                        onChange={(e) => setFrameRate(Number(e.target.value))}
+                                        className="w-full bg-surface p-2 rounded text-xs border border-border"
+                                    >
+                                        <option value={15}>15 FPS</option>
+                                        <option value={24}>24 FPS</option>
+                                        <option value={30}>30 FPS</option>
+                                        <option value={60}>60 FPS</option>
+                                    </select>
+                                </div>
+                                
+                                {/* Audio Output */}
+                                <div>
+                                    <label className="block text-xs font-medium text-text-secondary mb-1">Speakers</label>
+                                    <select 
+                                        value={selectedAudioOutput}
+                                        onChange={(e) => setSelectedAudioOutput(e.target.value)}
+                                        className="w-full bg-surface p-2 rounded text-xs border border-border"
+                                    >
+                                        {availableDevices.audioOutputs.map(device => (
+                                            <option key={device.deviceId} value={device.deviceId}>
+                                                {device.label || `Speaker ${device.deviceId.slice(0, 8)}...`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    
                     {/* Video Element */}
                     <div className="mb-4 flex justify-center">
                         <video 
@@ -447,35 +547,6 @@ export const LiveSession: React.FC = () => {
                             src={previewUrl || undefined}
                         />
                     </div>
-                    
-                    {/* Audio Level Meter */}
-                    {isRecording && (
-                        <div className="mb-4 flex justify-center">
-                            <div className="w-full max-w-md">
-                                <div className="flex items-center space-x-2 mb-2">
-                                    <span className="text-sm text-text-secondary">🎤 Audio Level:</span>
-                                    <span className="text-sm font-mono text-text-primary">{Math.round(audioLevel)}%</span>
-                                </div>
-                                <div className="w-full bg-background rounded-full h-3 border border-border">
-                                    <div 
-                                        className={`h-3 rounded-full transition-all duration-100 ${
-                                            audioLevel > 70 ? 'bg-red-500' :
-                                            audioLevel > 40 ? 'bg-yellow-500' :
-                                            audioLevel > 10 ? 'bg-green-500' :
-                                            'bg-gray-600'
-                                        }`}
-                                        style={{ width: `${Math.min(audioLevel, 100)}%` }}
-                                    ></div>
-                                </div>
-                                <div className="text-xs text-text-secondary mt-1 text-center">
-                                    {audioLevel < 10 ? 'Too quiet - speak louder' :
-                                     audioLevel > 70 ? 'Loud - good level!' :
-                                     audioLevel > 40 ? 'Good audio level' :
-                                     'Moderate level'}
-                                </div>
-                            </div>
-                        </div>
-                    )}
                     
                     {/* Recording Controls */}
                     <div className="flex flex-wrap justify-center gap-2">
