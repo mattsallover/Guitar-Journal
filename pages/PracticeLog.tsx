@@ -411,6 +411,52 @@ export const PracticeLog: React.FC = () => {
         </div>
       </div>
 
+      {/* AI Insights Section */}
+      {state.practiceSessions.length > 0 && (
+        <div className="bg-surface p-6 rounded-lg mb-6 border border-border/30">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <div className="text-2xl">🧠</div>
+              <div>
+                <h2 className="text-xl font-bold text-text-primary">AI Practice Insights</h2>
+                <p className="text-sm text-text-secondary">Get personalized analysis of your practice patterns</p>
+              </div>
+            </div>
+            <button
+              onClick={generateAIInsights}
+              disabled={loadingInsights}
+              className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-lg flex items-center space-x-2 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loadingInsights ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Analyzing...</span>
+                </>
+              ) : (
+                <>
+                  <span>🔍</span>
+                  <span>Generate Insights</span>
+                </>
+              )}
+            </button>
+          </div>
+          
+          {showInsights && aiInsights && (
+            <div className="bg-background/50 p-4 rounded-lg border border-border/30">
+              <div className="flex items-start space-x-3">
+                <div className="text-2xl">🎸</div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-text-primary mb-2">Your Practice Analysis</h3>
+                  <div className="text-text-primary whitespace-pre-wrap leading-relaxed">
+                    {aiInsights}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="space-y-2">
         {state.practiceSessions.map(session => (
           <div key={session.id} className="bg-surface rounded-lg transition-all duration-200 hover:shadow-md group border border-border/50">

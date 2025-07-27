@@ -128,6 +128,72 @@ export const Goals: React.FC = () => {
                 </button>
             </div>
             
+            {/* AI Goal Suggestions Section */}
+            {state.practiceSessions.length > 0 && (
+                <div className="bg-surface p-6 rounded-lg mb-6 border border-border/30">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                            <div className="text-2xl">🎯</div>
+                            <div>
+                                <h2 className="text-xl font-bold text-text-primary">AI Goal Suggestions</h2>
+                                <p className="text-sm text-text-secondary">Get personalized goal recommendations based on your practice data</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={generateGoalSuggestions}
+                            disabled={loadingSuggestions}
+                            className="bg-secondary hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg flex items-center space-x-2 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {loadingSuggestions ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                    <span>Analyzing...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span>✨</span>
+                                    <span>Suggest Goals</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                    
+                    {showSuggestions && goalSuggestions.length > 0 && (
+                        <div className="space-y-4">
+                            {goalSuggestions.map((suggestion, index) => (
+                                <div key={index} className="bg-background/50 p-4 rounded-lg border border-border/30 hover:bg-background/70 transition-colors">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <div className="flex items-center space-x-2 mb-2">
+                                                <h3 className="font-semibold text-text-primary">{suggestion.title}</h3>
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                    suggestion.priority === 'high' ? 'bg-red-500/20 text-red-300' :
+                                                    suggestion.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-300' :
+                                                    'bg-blue-500/20 text-blue-300'
+                                                }`}>
+                                                    {suggestion.priority} priority
+                                                </span>
+                                                <span className="px-2 py-1 rounded-full text-xs bg-secondary/20 text-secondary-300">
+                                                    {suggestion.category}
+                                                </span>
+                                            </div>
+                                            <p className="text-text-primary mb-2">{suggestion.description}</p>
+                                            <p className="text-sm text-text-secondary italic">{suggestion.reasoning}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => createGoalFromSuggestion(suggestion)}
+                                            className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-lg ml-4 transition-all duration-200 hover:scale-105"
+                                        >
+                                            Add Goal
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+            
             <div className="mb-4">
                 <span className="mr-4 text-text-secondary">Filter:</span>
                 <div className="inline-flex space-x-2">

@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 }
 
-interface JournalRequest {
+interface JournalAnalysisRequest {
   sessions: Array<{
     date: string;
     duration: number;
@@ -14,6 +14,25 @@ interface JournalRequest {
     songs: string[];
     notes: string;
   }>;
+  repertoire?: Array<{
+    title: string;
+    artist: string;
+    difficulty: string;
+    mastery: number;
+    lastPracticed?: string;
+  }>;
+  goals?: Array<{
+    title: string;
+    category: string;
+    status: string;
+    progress: number;
+    targetDate: string;
+  }>;
+  noteFinderAttempts?: Array<{
+    noteName: string;
+    correct: boolean;
+  }>;
+  userLevel?: string;
 }
 
 serve(async (req: Request) => {
@@ -25,7 +44,13 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { sessions }: JournalRequest = await req.json();
+    const { 
+      sessions, 
+      repertoire = [], 
+      goals = [], 
+      noteFinderAttempts = [],
+      userLevel = 'intermediate'
+    }: JournalAnalysisRequest = await req.json();
 
     if (!sessions || sessions.length === 0) {
       return new Response(
@@ -40,24 +65,46 @@ serve(async (req: Request) => {
     }
 
     const recentSessions = sessions.slice(0, 5);
-    const sessionSummary = recentSessions.map((session, i) => (`
-Session ${i + 1} (${session.date}):
-- Duration: ${session.duration} minutes
-- Techniques: ${session.techniques.join(', ') || 'None specified'}
-- Songs: ${session.songs.join(', ') || 'None specified'}
-- Notes: "${session.notes || 'No notes'}"
-`)).join('\n');
+    
+    // Calculate practice statistics
+    const totalTime = sessions.reduce((sum, s) => sum + s.duration, 0);
+    const allTechniques = sessions.flatMap(s => s.techniques);
+    const allSongs = sessions.flatMap(s => s.songs);
+    const techniqueCount = allTechniques.length;
+    const songCount = allSongs.length;
+    
+    const prompt = `You are an expert guitar instructor analyzing a student's comprehensive practice data. Provide insightful, encouraging analysis with specific observations and actionable recommendations.
 
-    const prompt = `As an expert guitar instructor, analyze these recent practice sessions and provide insights:
+PRACTICE SESSIONS (${sessions.length} recent sessions, ${totalTime} total minutes):
+${recentSessions.map((session, i) => `
+${session.date} - ${session.duration}min
+Techniques: ${session.techniques.join(', ') || 'None'}
+Songs: ${session.songs.join(', ') || 'None'}
+Notes: "${session.notes || 'No notes'}"
+`).join('')}
 
-${sessionSummary}
+REPERTOIRE (${repertoire.length} songs):
+${repertoire.slice(0, 10).map(item => `
+- "${item.title}" by ${item.artist} (${item.difficulty}, ${item.mastery}% mastery, last: ${item.lastPracticed || 'never'})
+`).join('')}
 
-Provide a thoughtful analysis in 2-3 paragraphs covering:
-1. Practice patterns and consistency
-2. Areas of focus and progress
-3. Suggestions for improvement
+GOALS (${goals.length} total):
+${goals.slice(0, 5).map(goal => `
+- "${goal.title}" (${goal.category}, ${goal.status}, ${goal.progress}% complete)
+`).join('')}
 
-Be encouraging and specific.`;
+PRACTICE PATTERNS:
+- Technique focus: ${Math.round((techniqueCount / (techniqueCount + songCount)) * 100)}% techniques, ${Math.round((songCount / (techniqueCount + songCount)) * 100)}% songs
+- Note finder accuracy: ${noteFinderAttempts.length > 0 ? Math.round((noteFinderAttempts.filter(a => a.correct).length / noteFinderAttempts.length) * 100) + '%' : 'No data'}
+- Skill level: ${userLevel}
+
+Provide analysis in 3-4 paragraphs covering:
+1. Practice consistency and patterns
+2. Progress on repertoire and goals
+3. Strengths and areas for improvement
+4. Specific actionable recommendations
+
+Be encouraging, specific, and reference actual songs/techniques/goals by name.`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',

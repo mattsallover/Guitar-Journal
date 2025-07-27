@@ -85,14 +85,65 @@ class AIService {
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers,
+        body: JSON.stringify({ sessions: sessions.slice(0, 30) })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Journal Analysis Error:', error);
+      return "I'm having trouble analyzing your practice journal right now. Your consistent practice is still building great habits!";
+    }
+  }
+
+  async analyzePracticeJournalWithContext(
+    sessions: PracticeSession[],
+    repertoire: RepertoireItem[],
+    goals: Goal[],
+    noteFinderAttempts: NoteFinderAttempt[]
+  ): Promise<string> {
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-journal-analysis`;
+      
+      const headers = {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
         body: JSON.stringify({
-          sessions: sessions.slice(0, 5).map(session => ({
+          sessions: sessions.slice(0, 30).map(session => ({
             date: session.date,
             duration: session.duration,
             techniques: session.techniques,
             songs: session.songs,
             notes: session.notes
-          }))
+          })),
+          repertoire: repertoire.map(item => ({
+            title: item.title,
+            artist: item.artist,
+            difficulty: item.difficulty,
+            mastery: item.mastery,
+            lastPracticed: item.lastPracticed
+          })),
+          goals: goals.map(goal => ({
+            title: goal.title,
+            category: goal.category,
+            status: goal.status,
+            progress: goal.progress,
+            targetDate: goal.targetDate
+          })),
+          noteFinderAttempts: noteFinderAttempts.map(attempt => ({
+            noteName: attempt.noteName,
+            correct: attempt.correct
+          })),
+          userLevel: noteFinderAttempts.length < 50 ? 'beginner' : 
+                     noteFinderAttempts.length < 200 ? 'intermediate' : 'advanced'
         })
       });
 
@@ -104,6 +155,81 @@ class AIService {
     } catch (error) {
       console.error('Journal Analysis Error:', error);
       return "I'm having trouble analyzing your practice journal right now. Your consistent practice is still building great habits!";
+    }
+  }
+
+  async suggestGoals(
+    practiceSessions: PracticeSession[],
+    repertoire: RepertoireItem[],
+    goals: Goal[],
+    noteFinderAttempts: NoteFinderAttempt[]
+  ): Promise<Array<{
+    title: string;
+    category: string;
+    description: string;
+    reasoning: string;
+    targetDate: string;
+    priority: 'high' | 'medium' | 'low';
+  }>> {
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-goal-suggestions`;
+      
+      const headers = {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          practiceSessions: practiceSessions.slice(0, 30).map(session => ({
+            date: session.date,
+            duration: session.duration,
+            techniques: session.techniques,
+            songs: session.songs,
+            notes: session.notes
+          })),
+          repertoire: repertoire.map(item => ({
+            title: item.title,
+            artist: item.artist,
+            difficulty: item.difficulty,
+            mastery: item.mastery,
+            lastPracticed: item.lastPracticed
+          })),
+          goals: goals.map(goal => ({
+            title: goal.title,
+            category: goal.category,
+            status: goal.status,
+            progress: goal.progress,
+            targetDate: goal.targetDate
+          })),
+          noteFinderAttempts: noteFinderAttempts.map(attempt => ({
+            noteName: attempt.noteName,
+            correct: attempt.correct
+          })),
+          userLevel: noteFinderAttempts.length < 50 ? 'beginner' : 
+                     noteFinderAttempts.length < 200 ? 'intermediate' : 'advanced'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Goal Suggestions Error:', error);
+      return [
+        {
+          title: "Master Your Weak Notes",
+          category: "Technique",
+          description: "Use the Note Finder tool to practice identifying your most challenging notes.",
+          reasoning: "Improving note recognition will enhance your overall fretboard knowledge.",
+          targetDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          priority: "high" as const
+        }
+      ];
     }
   }
 
