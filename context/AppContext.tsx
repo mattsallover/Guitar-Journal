@@ -296,8 +296,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (session?.user) {
         const appUser: User = {
           uid: session.user.id,
-          isAnonymous: session.user.is_anonymous || false,
-          name: session.user.user_metadata?.name || 'Practice Hero',
+          isAnonymous: false,
+          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Guitar Player',
           email: session.user.email || null,
         };
         dispatch({ type: 'SET_USER', payload: appUser });
@@ -312,8 +312,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (session?.user) {
         const appUser: User = {
           uid: session.user.id,
-          isAnonymous: session.user.is_anonymous || false,
-          name: session.user.user_metadata?.name || 'Practice Hero',
+          isAnonymous: false,
+          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Guitar Player',
           email: session.user.email || null,
         };
         dispatch({ type: 'SET_USER', payload: appUser });

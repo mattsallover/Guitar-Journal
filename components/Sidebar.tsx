@@ -131,8 +131,8 @@ export const Sidebar: React.FC = () => {
 
             <div className="mt-auto">
                 <div className="p-4 bg-surface rounded-lg transition-all duration-300 hover:bg-surface/80">
-                    <p className="font-semibold text-text-primary">{state.user?.name}</p>
-                    <p className="text-sm text-text-secondary">{state.user?.email || 'Anonymous User'}</p>
+                    <p className="font-semibold text-text-primary">{state.user?.name || 'Guitar Player'}</p>
+                    <p className="text-sm text-text-secondary">{state.user?.email || 'No email'}</p>
                     <button 
                         onClick={handleLogout} 
                         className="w-full mt-4 text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-md transition-all duration-200 hover:translate-x-1"
