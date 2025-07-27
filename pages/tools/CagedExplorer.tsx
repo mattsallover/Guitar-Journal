@@ -34,7 +34,10 @@ export const CagedExplorer: React.FC = () => {
         // Find what fret the root note appears on the root string
         const rootStringOpenNoteIndex = ALL_NOTES.indexOf(GUITAR_TUNING[shape.rootString]);
         const rootNoteIndex = ALL_NOTES.indexOf(selectedRootNote);
-        const rootFret = (rootNoteIndex - rootStringOpenNoteIndex + 12) % 12;
+        
+        // Calculate fret position (how many frets up from open string)
+        let rootFret = rootNoteIndex - rootStringOpenNoteIndex;
+        if (rootFret < 0) rootFret += 12; // Handle wrap-around (e.g., F on A string)
         
         return shape.intervals.map(interval => {
             const fret = rootFret + interval.fretOffset;
@@ -42,7 +45,7 @@ export const CagedExplorer: React.FC = () => {
             
             // Calculate what note is actually at this position
             const stringOpenNoteIndex = ALL_NOTES.indexOf(GUITAR_TUNING[interval.string]);
-            const actualNoteIndex = (stringOpenNoteIndex + fret) % 12;
+            const actualNoteIndex = (stringOpenNoteIndex + fret) % ALL_NOTES.length;
             const note = ALL_NOTES[actualNoteIndex];
             
             return {
@@ -52,7 +55,7 @@ export const CagedExplorer: React.FC = () => {
                 label: interval.type === 'R' ? note : interval.type
             };
         }).filter(Boolean);
-    }, [selectedRootNote, selectedCagedShape]);
+    }, [selectedRootNote, selectedCagedShape, isQuizMode, isRevealed]);
 
     const handleRandomize = () => {
         const randomNote = ALL_NOTES[Math.floor(Math.random() * ALL_NOTES.length)] as Note;
