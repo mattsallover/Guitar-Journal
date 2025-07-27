@@ -16,7 +16,6 @@ import { CagedExplorer } from './pages/tools/CagedExplorer';
 import { NoteFinder } from './pages/tools/NoteFinder';
 import { ScalePractice } from './pages/tools/ScalePractice';
 import { LiveSession } from './pages/LiveSession';
-import { OnboardingModal } from './components/OnboardingModal';
 
 const AppContent: React.FC = () => {
     const { state } = useAppContext();
@@ -45,9 +44,6 @@ const AppContent: React.FC = () => {
             </main>
             <FloatingChatButton />
             <AIChatModal />
-            {state.user && !state.user.hasOnboarded && (
-                <OnboardingModal />
-            )}
         </div>
     );
 }

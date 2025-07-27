@@ -4,7 +4,6 @@ export interface User {
   isAnonymous: boolean;
   name: string | null;
   email: string | null;
-  hasOnboarded?: boolean;
 }
 
 export enum Mood {

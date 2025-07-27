@@ -26,21 +26,18 @@ export interface Database {
           name: string | null;
           email: string | null;
           created_at: string;
-          has_onboarded: boolean;
         };
         Insert: {
           id?: string;
           name?: string | null;
           email?: string | null;
           created_at?: string;
-          has_onboarded?: boolean;
         };
         Update: {
           id?: string;
           name?: string | null;
           email?: string | null;
           created_at?: string;
-          has_onboarded?: boolean;
         };
       };
       practice_sessions: {
