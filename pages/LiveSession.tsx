@@ -471,7 +471,7 @@ export const LiveSession: React.FC = () => {
     return (
         <>
         <div className="p-4 sm:p-8 flex flex-col items-center justify-center min-h-full bg-slate-900 overflow-y-auto">
-            <div className="w-full max-w-2xl bg-surface p-6 sm:p-8 rounded-xl shadow-2xl">
+            <div className={`w-full ${activeTool === 'session' ? 'max-w-2xl' : 'max-w-5xl'} bg-surface p-6 sm:p-8 rounded-xl shadow-2xl`}>
                 <div className="text-center">
                     <p className="text-text-secondary">NOW PRACTICING</p>
                     <h1 className="text-3xl sm:text-4xl font-bold text-primary my-4 break-words">{topic}</h1>
