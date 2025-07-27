@@ -147,8 +147,8 @@ export const CagedExplorer: React.FC<CagedExplorerProps> = ({ isEmbedded = false
     };
 
     return (
-        <div className="p-8">
-            <div className="max-w-6xl mx-auto">
+        <div className={isEmbedded ? "" : "p-8"}>
+            <div className={isEmbedded ? "" : "max-w-6xl mx-auto"}>
                 {/* Header */}
                 {!isEmbedded && (
                     <div className="text-center mb-8">
@@ -164,7 +164,7 @@ export const CagedExplorer: React.FC<CagedExplorerProps> = ({ isEmbedded = false
 
                 {/* Main Controls */}
                 {!showAnalytics && (
-                    <div className="bg-surface p-6 rounded-lg mb-8">
+                    <div className={`p-6 rounded-lg mb-8 ${isEmbedded ? 'bg-background/50 border border-border/30' : 'bg-surface'}`}>
                         <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
                             {/* Shape & Root Selection */}
                             <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -267,7 +267,7 @@ export const CagedExplorer: React.FC<CagedExplorerProps> = ({ isEmbedded = false
 
                 {/* Quiz Results */}
                 {showQuizResult && (
-                    <div className="bg-surface p-6 rounded-lg mb-8 text-center">
+                    <div className={`p-6 rounded-lg mb-8 text-center ${isEmbedded ? 'bg-background/50 border border-border/30' : 'bg-surface'}`}>
                         <h2 className="text-2xl font-bold text-primary mb-4">Quiz Complete! 🎉</h2>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                             <div>
@@ -339,7 +339,7 @@ export const CagedExplorer: React.FC<CagedExplorerProps> = ({ isEmbedded = false
                         </div>
 
                         {/* Legend */}
-                        <div className="bg-surface p-4 rounded-lg">
+                        <div className={`p-4 rounded-lg ${isEmbedded ? 'bg-background/50 border border-border/30' : 'bg-surface'}`}>
                             <h3 className="text-lg font-semibold text-text-primary mb-3 text-center">Chord Tone Legend</h3>
                             <div className="flex justify-center space-x-8">
                                 <div className="flex items-center space-x-2">

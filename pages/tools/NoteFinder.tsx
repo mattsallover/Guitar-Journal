@@ -145,8 +145,8 @@ export const NoteFinder: React.FC<NoteFinderProps> = ({ isEmbedded = false }) =>
     };
 
     return (
-        <div className="p-8">
-            <div className="max-w-6xl mx-auto">
+        <div className={isEmbedded ? "" : "p-8"}>
+            <div className={isEmbedded ? "" : "max-w-6xl mx-auto"}>
                 {/* Header */}
                 {!isEmbedded && (
                     <div className="text-center mb-8">
@@ -198,7 +198,7 @@ export const NoteFinder: React.FC<NoteFinderProps> = ({ isEmbedded = false }) =>
                 {/* Learn Mode */}
                 {viewMode === 'learn' && (
                     <>
-                        <div className="bg-surface p-6 rounded-lg mb-8">
+                        <div className={`p-6 rounded-lg mb-8 ${isEmbedded ? 'bg-background/50 border border-border/30' : 'bg-surface'}`}>
                             <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
                                 <div className="flex items-center gap-4">
                                     <div className="text-center">
@@ -242,7 +242,7 @@ export const NoteFinder: React.FC<NoteFinderProps> = ({ isEmbedded = false }) =>
                             />
                         </div>
 
-                        <div className="bg-surface p-4 rounded-lg text-center">
+                        <div className={`p-4 rounded-lg text-center ${isEmbedded ? 'bg-background/50 border border-border/30' : 'bg-surface'}`}>
                             <p className="text-text-secondary">
                                 <span className="font-bold text-primary">{selectedNote}</span> appears in 
                                 <span className="font-bold text-primary ml-1">{learnHighlightedNotes.length}</span> positions on the fretboard
@@ -255,7 +255,7 @@ export const NoteFinder: React.FC<NoteFinderProps> = ({ isEmbedded = false }) =>
                 {viewMode === 'practice' && (
                     <>
                         {!isWaitingForAnswer && !targetNote ? (
-                            <div className="bg-surface p-12 rounded-lg text-center">
+                            <div className={`p-12 rounded-lg text-center ${isEmbedded ? 'bg-background/50 border border-border/30' : 'bg-surface'}`}>
                                 <div className="text-6xl mb-6">🎯</div>
                                 <h2 className="text-2xl font-bold text-text-primary mb-4">Ready to Practice?</h2>
                                 
@@ -281,7 +281,7 @@ export const NoteFinder: React.FC<NoteFinderProps> = ({ isEmbedded = false }) =>
                         ) : (
                             <>
                                 {/* Practice Question */}
-                                <div className="bg-surface p-8 rounded-lg mb-8 text-center">
+                                <div className={`p-8 rounded-lg mb-8 text-center ${isEmbedded ? 'bg-background/50 border border-border/30' : 'bg-surface'}`}>
                                     <div className="mb-4">
                                         <div className="text-sm text-text-secondary mb-2">
                                             {practiceMode === 'find-on-string' ? 'Find this note on the highlighted string:' : 'Find this note anywhere:'}
@@ -348,7 +348,7 @@ export const NoteFinder: React.FC<NoteFinderProps> = ({ isEmbedded = false }) =>
                 {viewMode === 'analytics' && (
                     <div className="space-y-6">
                         {state.noteFinderAttempts.length === 0 ? (
-                            <div className="bg-surface p-12 rounded-lg text-center">
+                            <div className={`p-12 rounded-lg text-center ${isEmbedded ? 'bg-background/50 border border-border/30' : 'bg-surface'}`}>
                                 <div className="text-6xl mb-6">📊</div>
                                 <h2 className="text-2xl font-bold text-text-primary mb-4">No Practice Data Yet</h2>
                                 <p className="text-text-secondary mb-6">
@@ -364,7 +364,7 @@ export const NoteFinder: React.FC<NoteFinderProps> = ({ isEmbedded = false }) =>
                         ) : (
                             <>
                                 {/* Overall Stats */}
-                                <div className="bg-surface p-6 rounded-lg">
+                                <div className={`p-6 rounded-lg ${isEmbedded ? 'bg-background/50 border border-border/30' : 'bg-surface'}`}>
                                     <h2 className="text-xl font-bold mb-4">Practice Summary</h2>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         <div className="text-center">
@@ -393,7 +393,7 @@ export const NoteFinder: React.FC<NoteFinderProps> = ({ isEmbedded = false }) =>
                                 </div>
 
                                 {/* Note Performance Grid */}
-                                <div className="bg-surface p-6 rounded-lg">
+                                <div className={`p-6 rounded-lg ${isEmbedded ? 'bg-background/50 border border-border/30' : 'bg-surface'}`}>
                                     <h3 className="text-lg font-bold mb-4">Note Performance</h3>
                                     <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                                         {performanceData
@@ -421,7 +421,7 @@ export const NoteFinder: React.FC<NoteFinderProps> = ({ isEmbedded = false }) =>
                                 </div>
 
                                 {/* Recommendations */}
-                                <div className="bg-surface p-6 rounded-lg">
+                                <div className={`p-6 rounded-lg ${isEmbedded ? 'bg-background/50 border border-border/30' : 'bg-surface'}`}>
                                     <h3 className="text-lg font-bold mb-4">Practice Recommendations</h3>
                                     <div className="space-y-2">
                                         {performanceData
