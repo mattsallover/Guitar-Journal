@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
@@ -394,11 +395,14 @@ export const LiveSession: React.FC = () => {
         let recordings: Recording[] = [];
         
         // Upload recording if exists
-        if (previewUrl && recordedChunks.length > 0) {
+        if (recordedChunks.length > 0) {
             try {
+                console.log('Uploading recording with chunks:', recordedChunks.length);
                 recordings = await uploadRecording();
+                console.log('Upload successful, recordings:', recordings);
                 setSessionRecordings(recordings);
             } catch (error) {
+                console.error('Upload failed:', error);
                 if (!window.confirm('Failed to upload recording. Continue without saving the recording?')) {
                     setIsSaving(false);
                     setUploadingFiles(false);
@@ -408,6 +412,13 @@ export const LiveSession: React.FC = () => {
         }
         
         setUploadingFiles(false);
+        
+        // Clean up recording after successful upload or user confirmation
+        if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+            setPreviewUrl(null);
+        }
+        setRecordedChunks([]);
         
         // Save practice session directly to database
         try {
@@ -433,11 +444,13 @@ export const LiveSession: React.FC = () => {
                 link: link
             };
             
+            console.log('Saving session data:', sessionData);
             const { error } = await supabase
                 .from('practice_sessions')
                 .insert([sessionData]);
             
             if (error) throw error;
+            console.log('Session saved successfully');
             
             // Update repertoire last_practiced if this was a song
             if (topic) {
