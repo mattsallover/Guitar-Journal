@@ -690,10 +690,10 @@ export const LiveSession: React.FC = () => {
                     
                     {isRecording && (
                         <div className="text-center mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                            <p className="text-sm text-red-400 flex items-center justify-center">
+                            <div className="text-sm text-red-400 flex items-center justify-center">
                                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2"></div>
                                 Recording in progress...
-                            </p>
+                            </div>
                         </div>
                     )}
                 </div>
