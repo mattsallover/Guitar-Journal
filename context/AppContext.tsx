@@ -299,10 +299,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         console.error('Error checking user existence:', error);
         throw error;
       }
-      return { hasOnboarded: data.has_onboarded };
+      return { hasOnboarded: data.has_onboarded || false };
     } catch (err) {
       console.error('Error ensuring user exists:', err);
-      throw err;
+      // Return default values instead of throwing to prevent auth blocking
+      return { hasOnboarded: false };
     }
   };
 
@@ -522,51 +523,81 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // Get initial session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        // Fetch hasOnboarded status
-        const { data: userData, error: userFetchError } = await supabase
-          .from('users')
-          .select('has_onboarded')
-          .eq('id', session.user.id)
-          .maybeSingle();
+        try {
+          // Fetch hasOnboarded status
+          const { data: userData, error: userFetchError } = await supabase
+            .from('users')
+            .select('has_onboarded')
+            .eq('id', session.user.id)
+            .maybeSingle();
 
-        const appUser: User = {
-          uid: session.user.id,
-          isAnonymous: false,
-          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Guitar Player',
-          email: session.user.email || null,
-          hasOnboarded: userData?.has_onboarded || false,
-        };
-        dispatch({ type: 'SET_USER', payload: appUser });
+          const appUser: User = {
+            uid: session.user.id,
+            isAnonymous: false,
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Guitar Player',
+            email: session.user.email || null,
+            hasOnboarded: userData?.has_onboarded || false,
+          };
+          dispatch({ type: 'SET_USER', payload: appUser });
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          // Still set user even if we can't fetch onboarding status
+          const appUser: User = {
+            uid: session.user.id,
+            isAnonymous: false,
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Guitar Player',
+            email: session.user.email || null,
+            hasOnboarded: false, // Default to false if we can't fetch
+          };
+          dispatch({ type: 'SET_USER', payload: appUser });
+        }
       } else {
         dispatch({ type: 'SET_USER', payload: null });
         dispatch({ type: 'SET_LOADING', payload: false });
       }
+    }).catch(error => {
+      console.error('Error getting initial session:', error);
+      dispatch({ type: 'SET_USER', payload: null });
+      dispatch({ type: 'SET_LOADING', payload: false });
     });
-    
+
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        // Fetch hasOnboarded status
-        const { data: userData, error: userFetchError } = await supabase
-          .from('users')
-          .select('has_onboarded')
-          .eq('id', session.user.id)
-          .maybeSingle();
+        try {
+          // Fetch hasOnboarded status
+          const { data: userData, error: userFetchError } = await supabase
+            .from('users')
+            .select('has_onboarded')
+            .eq('id', session.user.id)
+            .maybeSingle();
 
-        const appUser: User = {
-          uid: session.user.id,
-          isAnonymous: false,
-          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Guitar Player',
-          email: session.user.email || null,
-          hasOnboarded: userData?.has_onboarded || false,
-        };
-        dispatch({ type: 'SET_USER', payload: appUser });
+          const appUser: User = {
+            uid: session.user.id,
+            isAnonymous: false,
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Guitar Player',
+            email: session.user.email || null,
+            hasOnboarded: userData?.has_onboarded || false,
+          };
+          dispatch({ type: 'SET_USER', payload: appUser });
+        } catch (error) {
+          console.error('Error fetching user data on auth change:', error);
+          // Still set user even if we can't fetch onboarding status
+          const appUser: User = {
+            uid: session.user.id,
+            isAnonymous: false,
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Guitar Player',
+            email: session.user.email || null,
+            hasOnboarded: false, // Default to false if we can't fetch
+          };
+          dispatch({ type: 'SET_USER', payload: appUser });
+        }
       } else {
         dispatch({ type: 'SET_USER', payload: null });
         dispatch({ type: 'SET_LOADING', payload: false });
       }
     });
-    
+
     return () => subscription.unsubscribe();
   }, []);
 
@@ -584,31 +615,48 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // Fetch all data
     const initializeUserData = async () => {
-      const { hasOnboarded } = await ensureUserExists(state.user);
+      try {
+        const { hasOnboarded } = await ensureUserExists(state.user);
 
-      // Check if user has any existing practice sessions
-      const { count, error: countError } = await supabase
-        .from('practice_sessions')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', state.user.uid);
+        // Check if user has any existing practice sessions
+        const { count, error: countError } = await supabase
+          .from('practice_sessions')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', state.user.uid);
 
-      if (countError) {
-        console.error('Error checking for existing data:', countError);
-      } else if (!hasOnboarded && count === 0) {
-        // User has not onboarded and no existing data, populate sample data
-        console.log('New user detected, populating sample data...');
-        await populateSampleData(state.user.uid);
+        if (countError) {
+          console.error('Error checking for existing data:', countError);
+        } else if (!hasOnboarded && count === 0) {
+          // User has not onboarded and no existing data, populate sample data
+          console.log('New user detected, populating sample data...');
+          await populateSampleData(state.user.uid);
+        }
+
+        // Fetch all data (including newly populated sample data if applicable)
+        await Promise.all([
+          fetchPracticeSessions(state.user),
+          fetchRepertoire(state.user),
+          fetchGoals(state.user),
+          fetchCAGEDSessions(state.user),
+          fetchNoteFinderAttempts(state.user)
+        ]);
+      } catch (error) {
+        console.error('Error initializing user data:', error);
+        // Still try to fetch basic data even if initialization fails
+        try {
+          await Promise.all([
+            fetchPracticeSessions(state.user),
+            fetchRepertoire(state.user),
+            fetchGoals(state.user),
+            fetchCAGEDSessions(state.user),
+            fetchNoteFinderAttempts(state.user)
+          ]);
+        } catch (fetchError) {
+          console.error('Error fetching user data:', fetchError);
+        }
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
       }
-
-      // Fetch all data (including newly populated sample data if applicable)
-      await Promise.all([
-        fetchPracticeSessions(state.user),
-        fetchRepertoire(state.user),
-        fetchGoals(state.user),
-        fetchCAGEDSessions(state.user),
-        fetchNoteFinderAttempts(state.user)
-      ]);
-      dispatch({ type: 'SET_LOADING', payload: false });
     };
 
     initializeUserData();
