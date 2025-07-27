@@ -10,6 +10,7 @@ import { UploadProgress } from '../components/UploadProgress';
 import { MOOD_OPTIONS } from '../constants';
 import { compressVideo, compressImage, formatFileSize } from '../utils/mediaUtils';
 import { supabase } from '../services/supabase';
+import * as aiService from '../services/aiService';
 
 const moodIcons: Record<Mood, string> = {
   [Mood.Good]: '🙂', // Only keeping one since we always save as 'Good'
@@ -36,6 +37,11 @@ export const PracticeLog: React.FC = () => {
   
   // State for tracking expanded sessions
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
+  
+  // AI Insights state
+  const [loadingInsights, setLoadingInsights] = useState(false);
+  const [showInsights, setShowInsights] = useState(false);
+  const [aiInsights, setAiInsights] = useState<string>('');
   
   // Modal states for updates
   const [showMasteryModal, setShowMasteryModal] = useState(false);
@@ -79,6 +85,28 @@ export const PracticeLog: React.FC = () => {
     setIsModalOpen(false);
     setCurrentSession(null);
     setSelectedFiles(null);
+  };
+
+  const generateAIInsights = async () => {
+    if (!state.user) return;
+    
+    setLoadingInsights(true);
+    try {
+      const insights = await aiService.analyzePracticeJournalWithContext(
+        state.practiceSessions.slice(0, 30), // Last 30 sessions
+        state.repertoire,
+        state.goals,
+        state.noteFinder || []
+      );
+      setAiInsights(insights);
+      setShowInsights(true);
+    } catch (error) {
+      console.error('Error generating AI insights:', error);
+      setAiInsights('Sorry, I encountered an error while analyzing your practice data. Please try again.');
+      setShowInsights(true);
+    } finally {
+      setLoadingInsights(false);
+    }
   };
 
   const handleStartLiveSession = () => {
