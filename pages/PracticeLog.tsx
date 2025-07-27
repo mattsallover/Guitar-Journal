@@ -10,7 +10,7 @@ import { UploadProgress } from '../components/UploadProgress';
 import { MOOD_OPTIONS } from '../constants';
 import { compressVideo, compressImage, formatFileSize } from '../utils/mediaUtils';
 import { supabase } from '../services/supabase';
-import * as aiService from '../services/aiService';
+import { aiService } from '../services/aiService';
 
 const moodIcons: Record<Mood, string> = {
   [Mood.Good]: '🙂', // Only keeping one since we always save as 'Good'
