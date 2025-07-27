@@ -31,6 +31,10 @@ export const AIChatModal: React.FC = () => {
       // Prepare context for AI
       const context = {
         attempts: state.noteFinderAttempts,
+        practiceSessions: state.practiceSessions,
+        chatMessages: state.chatMessages,
+        repertoire: state.repertoire,
+        goals: state.goals,
         userLevel: state.noteFinderAttempts.length < 50 ? 'beginner' : 
                   state.noteFinderAttempts.length < 200 ? 'intermediate' : 'advanced'
       };

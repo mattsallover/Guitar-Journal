@@ -13,6 +13,32 @@ interface TheoryRequest {
       noteName: string;
       correct: boolean;
     }>;
+    practiceSessions?: Array<{
+      date: string;
+      duration: number;
+      techniques: string[];
+      songs: string[];
+      notes: string;
+    }>;
+    chatMessages?: Array<{
+      sender: 'user' | 'ai';
+      text: string;
+      timestamp: string;
+    }>;
+    repertoire?: Array<{
+      title: string;
+      artist: string;
+      difficulty: string;
+      mastery: number;
+      lastPracticed?: string;
+    }>;
+    goals?: Array<{
+      title: string;
+      category: string;
+      status: string;
+      progress: number;
+      targetDate: string;
+    }>;
     currentNote?: string;
     userLevel?: string;
   };
@@ -59,7 +85,7 @@ Keep it conversational and encouraging.`;
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'You are an expert guitar teacher with a special knack for explaining complex musical concepts in simple, relatable terms that anyone can understand. You use analogies, break down difficult ideas into digestible pieces, and always remain encouraging and supportive. You have years of experience teaching students of all levels and can adapt your explanations to match their understanding. You are passionate about helping people grow as musicians and always provide practical, actionable advice.' },
+          { role: 'system', content: 'You are an expert guitar teacher with deep knowledge of music theory, technique, and pedagogy. You have access to detailed information about each student including their practice history, repertoire, goals, and conversation history. Use this context intelligently to provide personalized, relevant guidance. You excel at explaining complex concepts in simple terms, making connections to the student\'s specific interests and skill level, and providing actionable advice that builds on their current progress. You are encouraging, supportive, and always focused on helping the student achieve their musical goals.' },
           { role: 'user', content: prompt }
         ],
         temperature: 0.7,

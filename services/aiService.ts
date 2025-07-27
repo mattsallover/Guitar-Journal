@@ -178,6 +178,10 @@ class AIService {
 
   async answerMusicTheoryQuestion(question: string, context?: {
     attempts?: NoteFinderAttempt[];
+    practiceSessions?: PracticeSession[];
+    chatMessages?: Array<{ sender: 'user' | 'ai'; text: string; timestamp: Date }>;
+    repertoire?: RepertoireItem[];
+    goals?: Goal[];
     currentNote?: Note;
     userLevel?: string;
   }): Promise<string> {
@@ -198,6 +202,32 @@ class AIService {
             attempts: context.attempts?.map(a => ({
               noteName: a.noteName,
               correct: a.correct
+            })),
+            practiceSessions: context.practiceSessions?.slice(0, 30).map(session => ({
+              date: session.date,
+              duration: session.duration,
+              techniques: session.techniques,
+              songs: session.songs,
+              notes: session.notes
+            })),
+            chatMessages: context.chatMessages?.slice(-15).map(msg => ({
+              sender: msg.sender,
+              text: msg.text,
+              timestamp: msg.timestamp.toISOString()
+            })),
+            repertoire: context.repertoire?.map(item => ({
+              title: item.title,
+              artist: item.artist,
+              difficulty: item.difficulty,
+              mastery: item.mastery,
+              lastPracticed: item.lastPracticed
+            })),
+            goals: context.goals?.map(goal => ({
+              title: goal.title,
+              category: goal.category,
+              status: goal.status,
+              progress: goal.progress,
+              targetDate: goal.targetDate
             })),
             currentNote: context.currentNote,
             userLevel: context.userLevel
