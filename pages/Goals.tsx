@@ -5,6 +5,7 @@ import { Goal, GoalStatus, GoalCategory } from '../types';
 import { Modal } from '../components/Modal';
 import { GOAL_STATUS_OPTIONS, GOAL_CATEGORY_OPTIONS } from '../constants';
 import { supabase } from '../services/supabase';
+import * as aiService from '../services/aiService';
 
 
 export const Goals: React.FC = () => {
@@ -16,6 +17,9 @@ export const Goals: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [currentGoal, setCurrentGoal] = useState<Partial<Goal> | null>(null);
     const [filterStatus, setFilterStatus] = useState<GoalStatus | 'all'>('all');
+    const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [goalSuggestions, setGoalSuggestions] = useState<any[]>([]);
 
     useEffect(() => {
         const navState = location.state;
@@ -97,6 +101,39 @@ export const Goals: React.FC = () => {
                 alert("Failed to delete goal. Please try again.");
             }
         }
+    };
+    
+    const generateGoalSuggestions = async () => {
+        if (!state.user) return;
+        setLoadingSuggestions(true);
+        
+        try {
+            const suggestions = await aiService.generateGoalSuggestions({
+                practiceSessions: state.practiceSessions.slice(-30),
+                repertoire: state.repertoire,
+                goals: state.goals,
+                noteFinder: [], // Add note finder data if available
+            });
+            
+            setGoalSuggestions(suggestions);
+            setShowSuggestions(true);
+        } catch (error) {
+            console.error("Error generating goal suggestions:", error);
+            alert("Failed to generate goal suggestions. Please try again.");
+        } finally {
+            setLoadingSuggestions(false);
+        }
+    };
+    
+    const createGoalFromSuggestion = (suggestion: any) => {
+        openModal({
+            title: suggestion.title,
+            description: suggestion.description,
+            category: suggestion.category,
+            targetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+            status: GoalStatus.Active,
+            progress: 0,
+        });
     };
     
     const handleStartPractice = (title: string) => {
