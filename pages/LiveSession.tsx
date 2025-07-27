@@ -760,7 +760,7 @@ export const LiveSession: React.FC = () => {
                 
                 {/* Metronome Section */}
                 {activeTool === 'session' && (
-                    <div className="mt-8 bg-surface/30 rounded-xl p-6 border border-border/20">
+                <div className="mt-8 bg-surface/30 rounded-xl p-6 border border-border/20">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center">
                             <svg className="w-6 h-6 text-primary mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -786,7 +786,7 @@ export const LiveSession: React.FC = () => {
 
                 {/* Session Details */}
                 {activeTool === 'session' && (
-                    <div className="mt-8 bg-surface/30 rounded-xl p-6 border border-border/20">
+                <div className="mt-8 bg-surface/30 rounded-xl p-6 border border-border/20">
                     <div className="flex items-center mb-6">
                         <LogIcon className="w-6 h-6 text-primary mr-3" />
                         <h3 className="text-lg font-semibold text-text-primary">Session Details</h3>
