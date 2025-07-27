@@ -50,6 +50,8 @@ export const LiveSession: React.FC = () => {
     const [selectedAudioOutput, setSelectedAudioOutput] = useState<string>('');
     const [videoQuality, setVideoQuality] = useState<'480p' | '720p' | '1080p'>('720p');
     const [frameRate, setFrameRate] = useState<number>(30);
+    const [showMetronome, setShowMetronome] = useState(false);
+    const [showDeviceSettings, setShowDeviceSettings] = useState(false);
     const [uploadingFiles, setUploadingFiles] = useState(false);
     const [uploadProgressData, setUploadProgressData] = useState<Array<{
         name: string;
@@ -61,6 +63,23 @@ export const LiveSession: React.FC = () => {
     }>>([]);
     const [sessionRecordings, setSessionRecordings] = useState<Recording[]>([]);
     
+    // Load saved device preferences
+    useEffect(() => {
+        const savedPrefs = localStorage.getItem('recording-device-prefs');
+        if (savedPrefs) {
+            try {
+                const prefs = JSON.parse(savedPrefs);
+                if (prefs.videoInput) setSelectedVideoInput(prefs.videoInput);
+                if (prefs.audioInput) setSelectedAudioInput(prefs.audioInput);
+                if (prefs.audioOutput) setSelectedAudioOutput(prefs.audioOutput);
+                if (prefs.videoQuality) setVideoQuality(prefs.videoQuality);
+                if (prefs.frameRate) setFrameRate(prefs.frameRate);
+            } catch (error) {
+                console.warn('Failed to load device preferences:', error);
+            }
+        }
+    }, []);
+
     useEffect(() => {
         if (location.state?.topic) {
             setTopic(location.state.topic);
@@ -100,6 +119,35 @@ export const LiveSession: React.FC = () => {
         navigator.mediaDevices.addEventListener('devicechange', loadDevices);
         return () => navigator.mediaDevices.removeEventListener('devicechange', loadDevices);
     }, []);
+
+    const saveDevicePreferences = () => {
+        const prefs = {
+            videoInput: selectedVideoInput,
+            audioInput: selectedAudioInput,
+            audioOutput: selectedAudioOutput,
+            videoQuality,
+            frameRate
+        };
+        localStorage.setItem('recording-device-prefs', JSON.stringify(prefs));
+        alert('Device preferences saved as default!');
+    };
+
+    const useDefaultSettings = () => {
+        const savedPrefs = localStorage.getItem('recording-device-prefs');
+        if (savedPrefs) {
+            try {
+                const prefs = JSON.parse(savedPrefs);
+                setSelectedVideoInput(prefs.videoInput || '');
+                setSelectedAudioInput(prefs.audioInput || '');
+                setSelectedAudioOutput(prefs.audioOutput || '');
+                setVideoQuality(prefs.videoQuality || '720p');
+                setFrameRate(prefs.frameRate || 30);
+                setShowDeviceSettings(false);
+            } catch (error) {
+                console.warn('Failed to load default preferences:', error);
+            }
+        }
+    };
 
     useEffect(() => {
         let timer: number | undefined;
@@ -447,10 +495,38 @@ export const LiveSession: React.FC = () => {
                 <div className="mt-8 border-t border-border pt-6">
                     <h3 className="text-lg font-semibold text-text-primary mb-4 text-center">📹 Practice Recording</h3>
                     
-                    {/* Recording Settings */}
-                    {!isRecording && (
+                    {/* Recording Settings Toggle */}
+                    {!isRecording && !showDeviceSettings && (
+                        <div className="mb-4 text-center">
+                            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                                <button 
+                                    onClick={useDefaultSettings}
+                                    className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md text-sm"
+                                >
+                                    📱 Use Default Settings
+                                </button>
+                                <button 
+                                    onClick={() => setShowDeviceSettings(true)}
+                                    className="bg-surface hover:bg-border text-text-primary font-bold py-2 px-4 rounded-md text-sm"
+                                >
+                                    ⚙️ Customize Settings
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* Recording Settings Panel */}
+                    {!isRecording && showDeviceSettings && (
                         <div className="mb-6 bg-background p-4 rounded-lg">
-                            <h4 className="text-sm font-medium text-text-secondary mb-3">Recording Settings</h4>
+                            <div className="flex justify-between items-center mb-3">
+                                <h4 className="text-sm font-medium text-text-secondary">Recording Settings</h4>
+                                <button 
+                                    onClick={() => setShowDeviceSettings(false)}
+                                    className="text-text-secondary hover:text-text-primary text-sm"
+                                >
+                                    ✕ Close
+                                </button>
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {/* Video Input */}
                                 <div>
@@ -529,6 +605,15 @@ export const LiveSession: React.FC = () => {
                                     </select>
                                 </div>
                             </div>
+                            
+                            <div className="mt-4 pt-3 border-t border-border text-center">
+                                <button 
+                                    onClick={saveDevicePreferences}
+                                    className="bg-secondary hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md text-sm"
+                                >
+                                    💾 Save as Default
+                                </button>
+                            </div>
                         </div>
                     )}
                     
@@ -590,7 +675,24 @@ export const LiveSession: React.FC = () => {
                     )}
                 </div>
                 
-                <Metronome />
+                {/* Optional Metronome */}
+                <div className="mt-8 border-t border-border pt-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-text-primary">🥁 Metronome</h3>
+                        <button 
+                            onClick={() => setShowMetronome(!showMetronome)}
+                            className={`px-4 py-2 rounded-md font-semibold transition-colors ${
+                                showMetronome 
+                                    ? 'bg-primary text-white' 
+                                    : 'bg-surface hover:bg-border text-text-primary'
+                            }`}
+                        >
+                            {showMetronome ? 'Hide' : 'Show'} Metronome
+                        </button>
+                    </div>
+                    
+                    {showMetronome && <Metronome />}
+                </div>
 
                 {/* Practice Session Details */}
                 <div className="mt-8 border-t border-border pt-6">
