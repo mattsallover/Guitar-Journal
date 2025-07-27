@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { Goal, GoalStatus, RepertoireItem, CAGEDSession } from '../types';
@@ -35,8 +36,9 @@ const FocusCard: React.FC<FocusCardProps> = ({ type, title, description, onStart
 };
 
 export const Dashboard: React.FC = () => {
-    const { state } = useAppContext();
+    const { state, clearUserData } = useAppContext();
     const navigate = useNavigate();
+    const [isClearingData, setIsClearingData] = useState(false);
     const { goals, repertoire, practiceSessions, cagedSessions } = state;
 
     const focusSuggestions = useMemo(() => {
@@ -181,6 +183,23 @@ export const Dashboard: React.FC = () => {
                         <span className="text-3xl mb-3 block group-hover:scale-110 transition-transform duration-200">🎯</span>
                         <p className="font-semibold text-lg">Track Goals</p>
                         <p className="text-sm text-text-secondary mt-1">Set and achieve targets</p>
+                        <button
+                            onClick={async () => {
+                                if (window.confirm('Are you sure you want to delete ALL your practice data? This action cannot be undone.')) {
+                                    setIsClearingData(true);
+                                    await clearUserData(state.user!.uid);
+                                    setIsClearingData(false);
+                                }
+                            }}
+                            disabled={isClearingData}
+                            className="bg-red-700 hover:bg-red-800 p-6 rounded-lg text-center transition-all duration-300 hover:scale-105 hover:shadow-md group disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Permanently delete all your practice sessions, repertoire, and goals."
+                        >
+                            <span className="text-3xl mb-3 block group-hover:scale-110 transition-transform duration-200">🗑️</span>
+                            <p className="font-semibold text-lg">Clear All My Data</p>
+                            <p className="text-sm text-text-secondary mt-1">Start fresh with an empty journal</p>
+                            {isClearingData && <div className="mt-2 animate-spin rounded-full h-4 w-4 border-b-2 border-white mx-auto"></div>}
+                        </button>
                     </button>
                  </div>
             </div>
