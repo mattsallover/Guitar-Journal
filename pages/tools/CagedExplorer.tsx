@@ -31,19 +31,27 @@ export const CagedExplorer: React.FC = () => {
         const shape = CAGED_SHAPES[selectedCagedShape];
         if (!shape) return [];
 
+        // Find what fret the root note appears on the root string
+        const rootStringOpenNoteIndex = ALL_NOTES.indexOf(GUITAR_TUNING[shape.rootString]);
         const rootNoteIndex = ALL_NOTES.indexOf(selectedRootNote);
+        const rootFret = (rootNoteIndex - rootStringOpenNoteIndex + 12) % 12;
         
         return shape.intervals.map(interval => {
-            const noteIndex = (rootNoteIndex + getIntervalSemitones(interval.type)) % 12;
+            const fret = rootFret + interval.fretOffset;
+            if (fret < 0 || fret > 15) return null; // Skip if out of range
+            
+            // Calculate what note is actually at this position
+            const stringOpenNoteIndex = ALL_NOTES.indexOf(GUITAR_TUNING[interval.string]);
+            const actualNoteIndex = (stringOpenNoteIndex + fret) % 12;
             const note = ALL_NOTES[noteIndex];
             
             return {
                 string: interval.string,
-                fret: interval.fret,
+                fret: fret,
                 color: getIntervalColor(interval.type),
                 label: interval.type === 'R' ? note : interval.type
             };
-        });
+        }).filter(Boolean);
     }, [selectedRootNote, selectedCagedShape]);
 
     const handleRandomize = () => {
@@ -186,7 +194,8 @@ export const CagedExplorer: React.FC = () => {
                                     {selectedRootNote} ({selectedCagedShape} Shape)
                                 </div>
                                 <div className="text-sm text-text-secondary">
-                                    {selectedRootNote} Major - {selectedCagedShape} Shape
+                                    {selectedRootNote} Major - {selectedCagedShape} Shape<br/>
+                                    <span className="text-xs">Root on {CAGED_SHAPES[selectedCagedShape].rootStringName}</span>
                                 </div>
                             </div>
 
