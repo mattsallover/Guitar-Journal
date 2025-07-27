@@ -96,9 +96,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         .from('users')
         .select('id')
         .eq('id', user.uid)
-        .single();
+        .maybeSingle();
       
-      if (error && error.code === 'PGRST116') {
+      if (!data) {
         // User doesn't exist, create them
         const { error: insertError } = await supabase
           .from('users')
