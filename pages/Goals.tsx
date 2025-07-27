@@ -5,7 +5,7 @@ import { Goal, GoalStatus, GoalCategory } from '../types';
 import { Modal } from '../components/Modal';
 import { GOAL_STATUS_OPTIONS, GOAL_CATEGORY_OPTIONS } from '../constants';
 import { supabase } from '../services/supabase';
-import * as aiService from '../services/aiService';
+import { aiService } from '../services/aiService';
 
 
 export const Goals: React.FC = () => {
@@ -108,7 +108,7 @@ export const Goals: React.FC = () => {
         setLoadingSuggestions(true);
         
         try {
-            const suggestions = await aiService.generateGoalSuggestions({
+            const suggestions = await aiService.suggestGoals({
                 practiceSessions: state.practiceSessions.slice(-30),
                 repertoire: state.repertoire,
                 goals: state.goals,
