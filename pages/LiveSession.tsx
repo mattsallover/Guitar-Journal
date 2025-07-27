@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { Metronome } from '../components/Metronome';
+import { VideoCameraIcon } from '../components/icons/VideoCameraIcon';
+import { LogIcon } from '../components/icons/LogIcon';
 import { UploadProgress } from '../components/UploadProgress';
 import { MasteryUpdateModal } from '../components/MasteryUpdateModal';
 import { GoalUpdateModal } from '../components/GoalUpdateModal';
@@ -492,24 +494,31 @@ export const LiveSession: React.FC = () => {
                 </div>
                 
                 {/* Video Recording Section */}
-                <div className="mt-8 border-t border-border pt-6">
-                    <h3 className="text-lg font-semibold text-text-primary mb-4 text-center">📹 Practice Recording</h3>
+                <div className="mt-12 bg-surface/50 rounded-xl p-8 border border-border/30">
+                    <div className="flex items-center justify-center mb-6">
+                        <VideoCameraIcon className="w-6 h-6 text-primary mr-3" />
+                        <h3 className="text-xl font-semibold text-text-primary">Practice Recording</h3>
+                    </div>
                     
                     {/* Recording Settings Toggle */}
                     {!isRecording && !showDeviceSettings && (
-                        <div className="mb-4 text-center">
-                            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                        <div className="mb-6 text-center">
+                            <div className="flex flex-col sm:flex-row gap-3 justify-center">
                                 <button 
                                     onClick={useDefaultSettings}
-                                    className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-md text-sm"
+                                    className="bg-primary hover:bg-primary-hover text-white font-semibold py-3 px-6 rounded-lg text-sm transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl"
                                 >
-                                    📱 Use Default Settings
+                                    Use Default Settings
                                 </button>
                                 <button 
                                     onClick={() => setShowDeviceSettings(true)}
-                                    className="bg-surface hover:bg-border text-text-primary font-bold py-2 px-4 rounded-md text-sm"
+                                    className="bg-surface hover:bg-border text-text-primary font-semibold py-3 px-6 rounded-lg text-sm border border-border transition-all duration-200 hover:scale-105"
                                 >
-                                    ⚙️ Customize Settings
+                                    <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    Customize Settings
                                 </button>
                             </div>
                         </div>
@@ -517,14 +526,16 @@ export const LiveSession: React.FC = () => {
                     
                     {/* Recording Settings Panel */}
                     {!isRecording && showDeviceSettings && (
-                        <div className="mb-6 bg-background p-4 rounded-lg">
+                        <div className="mb-6 bg-background/50 p-6 rounded-xl border border-border/50">
                             <div className="flex justify-between items-center mb-3">
-                                <h4 className="text-sm font-medium text-text-secondary">Recording Settings</h4>
+                                <h4 className="text-lg font-semibold text-text-primary">Recording Settings</h4>
                                 <button 
                                     onClick={() => setShowDeviceSettings(false)}
-                                    className="text-text-secondary hover:text-text-primary text-sm"
+                                    className="text-text-secondary hover:text-text-primary p-2 hover:bg-surface rounded-lg transition-colors"
                                 >
-                                    ✕ Close
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
                                 </button>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -609,19 +620,22 @@ export const LiveSession: React.FC = () => {
                             <div className="mt-4 pt-3 border-t border-border text-center">
                                 <button 
                                     onClick={saveDevicePreferences}
-                                    className="bg-secondary hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md text-sm"
+                                    className="bg-secondary hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg text-sm transition-all duration-200 hover:scale-105 shadow-md"
                                 >
-                                    💾 Save as Default
+                                    <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    Save as Default
                                 </button>
                             </div>
                         </div>
                     )}
                     
                     {/* Video Element */}
-                    <div className="mb-4 flex justify-center">
+                    <div className="mb-6 flex justify-center">
                         <video 
                             id="recordingVideo"
-                            className="w-full max-w-md rounded-lg border border-border bg-black"
+                            className="w-full max-w-lg rounded-xl border-2 border-border/30 bg-black shadow-xl"
                             style={{ aspectRatio: '16/9' }}
                             autoPlay
                             muted
@@ -631,13 +645,13 @@ export const LiveSession: React.FC = () => {
                     </div>
                     
                     {/* Recording Controls */}
-                    <div className="flex flex-wrap justify-center gap-2">
+                    <div className="flex flex-wrap justify-center gap-4">
                         {!isRecording && !showPreviewModal && (
                             <button 
                                 onClick={startRecording}
-                                className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md flex items-center space-x-2"
+                                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center space-x-2 transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl"
                             >
-                                <span className="w-3 h-3 bg-white rounded-full"></span>
+                                <div className="w-3 h-3 bg-white rounded-full"></div>
                                 <span>Start Recording</span>
                             </button>
                         )}
@@ -645,9 +659,9 @@ export const LiveSession: React.FC = () => {
                         {isRecording && (
                             <button 
                                 onClick={stopRecording}
-                                className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md flex items-center space-x-2 animate-pulse"
+                                className="bg-gray-700 hover:bg-gray-800 text-white font-semibold py-3 px-6 rounded-lg flex items-center space-x-2 animate-pulse shadow-lg"
                             >
-                                <span className="w-3 h-3 bg-red-500 rounded-sm"></span>
+                                <div className="w-3 h-3 bg-red-500 rounded-sm"></div>
                                 <span>Stop Recording</span>
                             </button>
                         )}
@@ -655,16 +669,181 @@ export const LiveSession: React.FC = () => {
                         {previewUrl && !showPreviewModal && (
                             <button 
                                 onClick={() => setShowPreviewModal(true)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md"
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
                             >
-                                📹 Review Recording
+                                <VideoCameraIcon className="w-4 h-4 inline mr-2" />
+                                Review Recording
                             </button>
                         )}
                     </div>
                     
                     {previewUrl && !showPreviewModal && (
-                        <p className="text-center text-sm text-green-400 mt-2">
-                            ✅ Recording ready! It will be uploaded when you finish the session.
+                        <div className="text-center mt-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                            <p className="text-sm text-green-400 flex items-center justify-center">
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Recording ready! It will be uploaded when you finish the session.
+                            </p>
+                        </div>
+                    )}
+                    
+                    {isRecording && (
+                        <div className="text-center mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                            <p className="text-sm text-red-400 flex items-center justify-center">
+                                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2"></div>
+                                Recording in progress...
+                            </p>
+                        </div>
+                    )}
+                </div>
+                
+                {/* Metronome Section */}
+                <div className="mt-8 bg-surface/30 rounded-xl p-6 border border-border/20">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center">
+                            <svg className="w-6 h-6 text-primary mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                            </svg>
+                            <h3 className="text-lg font-semibold text-text-primary">Metronome</h3>
+                        </div>
+                        <button 
+                            onClick={() => setShowMetronome(!showMetronome)}
+                            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200 ${
+                                showMetronome 
+                                    ? 'bg-primary text-white shadow-lg' 
+                                    : 'bg-surface hover:bg-border text-text-primary border border-border hover:scale-105'
+                            }`}
+                        >
+                            {showMetronome ? 'Hide' : 'Show'} Metronome
+                        </button>
+                    </div>
+                    
+                    {showMetronome && <Metronome />}
+                </div>
+
+                {/* Session Details */}
+                <div className="mt-8 bg-surface/30 rounded-xl p-6 border border-border/20">
+                    <div className="flex items-center mb-6">
+                        <LogIcon className="w-6 h-6 text-primary mr-3" />
+                        <h3 className="text-lg font-semibold text-text-primary">Session Details</h3>
+                    </div>
+                    
+                    <div className="space-y-6">
+                        <div>
+                            <label className="block text-sm font-medium text-text-secondary mb-2">Reference Link (optional)</label>
+                            <input 
+                                type="url" 
+                                value={link}
+                                onChange={(e) => setLink(e.target.value)}
+                                placeholder="https://..."
+                                className="w-full bg-background border border-border rounded-lg p-3 focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-text-secondary mb-2">
+                                What did you practice? {topic && <span className="text-xs text-text-secondary">({topic} is already included)</span>}
+                            </label>
+                            <TagInput 
+                                values={topics}
+                                onChange={setTopics}
+                                suggestions={[
+                                    ...state.repertoire.map(r => r.title),
+                                    'Alternate Picking', 'Sweep Picking', 'Legato', 'Tapping',
+                                    'Bending', 'Vibrato', 'Slides', 'Hammer-ons', 'Pull-offs',
+                                    'Palm Muting', 'Fingerpicking', 'Tremolo', 'Harmonics',
+                                    'Scales', 'Chords', 'Arpeggios', 'Rhythm', 'Lead'
+                                ]}
+                                placeholder="Add songs, techniques, concepts (press Enter)"
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-text-secondary mb-2">Session Notes (optional)</label>
+                            <textarea 
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                                placeholder="Jot down any thoughts or discoveries..."
+                                className="w-full bg-background border border-border rounded-lg p-3 h-32 focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none"
+                            ></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {/* Video Preview Modal */}
+        {showPreviewModal && previewUrl && (
+            <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex justify-center items-center p-4">
+                <div className="bg-surface rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-border/30">
+                    <div className="flex justify-between items-center p-6 border-b border-border">
+                        <div className="flex items-center">
+                            <VideoCameraIcon className="w-6 h-6 text-primary mr-3" />
+                            <h2 className="text-xl font-bold text-text-primary">Review Your Recording</h2>
+                        </div>
+                        <button 
+                            onClick={() => setShowPreviewModal(false)}
+                            className="text-text-secondary hover:text-text-primary p-2 hover:bg-surface rounded-lg transition-all"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div className="p-6 flex-1 overflow-auto">
+                        <div className="mb-4">
+                            <video 
+                                className="w-full rounded-xl border-2 border-border/30 bg-black shadow-lg"
+                                controls
+                                src={previewUrl}
+                                style={{ aspectRatio: '16/9' }}
+                            />
+                        </div>
+                        
+                        <p className="text-text-secondary text-center mb-6">
+                            Review your recording and decide if you want to keep it or record again.
+                        </p>
+                        
+                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                            <button 
+                                onClick={keepRecording}
+                                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
+                            >
+                                <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Keep This Recording
+                            </button>
+                            <button 
+                                onClick={clearRecording}
+                                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
+                            >
+                                <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Record Again
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+        
+        {/* Upload Progress Modal */}
+        {uploadingFiles && (
+            <UploadProgress 
+                files={uploadProgressData}
+                onCancel={() => {
+                    setUploadingFiles(false);
+                    setUploadProgressData([]);
+                }}
+            />
+        )}
+        </>
+    );
+};
                         </p>
                     )}
                     
