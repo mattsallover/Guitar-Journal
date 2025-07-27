@@ -152,10 +152,7 @@ export const LiveSession: React.FC = () => {
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: getVideoConstraints(),
                 audio: {
-                    deviceId: selectedAudioInput ? { exact: selectedAudioInput } : undefined,
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true
+                    deviceId: selectedAudioInput ? { exact: selectedAudioInput } : undefined
                 }
             });
             setMediaStream(stream);
