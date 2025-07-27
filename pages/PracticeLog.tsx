@@ -282,7 +282,7 @@ export const PracticeLog: React.FC = () => {
       }
 
       // Check for goal updates
-      this.checkForGoalUpdates();
+      checkForGoalUpdates();
 
     } catch (error) {
       console.error('Error saving practice session:', error);
