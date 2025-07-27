@@ -3,7 +3,7 @@ import { useAppContext } from '../../context/AppContext';
 import { Fretboard } from '../../components/Fretboard';
 import { CAGEDHeatmap } from '../../components/CAGEDHeatmap';
 import { Note, CagedShape } from '../../types';
-import { ALL_NOTES, CAGED_SHAPES } from '../../constants';
+import { ALL_NOTES, CAGED_SHAPES, GUITAR_TUNING } from '../../constants';
 import { supabase } from '../../services/supabase';
 
 export const CagedExplorer: React.FC = () => {
