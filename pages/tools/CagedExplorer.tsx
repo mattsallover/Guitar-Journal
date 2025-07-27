@@ -6,7 +6,11 @@ import { Note, CagedShape } from '../../types';
 import { ALL_NOTES, CAGED_SHAPES, GUITAR_TUNING } from '../../constants';
 import { supabase } from '../../services/supabase';
 
-export const CagedExplorer: React.FC = () => {
+interface CagedExplorerProps {
+    isEmbedded?: boolean;
+}
+
+export const CagedExplorer: React.FC<CagedExplorerProps> = ({ isEmbedded = false }) => {
     const { state, refreshData } = useAppContext();
     const [selectedRootNote, setSelectedRootNote] = useState<Note>('C');
     const [selectedCagedShape, setSelectedCagedShape] = useState<CagedShape>('C');
@@ -146,7 +150,8 @@ export const CagedExplorer: React.FC = () => {
         <div className="p-8">
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
-                <div className="text-center mb-8">
+                {!isEmbedded && (
+                    <div className="text-center mb-8">
                     <h1 className="text-4xl font-bold text-text-primary mb-2">CAGED System Explorer</h1>
                     <p className="text-text-secondary">
                         {isQuizMode 
@@ -155,6 +160,7 @@ export const CagedExplorer: React.FC = () => {
                         }
                     </p>
                 </div>
+                )}
 
                 {/* Main Controls */}
                 {!showAnalytics && (
@@ -291,7 +297,8 @@ export const CagedExplorer: React.FC = () => {
                 )}
 
                 {/* Mode Toggle */}
-                <div className="flex justify-center mb-8">
+                {!isEmbedded && (
+                    <div className="flex justify-center mb-8">
                     <div className="flex bg-background rounded-lg p-1 border border-border">
                         <button 
                             onClick={() => setShowAnalytics(false)}
@@ -315,6 +322,7 @@ export const CagedExplorer: React.FC = () => {
                         </button>
                     </div>
                 </div>
+                )}
 
                 {/* Main Content */}
                 {showAnalytics ? (

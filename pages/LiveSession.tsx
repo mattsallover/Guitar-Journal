@@ -8,6 +8,8 @@ import { LogIcon } from '../components/icons/LogIcon';
 import { UploadProgress } from '../components/UploadProgress';
 import { MasteryUpdateModal } from '../components/MasteryUpdateModal';
 import { GoalUpdateModal } from '../components/GoalUpdateModal';
+import { CagedExplorer } from './tools/CagedExplorer';
+import { NoteFinder } from './tools/NoteFinder';
 import { Recording, Mood } from '../types';
 import { TagInput } from '../components/TagInput';
 import { MOOD_OPTIONS } from '../constants';
@@ -20,6 +22,7 @@ const formatTime = (seconds: number) => {
     return `${mins}:${secs}`;
 };
 
+type ActiveTool = 'session' | 'caged' | 'note-finder';
 export const LiveSession: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
@@ -29,6 +32,7 @@ export const LiveSession: React.FC = () => {
     const [time, setTime] = useState(0);
     const [notes, setNotes] = useState('');
     const [isPaused, setIsPaused] = useState(false);
+    const [activeTool, setActiveTool] = useState<ActiveTool>('session');
     
     // Practice session details
     const [topics, setTopics] = useState<string[]>([]);
@@ -493,8 +497,63 @@ export const LiveSession: React.FC = () => {
                     </div>
                 </div>
                 
+                {/* Tool Selection */}
+                <div className="mt-8 bg-surface/50 rounded-xl p-6 border border-border/30">
+                    <div className="flex items-center justify-center mb-4">
+                        <div className="text-2xl mr-3">🎯</div>
+                        <h3 className="text-xl font-semibold text-text-primary">Practice Tools</h3>
+                    </div>
+                    
+                    <div className="flex justify-center space-x-3">
+                        <button 
+                            onClick={() => setActiveTool('session')}
+                            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200 ${
+                                activeTool === 'session' 
+                                    ? 'bg-primary text-white shadow-lg' 
+                                    : 'bg-surface hover:bg-border text-text-primary border border-border hover:scale-105'
+                            }`}
+                        >
+                            📝 Session Details
+                        </button>
+                        <button 
+                            onClick={() => setActiveTool('caged')}
+                            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200 ${
+                                activeTool === 'caged' 
+                                    ? 'bg-primary text-white shadow-lg' 
+                                    : 'bg-surface hover:bg-border text-text-primary border border-border hover:scale-105'
+                            }`}
+                        >
+                            🎸 CAGED Explorer
+                        </button>
+                        <button 
+                            onClick={() => setActiveTool('note-finder')}
+                            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200 ${
+                                activeTool === 'note-finder' 
+                                    ? 'bg-primary text-white shadow-lg' 
+                                    : 'bg-surface hover:bg-border text-text-primary border border-border hover:scale-105'
+                            }`}
+                        >
+                            🎯 Note Finder
+                        </button>
+                    </div>
+                </div>
+
+                {/* Tool Content */}
+                {activeTool === 'caged' && (
+                    <div className="mt-8">
+                        <CagedExplorer isEmbedded={true} />
+                    </div>
+                )}
+                
+                {activeTool === 'note-finder' && (
+                    <div className="mt-8">
+                        <NoteFinder isEmbedded={true} />
+                    </div>
+                )}
+                
                 {/* Video Recording Section */}
-                <div className="mt-12 bg-surface/50 rounded-xl p-8 border border-border/30">
+                {activeTool === 'session' && (
+                    <div className="mt-12 bg-surface/50 rounded-xl p-8 border border-border/30">
                     <div className="flex items-center justify-center mb-6">
                         <VideoCameraIcon className="w-6 h-6 text-primary mr-3" />
                         <h3 className="text-xl font-semibold text-text-primary">Practice Recording</h3>
@@ -697,9 +756,11 @@ export const LiveSession: React.FC = () => {
                         </div>
                     )}
                 </div>
+                )}
                 
                 {/* Metronome Section */}
-                <div className="mt-8 bg-surface/30 rounded-xl p-6 border border-border/20">
+                {activeTool === 'session' && (
+                    <div className="mt-8 bg-surface/30 rounded-xl p-6 border border-border/20">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center">
                             <svg className="w-6 h-6 text-primary mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -721,9 +782,11 @@ export const LiveSession: React.FC = () => {
                     
                     {showMetronome && <Metronome />}
                 </div>
+                )}
 
                 {/* Session Details */}
-                <div className="mt-8 bg-surface/30 rounded-xl p-6 border border-border/20">
+                {activeTool === 'session' && (
+                    <div className="mt-8 bg-surface/30 rounded-xl p-6 border border-border/20">
                     <div className="flex items-center mb-6">
                         <LogIcon className="w-6 h-6 text-primary mr-3" />
                         <h3 className="text-lg font-semibold text-text-primary">Session Details</h3>
@@ -770,6 +833,7 @@ export const LiveSession: React.FC = () => {
                         </div>
                     </div>
                 </div>
+                )}
             </div>
         </div>
         

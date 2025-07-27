@@ -9,7 +9,11 @@ import { supabase } from '../../services/supabase';
 type ViewMode = 'learn' | 'practice' | 'analytics';
 type PracticeMode = 'find-any' | 'find-all' | 'find-on-string';
 
-export const NoteFinder: React.FC = () => {
+interface NoteFinderProps {
+    isEmbedded?: boolean;
+}
+
+export const NoteFinder: React.FC<NoteFinderProps> = ({ isEmbedded = false }) => {
     const { state, refreshData } = useAppContext();
     const [viewMode, setViewMode] = useState<ViewMode>('learn');
     
@@ -144,15 +148,18 @@ export const NoteFinder: React.FC = () => {
         <div className="p-8">
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
-                <div className="text-center mb-8">
+                {!isEmbedded && (
+                    <div className="text-center mb-8">
                     <h1 className="text-4xl font-bold text-text-primary mb-2">Note Finder</h1>
                     <p className="text-text-secondary">
                         Master every note on the fretboard with intelligent practice
                     </p>
                 </div>
+                )}
 
                 {/* Mode Toggle */}
-                <div className="flex justify-center mb-8">
+                {!isEmbedded && (
+                    <div className="flex justify-center mb-8">
                     <div className="flex bg-background rounded-lg p-1 border border-border">
                         <button 
                             onClick={() => setViewMode('learn')}
@@ -186,6 +193,7 @@ export const NoteFinder: React.FC = () => {
                         </button>
                     </div>
                 </div>
+                )}
 
                 {/* Learn Mode */}
                 {viewMode === 'learn' && (
