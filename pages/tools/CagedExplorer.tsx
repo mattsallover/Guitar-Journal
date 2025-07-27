@@ -19,9 +19,15 @@ export const CagedExplorer: React.FC = () => {
     const [userAnswers, setUserAnswers] = useState<Array<{correct: boolean, timeSeconds: number}>>([]);
     const [quizStartTime, setQuizStartTime] = useState<number>(0);
     const [showQuizResult, setShowQuizResult] = useState(false);
+    const [isRevealed, setIsRevealed] = useState(false);
 
     // Calculate highlighted notes for the current selection
     const highlightedNotes = useMemo(() => {
+        // In quiz mode, only show highlights after reveal
+        if (isQuizMode && !isRevealed) {
+            return [];
+        }
+        
         const shape = CAGED_SHAPES[selectedCagedShape];
         if (!shape) return [];
 
@@ -66,6 +72,11 @@ export const CagedExplorer: React.FC = () => {
         // Set first question
         setSelectedRootNote(questions[0].note);
         setSelectedCagedShape(questions[0].shape);
+        setIsRevealed(false);
+    };
+
+    const handleReveal = () => {
+        setIsRevealed(true);
     };
 
     const handleQuizAnswer = (correct: boolean) => {
@@ -80,6 +91,7 @@ export const CagedExplorer: React.FC = () => {
             setSelectedRootNote(quizQuestions[nextIndex].note);
             setSelectedCagedShape(quizQuestions[nextIndex].shape);
             setQuizStartTime(Date.now());
+            setIsRevealed(false);
         } else {
             // Quiz complete
             setShowQuizResult(true);
@@ -116,6 +128,7 @@ export const CagedExplorer: React.FC = () => {
         setShowQuizResult(false);
         setQuizQuestions([]);
         setUserAnswers([]);
+        setIsRevealed(false);
     };
 
     return (
@@ -198,18 +211,29 @@ export const CagedExplorer: React.FC = () => {
                                     </>
                                 ) : (
                                     <div className="flex gap-3">
-                                        <button 
-                                            onClick={() => handleQuizAnswer(true)}
-                                            className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition-all duration-200 hover:scale-105"
-                                        >
-                                            ✓ Correct
-                                        </button>
-                                        <button 
-                                            onClick={() => handleQuizAnswer(false)}
-                                            className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg transition-all duration-200 hover:scale-105"
-                                        >
-                                            ✗ Wrong
-                                        </button>
+                                        {!isRevealed ? (
+                                            <button 
+                                                onClick={handleReveal}
+                                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-all duration-200 hover:scale-105"
+                                            >
+                                                👁️ Reveal Answer
+                                            </button>
+                                        ) : (
+                                            <>
+                                                <button 
+                                                    onClick={() => handleQuizAnswer(true)}
+                                                    className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition-all duration-200 hover:scale-105"
+                                                >
+                                                    ✓ I Got It Right
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleQuizAnswer(false)}
+                                                    className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg transition-all duration-200 hover:scale-105"
+                                                >
+                                                    ✗ I Got It Wrong
+                                                </button>
+                                            </>
+                                        )}
                                         <button 
                                             onClick={exitQuiz}
                                             className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200"
