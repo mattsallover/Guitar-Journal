@@ -192,7 +192,6 @@ Make goals specific, measurable, and tailored to their current skill level and p
     return new Response(
       JSON.stringify(fallbackSuggestions),
       {
-        status: 500,
         headers: {
           'Content-Type': 'application/json',
           ...corsHeaders
