@@ -16,10 +16,7 @@ export const Sidebar: React.FC = () => {
     const [isToolsOpen, setIsToolsOpen] = useState(false); // Closed by default
 
     const handleLogout = () => {
-        supabase.auth.signOut().then(() => {
-            // Force reload to clear any cached state
-            window.location.reload();
-        });
+        supabase.auth.signOut();
     };
 
     const navLinkClasses = "flex items-center px-4 py-3 text-text-secondary hover:bg-surface hover:text-text-primary rounded-md transition-all duration-300 hover:scale-[1.02]";
