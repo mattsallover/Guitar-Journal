@@ -168,11 +168,14 @@ export const LiveSession: React.FC = () => {
     // Cleanup effect for media resources
     useEffect(() => {
         return () => {
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+            }
             if (mediaStream) {
                 mediaStream.getTracks().forEach(track => track.stop());
             }
         };
-    }, [mediaStream]);
+    }, [previewUrl, mediaStream]);
 
     const getVideoConstraints = () => {
         const constraints: MediaTrackConstraints = {
@@ -453,12 +456,6 @@ export const LiveSession: React.FC = () => {
             
             await refreshData();
             navigate('/');
-            
-            // Clean up preview URL after successful save
-            if (previewUrl) {
-                URL.revokeObjectURL(previewUrl);
-                setPreviewUrl(null);
-            }
         } catch (error) {
             console.error('Error saving practice session:', error);
             alert('Failed to save practice session. Please try again.');
