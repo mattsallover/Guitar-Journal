@@ -43,7 +43,7 @@ export const CagedExplorer: React.FC = () => {
             // Calculate what note is actually at this position
             const stringOpenNoteIndex = ALL_NOTES.indexOf(GUITAR_TUNING[interval.string]);
             const actualNoteIndex = (stringOpenNoteIndex + fret) % 12;
-            const note = ALL_NOTES[noteIndex];
+            const note = ALL_NOTES[actualNoteIndex];
             
             return {
                 string: interval.string,
