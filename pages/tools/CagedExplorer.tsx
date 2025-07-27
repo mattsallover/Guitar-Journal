@@ -170,7 +170,7 @@ export const CagedExplorer: React.FC = () => {
                             {/* Current Chord Display */}
                             <div className="text-center">
                                 <div className="text-3xl font-bold text-primary mb-1">
-                                    {selectedRootNote}{selectedCagedShape}
+                                    {selectedRootNote} ({selectedCagedShape} Shape)
                                 </div>
                                 <div className="text-sm text-text-secondary">
                                     {selectedRootNote} Major - {selectedCagedShape} Shape
